@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import (
     Column, String, Boolean, Integer, DateTime, Text, JSON,
     ForeignKey, Numeric, UniqueConstraint, Index
@@ -25,7 +26,7 @@ class User(Base):
     failedLogins = Column(Integer, default=0)
     lockedUntil = Column(DateTime)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     department = relationship("Department", back_populates="users", foreign_keys=[departmentId])
     doctor = relationship("Doctor", back_populates="user", uselist=False)
@@ -59,7 +60,7 @@ class Department(Base):
     headId = Column(String(36))
     description = Column(String(500))
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     users = relationship("User", back_populates="department", foreign_keys="User.departmentId")
     employees = relationship("Employee", back_populates="department")
@@ -97,7 +98,7 @@ class Patient(Base):
     mergedIntoId = Column(String(36))
     lastVisit = Column(DateTime)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     appointments = relationship("Appointment", back_populates="patient")
     consultations = relationship("Consultation", back_populates="patient")
@@ -118,7 +119,7 @@ class Doctor(Base):
     licenseExpiry = Column(DateTime)
     isAvailable = Column(Boolean, default=True)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     user = relationship("User", back_populates="doctor")
     department = relationship("Department", back_populates="doctors")
@@ -159,7 +160,7 @@ class Appointment(Base):
     cancelReason = Column(String(500))
     createdById = Column(String(36))
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     patient = relationship("Patient", back_populates="appointments")
     doctor = relationship("Doctor", back_populates="appointments")
@@ -186,7 +187,7 @@ class Consultation(Base):
     isLocked = Column(Boolean, default=False)
     lockedAt = Column(DateTime)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     appointment = relationship("Appointment", back_populates="consultation")
     patient = relationship("Patient", back_populates="consultations")
@@ -265,7 +266,7 @@ class LabOrder(Base):
     collectedById = Column(String(36))
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     patient = relationship("Patient", back_populates="labOrders")
     consultation = relationship("Consultation", back_populates="labOrders")
@@ -310,7 +311,7 @@ class RadiologyOrder(Base):
     imageUrls = Column(JSON, default=list)
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     patient = relationship("Patient", back_populates="radiologyOrders")
     consultation = relationship("Consultation", back_populates="radiologyOrders")
@@ -339,7 +340,7 @@ class Invoice(Base):
     notes = Column(Text)
     createdById = Column(String(36))
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     patient = relationship("Patient", back_populates="invoices")
     appointment = relationship("Appointment", back_populates="invoice")
@@ -396,7 +397,7 @@ class Medication(Base):
     isActive = Column(Boolean, default=True)
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     prescriptions = relationship("Prescription", back_populates="medication")
     stockMovements = relationship("StockMovement", back_populates="medication")
@@ -453,7 +454,7 @@ class Vendor(Base):
     isActive = Column(Boolean, default=True)
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     purchaseOrders = relationship("PurchaseOrder", back_populates="vendor")
     expenses = relationship("Expense", back_populates="vendor")
@@ -475,7 +476,7 @@ class PurchaseOrder(Base):
     approvedAt = Column(DateTime)
     receivedAt = Column(DateTime)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     vendor = relationship("Vendor", back_populates="purchaseOrders")
     items = relationship("POItem", back_populates="po", cascade="all, delete-orphan")
@@ -515,7 +516,7 @@ class Expense(Base):
     recordedById = Column(String(36), ForeignKey("users.id"))
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     vendor = relationship("Vendor", back_populates="expenses")
     approvedBy = relationship("User", back_populates="approvedExpenses", foreign_keys=[approvedById])
@@ -542,7 +543,7 @@ class Asset(Base):
     salvageValue = Column(Numeric(12, 2), default=0)
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     department = relationship("Department", back_populates="assets")
     maintenanceLogs = relationship("AssetMaintenance", back_populates="asset")
@@ -586,7 +587,7 @@ class Employee(Base):
     sickLeaveBalance = Column(Integer, default=14)
     notes = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     user = relationship("User", back_populates="employee")
     department = relationship("Department", back_populates="employees")
@@ -627,7 +628,7 @@ class LeaveRequest(Base):
     approvedAt = Column(DateTime)
     rejectedReason = Column(Text)
     createdAt = Column(DateTime, server_default=func.now())
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     employee = relationship("Employee", back_populates="leaveRequests")
 
