@@ -1,3 +1,4 @@
+import json
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -6,6 +7,17 @@ from sqlalchemy.orm import Session
 from database import get_db
 from auth import get_current_user, generate_id, hash_password, generate_emp_code
 import models
+
+
+def parse_roles(raw) -> list:
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except Exception:
+            return []
+    return []
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -34,7 +46,7 @@ def user_to_dict(u: models.User) -> dict:
         "email": u.email,
         "phone": u.phone,
         "photo": u.photo,
-        "roles": u.roles or [],
+        "roles": parse_roles(u.roles),
         "isActive": u.isActive,
         "lastLogin": u.lastLogin.isoformat() if u.lastLogin else None,
         "createdAt": u.createdAt.isoformat() if u.createdAt else None,
@@ -61,7 +73,7 @@ def get_users(
     all_users = query.order_by(models.User.createdAt.desc()).all()
 
     if role and role != "ALL":
-        all_users = [u for u in all_users if isinstance(u.roles, list) and role in u.roles]
+        all_users = [u for u in all_users if role in parse_roles(u.roles)]
 
     total = len(all_users)
     page_data = all_users[(page - 1) * pageSize: page * pageSize]

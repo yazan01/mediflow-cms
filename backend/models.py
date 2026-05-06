@@ -65,7 +65,8 @@ class Department(Base):
     employees = relationship("Employee", back_populates="department")
     doctors = relationship("Doctor", back_populates="department")
     assets = relationship("Asset", back_populates="department")
-    children = relationship("Department", backref="parent", foreign_keys=[parentId])
+    parent = relationship("Department", back_populates="children", foreign_keys=[parentId], remote_side="Department.id")
+    children = relationship("Department", back_populates="parent", foreign_keys=[parentId])
 
 
 class Patient(Base):

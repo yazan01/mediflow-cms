@@ -98,7 +98,7 @@ export default function TopBar({ user }: TopBarProps) {
               <p className="text-[11px] text-[#74777f]">{displayRole}</p>
             </div>
             {user?.photo ? (
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={user.photo} alt={displayName} width={36} height={36} className="w-9 h-9 rounded-full border-2 border-[#d6e3ff] object-cover" />
             ) : (
               <div className="w-9 h-9 rounded-full bg-[#1a365d] text-white flex items-center justify-center text-sm font-bold">

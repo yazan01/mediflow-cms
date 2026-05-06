@@ -53,11 +53,19 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
     if user.twoFAEnabled:
         return {"requires2FA": True, "userId": user.id}
 
+    import json as _json
+    roles = user.roles
+    if isinstance(roles, str):
+        try:
+            roles = _json.loads(roles)
+        except Exception:
+            roles = []
+
     token = create_access_token({
         "sub": user.id,
         "name": user.name,
         "email": user.email,
-        "roles": user.roles,
+        "roles": roles,
     })
 
     response.set_cookie(
@@ -71,7 +79,7 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
 
     return {
         "success": True,
-        "user": {"id": user.id, "name": user.name, "email": user.email, "roles": user.roles},
+        "user": {"id": user.id, "name": user.name, "email": user.email, "roles": roles},
     }
 
 

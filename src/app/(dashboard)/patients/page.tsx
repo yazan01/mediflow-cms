@@ -163,7 +163,7 @@ export default function PatientsPage() {
                     <td className="px-5 py-4 border-b border-[#e3e2e6]">
                       <div className="flex items-center gap-3">
                         {patient.photo ? (
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={patient.photo} alt={`${patient.firstName} ${patient.lastName}`} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-[#e3e2e6]" />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-[#1a365d] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
