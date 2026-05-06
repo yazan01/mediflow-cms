@@ -75,7 +75,7 @@ export default function TopBar({ user }: TopBarProps) {
               <div className="max-h-72 overflow-y-auto divide-y divide-[#e3e2e6]">
                 <NotifItem icon="warning" iconColor="text-[#d97706]" title="Low Stock Alert" msg="Salbutamol Inhaler below minimum threshold" time="5 min ago" unread />
                 <NotifItem icon="emergency" iconColor="text-[#ba1a1a]" title="Urgent Appointment" msg="Patient marked as Urgent — Room 3" time="12 min ago" unread />
-                <NotifItem icon="lab_panel" iconColor="text-[#1960a3]" title="Lab Results Ready" msg="BMP results ready for review" time="1 hour ago" unread={false} />
+                <NotifItem icon="biotech" iconColor="text-[#1960a3]" title="Lab Results Ready" msg="BMP results ready for review" time="1 hour ago" unread={false} />
                 <NotifItem icon="payments" iconColor="text-[#ba1a1a]" title="Overdue Invoice" msg="Invoice #INV-2026-005 is 3 days overdue" time="2 hours ago" unread={false} />
               </div>
               <div className="p-3 text-center border-t border-[#e3e2e6]">
