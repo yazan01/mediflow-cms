@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -48,7 +48,7 @@ export default function NewPatientPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Registration failed");
-      router.push(`/dashboard/patients/${data.id}`);
+      router.push(`/patients/${data.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -67,7 +67,7 @@ export default function NewPatientPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
-          href="/dashboard/patients"
+          href="/patients"
           className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors text-[#74777f] hover:text-[#1a1c1e]"
         >
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
@@ -250,7 +250,7 @@ export default function NewPatientPage() {
 
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard/patients"
+              href="/patients"
               className="border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
             >
               Cancel

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,18 +12,18 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
-  { label: "Patients", href: "/dashboard/patients", icon: "person" },
-  { label: "Appointments", href: "/dashboard/appointments", icon: "calendar_today" },
-  { label: "EMR", href: "/dashboard/emr", icon: "clinical_notes" },
-  { label: "Billing", href: "/dashboard/billing", icon: "payments" },
-  { label: "Pharmacy", href: "/dashboard/pharmacy", icon: "medication" },
-  { label: "Laboratory", href: "/dashboard/laboratory", icon: "biotech" },
-  { label: "Radiology", href: "/dashboard/radiology", icon: "radiology" },
-  { label: "HR", href: "/dashboard/hr", icon: "badge" },
-  { label: "Accounting", href: "/dashboard/accounting", icon: "account_balance" },
-  { label: "Reports", href: "/dashboard/reports", icon: "bar_chart" },
-  { label: "Users & RBAC", href: "/dashboard/users", icon: "manage_accounts" },
+  { label: "Dashboard", href: "/", icon: "dashboard" },
+  { label: "Patients", href: "/patients", icon: "person" },
+  { label: "Appointments", href: "/appointments", icon: "calendar_today" },
+  { label: "EMR", href: "/emr", icon: "clinical_notes" },
+  { label: "Billing", href: "/billing", icon: "payments" },
+  { label: "Pharmacy", href: "/pharmacy", icon: "medication" },
+  { label: "Laboratory", href: "/laboratory", icon: "biotech" },
+  { label: "Radiology", href: "/radiology", icon: "radiology" },
+  { label: "HR", href: "/hr", icon: "badge" },
+  { label: "Accounting", href: "/accounting", icon: "account_balance" },
+  { label: "Reports", href: "/reports", icon: "bar_chart" },
+  { label: "Users & RBAC", href: "/users", icon: "manage_accounts" },
 ];
 
 export default function Sidebar() {
@@ -45,7 +45,9 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto no-scrollbar">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = item.href === "/"
+            ? pathname === "/"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
@@ -79,14 +81,14 @@ export default function Sidebar() {
       {/* Bottom actions */}
       <div className="mt-4 pt-4 border-t border-[#e3e2e6] space-y-0.5">
         <Link
-          href="/dashboard/settings"
+          href="/settings"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] hover:text-[#1a1c1e] transition-all duration-150"
         >
           <span className="material-symbols-outlined text-[20px] text-[#74777f]">settings</span>
           <span>Settings</span>
         </Link>
         <Link
-          href="/dashboard/audit"
+          href="/audit"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] hover:text-[#1a1c1e] transition-all duration-150"
         >
           <span className="material-symbols-outlined text-[20px] text-[#74777f]">policy</span>

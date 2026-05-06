@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -96,7 +96,7 @@ export default function BillingPage() {
 
   async function handleRecordPayment(id: string) {
     // Navigate to the invoice detail where payment can be recorded
-    window.location.href = `/dashboard/billing/${id}`;
+    window.location.href = `/billing/${id}`;
   }
 
   return (
@@ -113,7 +113,7 @@ export default function BillingPage() {
             Export
           </button>
           <Link
-            href="/dashboard/billing/new"
+            href="/billing/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -284,7 +284,7 @@ export default function BillingPage() {
                         {search || statusFilter !== "ALL" ? "Try adjusting your filters" : "Create your first invoice to get started"}
                       </p>
                       {!search && statusFilter === "ALL" && (
-                        <Link href="/dashboard/billing/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
+                        <Link href="/billing/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
                           Create first invoice →
                         </Link>
                       )}
@@ -305,7 +305,7 @@ export default function BillingPage() {
                       {/* Invoice ID */}
                       <td className="table-cell">
                         <Link
-                          href={`/dashboard/billing/${inv.id}`}
+                          href={`/billing/${inv.id}`}
                           className="text-xs font-mono font-semibold text-[#1960a3] hover:underline bg-[#d3e4ff]/40 px-2 py-1 rounded"
                         >
                           #{inv.id.slice(-8).toUpperCase()}
@@ -390,7 +390,7 @@ export default function BillingPage() {
                       <td className="table-cell text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="relative flex items-center justify-end gap-1">
                           <Link
-                            href={`/dashboard/billing/${inv.id}`}
+                            href={`/billing/${inv.id}`}
                             className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
                             title="View Invoice"
                           >

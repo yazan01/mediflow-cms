@@ -79,6 +79,9 @@
 }
 
 @layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
   .chart-grid {
     background-image:
       linear-gradient(to right, rgba(196, 198, 207, 0.4) 1px, transparent 1px),

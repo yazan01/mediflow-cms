@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -228,21 +228,21 @@ export default function AccountingPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/dashboard/accounting/expenses/new"
+            href="/accounting/expenses/new"
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">receipt</span>
             Log Expense
           </Link>
           <Link
-            href="/dashboard/accounting/vendors/new"
+            href="/accounting/vendors/new"
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">store</span>
             Add Vendor
           </Link>
           <Link
-            href="/dashboard/accounting/purchase-orders/new"
+            href="/accounting/purchase-orders/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -290,7 +290,7 @@ export default function AccountingPage() {
                     <h3 className="text-lg font-semibold text-[#1a1c1e]">Revenue vs Expenses</h3>
                     <p className="text-xs text-[#74777f]">Monthly trend — current fiscal year</p>
                   </div>
-                  <Link href="/dashboard/reports?tab=financial" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
+                  <Link href="/reports?tab=financial" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
                     Full Report <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                   </Link>
                 </div>
@@ -306,10 +306,10 @@ export default function AccountingPage() {
                 <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">Quick Report Links</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: "P&L Statement",   icon: "description",    href: "/dashboard/reports?report=pl" },
-                    { label: "Balance Sheet",    icon: "account_balance",href: "/dashboard/reports?report=balance" },
-                    { label: "Cash Flow",        icon: "waterfall_chart",href: "/dashboard/reports?report=cashflow" },
-                    { label: "AR Aging",         icon: "move_to_inbox",  href: "/dashboard/reports?report=ar" },
+                    { label: "P&L Statement",   icon: "description",    href: "/reports?report=pl" },
+                    { label: "Balance Sheet",    icon: "account_balance",href: "/reports?report=balance" },
+                    { label: "Cash Flow",        icon: "waterfall_chart",href: "/reports?report=cashflow" },
+                    { label: "AR Aging",         icon: "move_to_inbox",  href: "/reports?report=ar" },
                   ].map((r) => (
                     <Link
                       key={r.label}
@@ -391,7 +391,7 @@ export default function AccountingPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1">
-                            <Link href={`/dashboard/accounting/purchase-orders/${po.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View">
+                            <Link href={`/accounting/purchase-orders/${po.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View">
                               <span className="material-symbols-outlined text-[18px]">visibility</span>
                             </Link>
                             {po.status === "SUBMITTED" && (
@@ -472,13 +472,13 @@ export default function AccountingPage() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1">
-                          <Link href={`/dashboard/accounting/vendors/${v.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View">
+                          <Link href={`/accounting/vendors/${v.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View">
                             <span className="material-symbols-outlined text-[18px]">visibility</span>
                           </Link>
-                          <Link href={`/dashboard/accounting/vendors/${v.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
+                          <Link href={`/accounting/vendors/${v.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </Link>
-                          <Link href={`/dashboard/accounting/purchase-orders/new?vendor=${v.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Create PO">
+                          <Link href={`/accounting/purchase-orders/new?vendor=${v.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Create PO">
                             <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
                           </Link>
                         </div>
@@ -584,7 +584,7 @@ export default function AccountingPage() {
               <option value="TRANSFERRED">Transferred</option>
             </select>
             <Link
-              href="/dashboard/accounting/assets/new"
+              href="/accounting/assets/new"
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
@@ -637,10 +637,10 @@ export default function AccountingPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1">
-                            <Link href={`/dashboard/accounting/assets/${asset.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View">
+                            <Link href={`/accounting/assets/${asset.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View">
                               <span className="material-symbols-outlined text-[18px]">visibility</span>
                             </Link>
-                            <Link href={`/dashboard/accounting/assets/${asset.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
+                            <Link href={`/accounting/assets/${asset.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </Link>
                           </div>

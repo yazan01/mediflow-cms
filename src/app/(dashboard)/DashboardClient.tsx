@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
@@ -57,10 +57,10 @@ export default function DashboardClient({ stats, appointments }: Props) {
   ];
 
   const quickLinks = [
-    { href: "/dashboard/patients/new",     icon: "person_add",    label: "Register Patient",  color: "text-[#002045]" },
-    { href: "/dashboard/appointments/new", icon: "event",         label: "Book Appointment",  color: "text-[#1960a3]" },
-    { href: "/dashboard/billing/new",      icon: "receipt_long",  label: "Create Invoice",    color: "text-[#319795]" },
-    { href: "/dashboard/pharmacy",         icon: "medication",    label: "Dispense Meds",     color: "text-[#633f0f]" },
+    { href: "/patients/new",     icon: "person_add",    label: "Register Patient",  color: "text-[#002045]" },
+    { href: "/appointments/new", icon: "event",         label: "Book Appointment",  color: "text-[#1960a3]" },
+    { href: "/billing/new",      icon: "receipt_long",  label: "Create Invoice",    color: "text-[#319795]" },
+    { href: "/pharmacy",         icon: "medication",    label: "Dispense Meds",     color: "text-[#633f0f]" },
   ];
 
   return (
@@ -75,14 +75,14 @@ export default function DashboardClient({ stats, appointments }: Props) {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/dashboard/reports"
+            href="/reports"
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">bar_chart</span>
             Reports
           </Link>
           <Link
-            href="/dashboard/appointments/new"
+            href="/appointments/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -132,7 +132,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
               border="border-[#ba1a1a]/20"
               label="Critical Alerts"
               value={stats.criticalAlerts}
-              link="/dashboard/reports"
+              link="/reports"
               linkLabel="Review now"
             />
           )}
@@ -144,7 +144,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
               border="border-[#d97706]/20"
               label="Low Stock Items"
               value={stats.lowStockItems}
-              link="/dashboard/pharmacy"
+              link="/pharmacy"
               linkLabel="View pharmacy"
             />
           )}
@@ -156,7 +156,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
               border="border-[#1960a3]/20"
               label="Pending Invoices"
               value={stats.pendingInvoices}
-              link="/dashboard/billing"
+              link="/billing"
               linkLabel="View billing"
             />
           )}
@@ -172,7 +172,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
               <h3 className="text-lg font-semibold text-[#1a1c1e]">Revenue Trends</h3>
               <p className="text-xs text-[#74777f]">Monthly revenue vs expenses</p>
             </div>
-            <Link href="/dashboard/reports" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
+            <Link href="/reports" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
               Full report
               <span className="material-symbols-outlined text-[14px]">open_in_new</span>
             </Link>
@@ -204,7 +204,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
         <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-[#1a1c1e]">Department Load</h3>
-            <Link href="/dashboard/reports" className="text-xs text-[#1960a3] hover:underline font-semibold">View all</Link>
+            <Link href="/reports" className="text-xs text-[#1960a3] hover:underline font-semibold">View all</Link>
           </div>
 
           {stats ? (
@@ -231,7 +231,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
               )}
             </div>
             <Link
-              href="/dashboard/appointments"
+              href="/appointments"
               className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1"
             >
               View calendar
@@ -246,7 +246,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                   <span className="material-symbols-outlined text-[#74777f] text-2xl">calendar_today</span>
                 </div>
                 <p className="text-sm text-[#74777f] font-medium">No appointments today</p>
-                <Link href="/dashboard/appointments/new" className="text-xs text-[#1960a3] hover:underline font-semibold">
+                <Link href="/appointments/new" className="text-xs text-[#1960a3] hover:underline font-semibold">
                   + Book an appointment
                 </Link>
               </div>
@@ -257,7 +257,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                 return (
                   <Link
                     key={apt.id}
-                    href={`/dashboard/appointments/${apt.id}`}
+                    href={`/appointments/${apt.id}`}
                     className={`flex items-center justify-between p-4 hover:bg-[#f4f3f7] transition-colors group ${isUrgent ? "bg-[#fff5f5]" : ""}`}
                   >
                     <div className="flex items-center gap-4">

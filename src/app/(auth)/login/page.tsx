@@ -28,7 +28,7 @@ export default function LoginPage() {
       if (data.requires2FA) {
         setStep("2fa");
       } else {
-        router.push("/dashboard");
+        router.push("/");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -49,7 +49,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid OTP");
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "OTP verification failed");
     } finally {

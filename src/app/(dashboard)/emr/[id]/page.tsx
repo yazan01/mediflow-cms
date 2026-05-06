@@ -109,7 +109,7 @@ export default function EMRPage() {
           <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">error</span>
         </div>
         <p className="text-sm font-semibold text-[#1a1c1e]">{error || "Patient not found"}</p>
-        <Link href="/dashboard/patients" className="text-sm text-[#1960a3] font-semibold hover:underline">
+        <Link href="/patients" className="text-sm text-[#1960a3] font-semibold hover:underline">
           Back to Patients
         </Link>
       </div>
@@ -122,9 +122,9 @@ export default function EMRPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[#74777f]">
-        <Link href="/dashboard/patients" className="hover:text-[#1960a3] transition-colors">Patients</Link>
+        <Link href="/patients" className="hover:text-[#1960a3] transition-colors">Patients</Link>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-        <Link href={`/dashboard/patients/${id}`} className="hover:text-[#1960a3] transition-colors">{patient.firstName} {patient.lastName}</Link>
+        <Link href={`/patients/${id}`} className="hover:text-[#1960a3] transition-colors">{patient.firstName} {patient.lastName}</Link>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
         <span className="text-[#1a1c1e] font-semibold">EMR</span>
       </div>
@@ -215,14 +215,14 @@ export default function EMRPage() {
           {/* Actions */}
           <div className="flex items-center gap-2 lg:flex-col lg:items-end flex-shrink-0">
             <Link
-              href={`/dashboard/emr/${id}/new-consultation`}
+              href={`/emr/${id}/new-consultation`}
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
               New Consultation
             </Link>
             <Link
-              href={`/dashboard/patients/${id}`}
+              href={`/patients/${id}`}
               className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">person</span>
@@ -266,7 +266,7 @@ export default function EMRPage() {
               <p className="text-sm font-semibold text-[#1a1c1e]">No consultations yet</p>
               <p className="text-xs text-[#74777f]">Start the first consultation for this patient</p>
               <Link
-                href={`/dashboard/emr/${id}/new-consultation`}
+                href={`/emr/${id}/new-consultation`}
                 className="mt-1 flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>

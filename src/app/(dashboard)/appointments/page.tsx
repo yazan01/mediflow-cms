@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -118,7 +118,7 @@ export default function AppointmentsPage() {
               ))}
             </div>
             <Link
-              href="/dashboard/appointments/new"
+              href="/appointments/new"
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
@@ -174,7 +174,7 @@ export default function AppointmentsPage() {
                   <span className="material-symbols-outlined text-[#74777f] text-3xl">event_busy</span>
                 </div>
                 <p className="text-sm font-semibold text-[#1a1c1e]">No appointments found</p>
-                <Link href="/dashboard/appointments/new" className="text-sm text-[#1960a3] font-semibold hover:underline">
+                <Link href="/appointments/new" className="text-sm text-[#1960a3] font-semibold hover:underline">
                   Book first appointment →
                 </Link>
               </div>
@@ -353,7 +353,7 @@ export default function AppointmentsPage() {
 
               <div className="flex gap-3 pt-2">
                 <Link
-                  href={`/dashboard/emr/${selectedAppt.patientId}`}
+                  href={`/emr/${selectedAppt.patientId}`}
                   className="flex-1 flex items-center justify-center gap-2 bg-[#002045] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <span className="material-symbols-outlined text-[18px]">clinical_notes</span>

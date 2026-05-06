@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -71,7 +71,7 @@ export default function PatientsPage() {
             Import CSV
           </button>
           <Link
-            href="/dashboard/patients/new"
+            href="/patients/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">person_add</span>
@@ -150,7 +150,7 @@ export default function PatientsPage() {
                         {search ? "Try adjusting your search terms" : "Start by registering your first patient"}
                       </p>
                       {!search && (
-                        <Link href="/dashboard/patients/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
+                        <Link href="/patients/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
                           Register first patient →
                         </Link>
                       )}
@@ -219,21 +219,21 @@ export default function PatientsPage() {
                     <td className="px-5 py-4 border-b border-[#e3e2e6]">
                       <div className="flex items-center justify-end gap-1">
                         <Link
-                          href={`/dashboard/patients/${patient.id}`}
+                          href={`/patients/${patient.id}`}
                           className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
                           title="View Profile"
                         >
                           <span className="material-symbols-outlined text-[18px]">visibility</span>
                         </Link>
                         <Link
-                          href={`/dashboard/emr/${patient.id}`}
+                          href={`/emr/${patient.id}`}
                           className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
                           title="View EMR"
                         >
                           <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
                         </Link>
                         <Link
-                          href={`/dashboard/appointments/new?patient=${patient.id}`}
+                          href={`/appointments/new?patient=${patient.id}`}
                           className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
                           title="Book Appointment"
                         >

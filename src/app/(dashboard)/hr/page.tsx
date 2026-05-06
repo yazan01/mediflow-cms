@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -278,7 +278,7 @@ export default function HRPage() {
           <p className="text-sm text-[#74777f] mt-0.5">Manage employees, attendance, leave and payroll</p>
         </div>
         <Link
-          href="/dashboard/hr/new"
+          href="/hr/new"
           className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
@@ -415,13 +415,13 @@ export default function HRPage() {
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
-                            <Link href={`/dashboard/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Profile">
+                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Profile">
                               <span className="material-symbols-outlined text-[18px]">visibility</span>
                             </Link>
-                            <Link href={`/dashboard/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
+                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </Link>
-                            <Link href={`/dashboard/hr/${emp.id}/payslips`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Payslips">
+                            <Link href={`/hr/${emp.id}/payslips`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Payslips">
                               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
                             </Link>
                           </div>
@@ -676,7 +676,7 @@ export default function HRPage() {
                           </button>
                         ) : (
                           <Link
-                            href={`/dashboard/hr/payslips/${pr.employeeId}?month=${payrollMonth}`}
+                            href={`/hr/payslips/${pr.employeeId}?month=${payrollMonth}`}
                             className="flex items-center gap-1 px-3 py-1.5 border border-[#c4c6cf] text-[#43474e] text-xs font-semibold rounded-lg hover:bg-[#f4f3f7] transition-colors"
                           >
                             <span className="material-symbols-outlined text-[14px]">receipt_long</span>

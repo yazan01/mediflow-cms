@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -137,14 +137,14 @@ export default function PharmacyPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/dashboard/pharmacy/purchase"
+            href="/pharmacy/purchase"
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">local_shipping</span>
             Record Purchase
           </Link>
           <Link
-            href="/dashboard/pharmacy/new"
+            href="/pharmacy/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -317,7 +317,7 @@ export default function PharmacyPage() {
                           : "Add your first medication to get started"}
                       </p>
                       {!search && categoryFilter === "ALL" && statusFilter === "ALL" && (
-                        <Link href="/dashboard/pharmacy/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
+                        <Link href="/pharmacy/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
                           Add first medication →
                         </Link>
                       )}
@@ -447,7 +447,7 @@ export default function PharmacyPage() {
                       <td className="table-cell text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Link
-                            href={`/dashboard/pharmacy/${med.id}/edit`}
+                            href={`/pharmacy/${med.id}/edit`}
                             className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
                             title="Edit"
                           >
@@ -461,7 +461,7 @@ export default function PharmacyPage() {
                             <span className="material-symbols-outlined text-[18px]">tune</span>
                           </button>
                           <Link
-                            href={`/dashboard/pharmacy/${med.id}/history`}
+                            href={`/pharmacy/${med.id}/history`}
                             className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
                             title="View History"
                           >
