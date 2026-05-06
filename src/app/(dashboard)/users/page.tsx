@@ -224,7 +224,7 @@ export default function UsersPage() {
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
                             <button onClick={() => toggleUserStatus(user.id, user.isActive)} title={user.isActive ? "Deactivate" : "Activate"} className={`p-1.5 rounded-lg transition-colors ${user.isActive ? "hover:bg-[#ffdad6] text-[#74777f] hover:text-[#ba1a1a]" : "hover:bg-[#ccfbf1] text-[#74777f] hover:text-[#0d9488]"}`}>
-                              <span className="material-symbols-outlined text-[18px]">{user.isActive ? "person_off" : "how_to_reg"}</span>
+                              <span className="material-symbols-outlined text-[18px]">{user.isActive ? "person_off" : "person_check"}</span>
                             </button>
                             <button onClick={() => resetPassword(user.id)} title="Reset Password" className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]">
                               <span className="material-symbols-outlined text-[18px]">lock_reset</span>

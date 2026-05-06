@@ -1,16 +1,34 @@
 # MediFlow CMS — Claude Code Context
 
 ## Project Overview
-Full-stack clinic ERP built with Next.js 16, TypeScript, Tailwind CSS v4, Prisma 5, and MySQL 8.
+Full-stack clinic ERP with a **decoupled architecture**:
+- **Backend**: FastAPI (Python) — handles all business logic, auth, and DB access
+- **Frontend**: Next.js 16 (TypeScript) — UI only, proxies all `/api/*` calls to FastAPI
+
 SRS reference: `../clinic_management/clinic_management_srs.md`
 
 ## Tech Stack
-- **Framework**: Next.js 16 (App Router, Turbopack)
-- **Database**: MySQL 8.4 via Prisma 5 (ORM)
-- **Auth**: JWT (jsonwebtoken) + bcrypt — token stored in `mediflow_token` HttpOnly cookie
-- **UI**: Tailwind CSS v4, Material Symbols Outlined (Google Fonts), Recharts
-- **State**: Zustand
-- **Tables**: TanStack React Table
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16 (App Router, Turbopack) + TypeScript |
+| Backend | FastAPI (Python 3.11+) on port 8000 |
+| ORM | SQLAlchemy 2.0 + PyMySQL |
+| Database | MySQL 8.4 |
+| Auth | JWT (python-jose) + bcrypt (passlib) — `mediflow_token` HttpOnly cookie |
+| UI | Tailwind CSS v4, Material Symbols Outlined (Google Fonts), Recharts |
+| State | Zustand |
+| Tables | TanStack React Table |
+
+## Architecture — CRITICAL
+
+The frontend calls `/api/...` — Next.js **proxies** these to `http://localhost:8000/api/...` via `next.config.ts` rewrites. There are **no** Next.js API routes.
+
+```
+Browser → Next.js :3000 → (rewrite) → FastAPI :8000 → MySQL
+```
+
+Cookie (`mediflow_token`) is set by FastAPI and forwarded transparently through the proxy.
 
 ## Routing — CRITICAL
 The `(dashboard)` and `(auth)` folders are Next.js **route groups** — they do NOT add a URL segment.
@@ -36,67 +54,62 @@ The `(dashboard)` and `(auth)` folders are Next.js **route groups** — they do 
 **Never use `/dashboard/` as a URL prefix — it does not exist.**
 
 ## Project Structure
+
 ```
-src/
-├── app/
-│   ├── (auth)/login/              # Login page → /login
-│   ├── (dashboard)/               # Protected pages (no URL prefix)
-│   │   ├── layout.tsx             # Sidebar + TopBar, reads JWT from cookie
-│   │   ├── page.tsx               # Dashboard → /
-│   │   ├── patients/              # → /patients
-│   │   ├── appointments/          # → /appointments
-│   │   ├── emr/[id]/              # → /emr/:id
-│   │   ├── billing/               # → /billing
-│   │   ├── pharmacy/              # → /pharmacy
-│   │   ├── hr/                    # → /hr
-│   │   ├── accounting/            # → /accounting
-│   │   ├── laboratory/            # → /laboratory
-│   │   ├── radiology/             # → /radiology
-│   │   ├── reports/               # → /reports
-│   │   ├── users/                 # → /users
-│   │   ├── settings/              # → /settings
-│   │   └── audit/                 # → /audit
-│   └── api/
-│       ├── auth/login/            # POST — returns JWT, sets mediflow_token cookie
-│       ├── auth/logout/           # POST — clears mediflow_token cookie
-│       ├── patients/              # GET, POST
-│       ├── patients/[id]/         # PATCH, DELETE
-│       ├── appointments/          # GET, POST
-│       ├── emr/[id]/              # GET patient EMR
-│       ├── consultations/         # POST create consultation
-│       ├── billing/               # GET, POST
-│       ├── billing/[id]/          # GET, PATCH
-│       ├── billing/[id]/payments/ # POST
-│       ├── pharmacy/medications/  # GET, POST
-│       ├── pharmacy/stock-movements/ # POST
-│       ├── hr/employees/          # GET, POST
-│       ├── hr/leaves/             # GET, POST
-│       ├── hr/payroll/            # GET
-│       ├── hr/attendance/         # GET, POST
-│       ├── accounting/overview/   # GET
-│       ├── accounting/assets/     # GET, POST
-│       ├── accounting/expenses/   # GET, POST
-│       ├── accounting/vendors/    # GET, POST
-│       ├── accounting/purchase-orders/ # GET, POST
-│       ├── reports/overview/      # GET
-│       ├── users/                 # GET, POST
-│       ├── users/[id]/            # PATCH, DELETE
-│       ├── dashboard/stats/       # GET KPIs
-│       ├── doctors/               # GET
-│       └── audit/                 # GET
-├── components/
-│   └── layout/
-│       ├── Sidebar.tsx            # Navigation — uses correct paths (no /dashboard prefix)
-│       └── TopBar.tsx             # Search, notifications, user menu with logout
-├── lib/
-│   ├── prisma.ts                  # PrismaClient singleton
-│   ├── auth.ts                    # hashPassword, verifyPassword, generateMRN, generateEmpCode
-│   └── utils.ts                   # cn, formatDate, formatCurrency, getInitials
-└── types/
-    └── index.ts                   # All shared TypeScript types
-prisma/
-├── schema.prisma                  # MySQL schema — all String[] converted to Json
-└── seed.mjs                       # Creates admin@mediflow.com / Admin@1234
+mediflow-cms/
+├── backend/                        # FastAPI Python backend
+│   ├── main.py                     # FastAPI app + CORS
+│   ├── database.py                 # SQLAlchemy engine + get_db()
+│   ├── models.py                   # All SQLAlchemy ORM models
+│   ├── auth.py                     # JWT, bcrypt, generate_id, log_audit
+│   ├── seed.py                     # Creates admin@mediflow.com / Admin@1234
+│   ├── requirements.txt
+│   ├── .env                        # DATABASE_URL + JWT_SECRET
+│   ├── start.bat
+│   └── routers/
+│       ├── auth.py                 # POST /api/auth/login|logout
+│       ├── patients.py             # GET/POST/PATCH/DELETE /api/patients
+│       ├── appointments.py         # GET/POST/PATCH /api/appointments
+│       ├── emr.py                  # GET /api/emr/{id}
+│       ├── consultations.py        # POST /api/consultations
+│       ├── billing.py              # /api/billing + /{id} + /{id}/payments
+│       ├── pharmacy.py             # /api/pharmacy/medications + stock-movements
+│       ├── hr.py                   # /api/hr/employees|leaves|payroll|attendance
+│       ├── accounting.py           # /api/accounting/overview|assets|expenses|vendors|purchase-orders
+│       ├── reports.py              # GET /api/reports/overview
+│       ├── users.py                # GET/POST/PATCH/DELETE /api/users
+│       ├── dashboard.py            # GET /api/dashboard/stats
+│       ├── doctors.py              # GET /api/doctors
+│       └── audit.py                # GET /api/audit
+│
+├── src/
+│   ├── app/
+│   │   ├── (auth)/login/           # Login page → /login
+│   │   └── (dashboard)/            # Protected pages (no URL prefix)
+│   │       ├── layout.tsx          # Sidebar + TopBar, reads JWT from cookie
+│   │       ├── page.tsx            # Dashboard → /
+│   │       ├── patients/           # → /patients
+│   │       ├── appointments/       # → /appointments
+│   │       ├── emr/[id]/           # → /emr/:id
+│   │       ├── billing/            # → /billing
+│   │       ├── pharmacy/           # → /pharmacy
+│   │       ├── hr/                 # → /hr
+│   │       ├── accounting/         # → /accounting
+│   │       ├── laboratory/         # → /laboratory
+│   │       ├── radiology/          # → /radiology
+│   │       ├── reports/            # → /reports
+│   │       ├── users/              # → /users
+│   │       ├── settings/           # → /settings
+│   │       └── audit/              # → /audit
+│   ├── components/layout/
+│   │   ├── Sidebar.tsx             # Navigation
+│   │   └── TopBar.tsx              # Search, notifications, user menu
+│   ├── lib/
+│   │   └── utils.ts                # cn, formatDate, formatCurrency, getInitials
+│   └── types/
+│       └── index.ts                # Shared TypeScript types
+│
+└── next.config.ts                  # Proxy rewrite: /api/* → localhost:8000/api/*
 ```
 
 ## Design System
@@ -112,47 +125,60 @@ prisma/
 - **Font**: Inter only
 - **Icons**: `<span className="material-symbols-outlined">icon_name</span>` — NOT Lucide
 - **Border radius**: `rounded-lg` (8px) standard, `rounded-xl` (12px) for cards, `rounded-2xl` for modals
-- **Reusable CSS classes** (defined in `globals.css`): `btn-primary`, `btn-secondary`, `btn-ghost`, `btn-danger`, `card`, `input-field`, `select-field`, `badge`, `table-header`, `table-cell`, `table-row`, `no-scrollbar`
+- **Reusable CSS classes** (in `globals.css`): `btn-primary`, `btn-secondary`, `btn-ghost`, `btn-danger`, `card`, `input-field`, `select-field`, `badge`, `table-header`, `table-cell`, `table-row`, `no-scrollbar`
 
 ## Auth Flow
-1. User POSTs to `/api/auth/login` with email + password
-2. API verifies credentials, signs JWT `{ sub, name, email, roles }`, sets `mediflow_token` HttpOnly cookie (8h)
-3. Dashboard layout (`(dashboard)/layout.tsx`) reads and verifies JWT from cookie to populate TopBar with real user name/role
-4. Logout POSTs to `/api/auth/logout` which clears the cookie, then redirects to `/login`
-5. Login page redirects to `/` on success (not `/dashboard`)
+1. Frontend POSTs to `/api/auth/login` → Next.js proxies to FastAPI
+2. FastAPI verifies credentials (bcrypt), signs JWT `{ sub, name, email, roles }`, sets `mediflow_token` HttpOnly cookie (8h)
+3. Dashboard `layout.tsx` reads and verifies the cookie server-side with `jsonwebtoken` to populate TopBar
+4. Logout POSTs to `/api/auth/logout` → FastAPI clears the cookie, then frontend redirects to `/login`
+5. All subsequent API calls include the cookie automatically (same-origin via proxy)
 
 ## Database — MySQL 8.4
-- **Connection**: `mysql://root:password@localhost:3306/mediflow` (see `.env`)
-- **MySQL service**: Runs as background process — start with:
+- **Connection**: `mysql+pymysql://root:password@localhost:3306/mediflow` (in `backend/.env`)
+- **ORM**: SQLAlchemy 2.0 — models in `backend/models.py`
+- **JSON fields**: Arrays (allergies, roles, tests, etc.) stored as MySQL `JSON` columns
+- **IDs**: 25-char hex strings generated via `uuid.uuid4().hex[:25]`
+- **MySQL service**: Start with:
   ```
   "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe" --defaults-file="C:\ProgramData\MySQL\MySQL Server 8.4\my.ini" --console
   ```
-- **Prisma preview feature**: `omitApi` enabled in schema generator
-- **JSON fields**: All `String[]` / enum arrays stored as `Json` (MySQL has no native array type)
-- **Seed**: `node prisma/seed.mjs` — creates `admin@mediflow.com` / `Admin@1234`
 
-## Key Prisma Notes
-- Prisma 5.22.0 (NOT Prisma 7 — no MySQL adapter exists for v7)
-- `omit` in `create`/`update` returns `never` type — use explicit `select` or spread with `undefined` instead
-- `roles: { has: ... }` filter not available on Json fields — filter in JS after fetching
-- `params` in Next.js 16 route handlers is `Promise<{ id: string }>` — must `await params`
+## Backend Notes (FastAPI)
+- All routers use `Depends(get_current_user)` for auth — reads `mediflow_token` cookie
+- JSON fields from MySQL come back as Python lists/dicts — no casting needed
+- `generate_id()` in `auth.py` → `uuid.uuid4().hex[:25]`
+- `log_audit()` in `auth.py` — call after any mutation
+- Decimal fields returned as `float()` in response dicts
 
 ## Development Rules
-- No dummy/mock data — all data from real DB via Prisma
+- **No** Next.js API routes — all backend logic goes in `backend/routers/`
 - No `/dashboard/` URL prefix in any link or redirect
-- All arrays in Prisma stored as `Json`, cast with `as string[]` when needed
 - Icons always via Material Symbols, never Lucide
 - Form submissions show loading state; errors show inline
 - Modals have backdrop blur, close button, and ESC key support
 - Empty states with icon + message + CTA for all lists/tables
-- Passwords hashed with bcrypt (12 rounds)
-- Every mutation should log to `auditLog` table when possible
+- Passwords hashed with bcrypt via passlib (12 rounds) in `backend/auth.py`
+- Every mutation should call `log_audit()` when possible
 
 ## Running the Project
+
+**Terminal 1 — Backend (FastAPI):**
 ```bash
-npm run dev          # Dev server at http://localhost:3000
-npm run build        # Production build
-npm run db:push      # Sync Prisma schema to MySQL
-npm run db:studio    # Prisma Studio GUI
-node prisma/seed.mjs # Create first admin user
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
 ```
+
+**Terminal 2 — Frontend (Next.js):**
+```bash
+npm run dev
+```
+
+**Seed admin user (first run only):**
+```bash
+cd backend
+python seed.py
+```
+
+Default credentials: `admin@mediflow.com` / `Admin@1234`

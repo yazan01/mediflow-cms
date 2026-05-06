@@ -497,7 +497,7 @@ export default function NewConsultationPage() {
       <div className={CARD}>
         <p className={SECTION_HEADER}>
           <span className="inline-flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[14px]">stethoscope</span>
+            <span className="material-symbols-outlined text-[14px]">clinical_notes</span>
             Clinical Notes
           </span>
         </p>

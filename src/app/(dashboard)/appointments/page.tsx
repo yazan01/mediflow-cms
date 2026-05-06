@@ -340,8 +340,8 @@ export default function AppointmentsPage() {
               <div className="grid grid-cols-2 gap-3 p-4 bg-[#f4f3f7] rounded-xl">
                 <InfoRow icon="calendar_today" label="Date" value={new Date(selectedAppt.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} />
                 <InfoRow icon="schedule" label="Time" value={new Date(selectedAppt.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} />
-                <InfoRow icon="stethoscope" label="Doctor" value={selectedAppt.doctorName} />
-                {selectedAppt.room && <InfoRow icon="door_front" label="Room" value={selectedAppt.room} />}
+                <InfoRow icon="monitor_heart" label="Doctor" value={selectedAppt.doctorName} />
+                {selectedAppt.room && <InfoRow icon="meeting_room" label="Room" value={selectedAppt.room} />}
               </div>
 
               {selectedAppt.notes && (

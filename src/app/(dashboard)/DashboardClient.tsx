@@ -50,7 +50,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
       label: "Bed Occupancy",
       value: stats ? `${stats.bedOccupancy}%` : "—",
       change: stats?.bedOccupancyChange,
-      icon: "bed",
+      icon: "king_bed",
       iconBg: "bg-[#d3e4ff]",
       iconColor: "text-[#1960a3]",
     },

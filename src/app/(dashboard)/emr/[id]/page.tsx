@@ -85,7 +85,7 @@ export default function EMRPage() {
   }, [activeTab, fetchConsultations]);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: "consultations",  label: "Consultations",  icon: "stethoscope" },
+    { key: "consultations",  label: "Consultations",  icon: "clinical_notes" },
     { key: "vitals",         label: "Vitals",         icon: "monitor_heart" },
     { key: "labs",           label: "Lab Results",    icon: "science" },
     { key: "radiology",      label: "Radiology",      icon: "radiology" },
@@ -195,7 +195,7 @@ export default function EMRPage() {
             {/* Chronic Conditions */}
             <div className="p-3 bg-[#eff6ff] border border-[#1960a3]/20 rounded-xl">
               <p className="text-xs font-bold text-[#1960a3] uppercase tracking-wider mb-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">chronic</span>
+                <span className="material-symbols-outlined text-[14px]">symptoms</span>
                 Chronic Conditions
               </p>
               {patient.chronicConditions.length > 0 ? (
@@ -261,7 +261,7 @@ export default function EMRPage() {
           ) : consultations.length === 0 ? (
             <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
               <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#74777f] text-3xl">stethoscope</span>
+                <span className="material-symbols-outlined text-[#74777f] text-3xl">clinical_notes</span>
               </div>
               <p className="text-sm font-semibold text-[#1a1c1e]">No consultations yet</p>
               <p className="text-xs text-[#74777f]">Start the first consultation for this patient</p>
@@ -288,7 +288,7 @@ export default function EMRPage() {
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-[#eff6ff] rounded-xl flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-[#1960a3] text-[20px]">stethoscope</span>
+                        <span className="material-symbols-outlined text-[#1960a3] text-[20px]">clinical_notes</span>
                       </div>
                       <div>
                         <p className="text-sm font-bold text-[#1a1c1e]">
