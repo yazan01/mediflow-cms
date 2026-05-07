@@ -37,6 +37,10 @@ class PatientCreate(BaseModel):
 class PatientUpdate(BaseModel):
     firstName: Optional[str] = None
     lastName: Optional[str] = None
+    dateOfBirth: Optional[str] = None
+    gender: Optional[str] = None
+    nationality: Optional[str] = None
+    nationalId: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
@@ -221,7 +225,7 @@ def update_patient(
         raise HTTPException(status_code=404, detail="Patient not found")
 
     for field, value in body.model_dump(exclude_none=True).items():
-        if field == "insuranceExpiry" and value:
+        if field in ("insuranceExpiry", "dateOfBirth") and value:
             value = datetime.fromisoformat(value)
         setattr(patient, field, value)
 

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -39,6 +39,10 @@ class EmployeeUpdate(BaseModel):
     annualLeaveBalance: Optional[int] = None
     sickLeaveBalance: Optional[int] = None
     branchId: Optional[str] = None
+    # User-level fields (name, phone, roles)
+    userName: Optional[str] = None
+    userPhone: Optional[str] = None
+    userRoles: Optional[List[str]] = None
 
 
 class LeaveCreate(BaseModel):
@@ -88,11 +92,14 @@ def employee_to_dict(e: models.Employee) -> dict:
         "hireDate": e.hireDate.isoformat() if e.hireDate else None,
         "annualLeaveBalance": e.annualLeaveBalance,
         "sickLeaveBalance": e.sickLeaveBalance,
+        "branchId": e.branchId,
         "user": {
+            "id": e.user.id if e.user else None,
             "name": e.user.name if e.user else "",
             "email": e.user.email if e.user else "",
             "phone": e.user.phone if e.user else None,
             "photo": e.user.photo if e.user else None,
+            "roles": e.user.roles if e.user else [],
             "isActive": e.user.isActive if e.user else True,
         },
         "department": {
@@ -201,8 +208,26 @@ def update_employee(employee_id: str, body: EmployeeUpdate, db: Session = Depend
     emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
-    for field, val in body.model_dump(exclude_none=True).items():
-        setattr(emp, field, val)
+
+    user_fields = {"userName", "userPhone", "userRoles"}
+    data = body.model_dump(exclude_none=True)
+
+    # Apply employee fields
+    for field, val in data.items():
+        if field not in user_fields:
+            setattr(emp, field, val)
+
+    # Apply user-level fields on the linked User record
+    if user_fields & data.keys():
+        linked_user = db.query(models.User).filter(models.User.id == emp.userId).first()
+        if linked_user:
+            if "userName" in data:
+                linked_user.name = data["userName"]
+            if "userPhone" in data:
+                linked_user.phone = data["userPhone"]
+            if "userRoles" in data and data["userRoles"]:
+                linked_user.roles = data["userRoles"]
+
     db.commit()
     db.refresh(emp)
     log_audit(db, user.id, "UPDATE", "Employee", emp.id, {})
