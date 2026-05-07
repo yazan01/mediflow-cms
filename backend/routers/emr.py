@@ -108,12 +108,20 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_cu
         for c in consultations
     ]
 
+    vitals_list = [
+        vitals_dict(c.vitals)
+        for c in consultations
+        if c.vitals
+    ]
+
     lab_data = [
         {
             "id": lo.id,
             "tests": lo.tests or [],
             "priority": lo.priority,
             "status": lo.status,
+            "orderedBy": "",
+            "date": lo.createdAt.isoformat() if lo.createdAt else None,
             "createdAt": lo.createdAt.isoformat() if lo.createdAt else None,
             "results": [
                 {
@@ -148,6 +156,61 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_cu
     return {
         "patient": patient_data,
         "consultations": consultations_data,
+        "vitals": vitals_list,
         "labOrders": lab_data,
         "radiologyOrders": radiology_data,
     }
+
+
+@router.get("/{patient_id}/consultations")
+def get_patient_consultations(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    consultations = (
+        db.query(models.Consultation)
+        .filter(models.Consultation.patientId == patient_id)
+        .order_by(models.Consultation.createdAt.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": c.id,
+            "chiefComplaint": c.chiefComplaint,
+            "subjective": c.subjective,
+            "objective": c.objective,
+            "assessment": c.assessment,
+            "plan": c.plan,
+            "hpi": c.hpi,
+            "examination": c.examination,
+            "followUpDate": c.followUpDate.isoformat() if c.followUpDate else None,
+            "isLocked": c.isLocked,
+            "createdAt": c.createdAt.isoformat() if c.createdAt else None,
+            "vitals": vitals_dict(c.vitals),
+            "diagnoses": [
+                {"id": d.id, "icdCode": d.icdCode, "description": d.description, "type": d.type}
+                for d in c.diagnoses
+            ],
+            "prescriptions": [
+                {
+                    "id": rx.id,
+                    "medicationName": rx.medicationName,
+                    "dosage": rx.dosage,
+                    "frequency": rx.frequency,
+                    "duration": rx.duration,
+                    "quantity": rx.quantity,
+                    "instructions": rx.instructions,
+                    "isDispensed": rx.isDispensed,
+                }
+                for rx in c.prescriptions
+            ],
+            "doctor": {"name": c.doctor.user.name if c.doctor and c.doctor.user else ""},
+            "appointment": {
+                "scheduledAt": c.appointment.scheduledAt.isoformat() if c.appointment and c.appointment.scheduledAt else None,
+                "type": c.appointment.type if c.appointment else None,
+            },
+        }
+        for c in consultations
+    ]

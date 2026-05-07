@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import auth, patients, appointments, emr, consultations, billing
-from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors, audit
+from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors, audit, settings
 from routers import laboratory, radiology
 
 app = FastAPI(title="MediFlow API", version="1.0.0")
@@ -29,6 +29,7 @@ app.include_router(users.router)
 app.include_router(dashboard.router)
 app.include_router(doctors.router)
 app.include_router(audit.router)
+app.include_router(settings.router)
 app.include_router(laboratory.router)
 app.include_router(radiology.router)
 

@@ -24,6 +24,7 @@ def order_to_dict(o: models.LabOrder) -> dict:
         "collectedAt": o.collectedAt.isoformat() if o.collectedAt else None,
         "notes": o.notes,
         "orderedBy": o.orderedByDoctor.user.name if o.orderedByDoctor and o.orderedByDoctor.user else "",
+        "date": o.createdAt.isoformat() if o.createdAt else None,
         "results": [
             {
                 "id": r.id,

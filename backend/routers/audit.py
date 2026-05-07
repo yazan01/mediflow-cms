@@ -15,15 +15,25 @@ def get_audit_logs(
     pageSize: int = Query(20, ge=1, le=100),
     module: Optional[str] = None,
     userId: Optional[str] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import or_
     query = db.query(models.AuditLog)
 
     if module and module != "ALL":
         query = query.filter(models.AuditLog.module == module)
     if userId:
         query = query.filter(models.AuditLog.userId == userId)
+    if search:
+        query = query.join(models.User, isouter=True).filter(
+            or_(
+                models.AuditLog.action.contains(search),
+                models.User.name.contains(search),
+            )
+        )
 
     total = query.count()
     logs = query.order_by(models.AuditLog.timestamp.desc()).offset((page - 1) * pageSize).limit(pageSize).all()

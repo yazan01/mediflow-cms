@@ -64,13 +64,34 @@ def med_to_dict(m: models.Medication) -> dict:
     }
 
 
+@router.get("/stats")
+def get_pharmacy_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    from sqlalchemy import func as _func
+    total_skus = db.query(_func.count(models.Medication.id)).filter(models.Medication.isActive == True).scalar() or 0
+    low_stock = db.query(_func.count(models.Medication.id)).filter(
+        models.Medication.isActive == True,
+        models.Medication.stockQuantity > 0,
+        models.Medication.stockQuantity <= models.Medication.reorderLevel,
+    ).scalar() or 0
+    out_of_stock = db.query(_func.count(models.Medication.id)).filter(
+        models.Medication.isActive == True,
+        models.Medication.stockQuantity == 0,
+    ).scalar() or 0
+    return {
+        "totalSKUs": total_skus,
+        "lowStockItems": low_stock,
+        "outOfStock": out_of_stock,
+        "expiringSoon": 0,
+    }
+
+
 @router.get("/medications")
 def get_medications(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=200),
     search: str = Query(""),
     category: Optional[str] = None,
-    stockStatus: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
@@ -87,8 +108,8 @@ def get_medications(
 
     all_meds = query.order_by(models.Medication.genericName.asc()).all()
 
-    if stockStatus and stockStatus != "ALL":
-        filtered = [m for m in all_meds if med_to_dict(m)["stockStatus"] == stockStatus]
+    if status and status != "ALL":
+        filtered = [m for m in all_meds if med_to_dict(m)["stockStatus"] == status]
     else:
         filtered = all_meds
 

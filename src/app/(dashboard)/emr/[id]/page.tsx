@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatDate, formatDateTime, getInitials } from "@/lib/utils";
-import type { Patient, Consultation, LabOrder, Vitals } from "@/types";
+import type { Patient, Consultation, LabOrder, Vitals, Prescription } from "@/types";
 
 const BLOOD_LABELS: Record<string, string> = {
   A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−",
@@ -24,10 +24,17 @@ const PRIORITY_STYLES: Record<string, { label: string; bg: string; text: string 
   STAT:    { label: "STAT",    bg: "bg-[#ffdad6]", text: "text-[#ba1a1a]" },
 };
 
+type RadiologyOrder = {
+  id: string; modality: string; study: string; bodyPart: string;
+  priority: string; status: string; report: string | null; createdAt: string;
+};
+
 type EMRData = {
   patient: Patient;
+  consultations: Consultation[];
   vitals: Vitals[];
   labOrders: LabOrder[];
+  radiologyOrders: RadiologyOrder[];
 };
 
 type Tab = "consultations" | "vitals" | "labs" | "radiology" | "documents" | "prescriptions";
@@ -37,9 +44,7 @@ export default function EMRPage() {
   const id = params.id as string;
 
   const [emr, setEmr] = useState<EMRData | null>(null);
-  const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingConsults, setLoadingConsults] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("consultations");
   const [expandedConsult, setExpandedConsult] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -59,36 +64,15 @@ export default function EMRPage() {
     }
   }, [id]);
 
-  const fetchConsultations = useCallback(async () => {
-    setLoadingConsults(true);
-    try {
-      const res = await fetch(`/api/emr/${id}/consultations`);
-      if (res.ok) {
-        const data = await res.json();
-        setConsultations(data.data ?? data ?? []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setLoadingConsults(false);
-    }
-  }, [id]);
-
   useEffect(() => {
     fetchEMR();
   }, [fetchEMR]);
-
-  useEffect(() => {
-    if (activeTab === "consultations") {
-      fetchConsultations();
-    }
-  }, [activeTab, fetchConsultations]);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "consultations",  label: "Consultations",  icon: "clinical_notes" },
     { key: "vitals",         label: "Vitals",         icon: "monitor_heart" },
     { key: "labs",           label: "Lab Results",    icon: "science" },
-    { key: "radiology",      label: "Radiology",      icon: "radiology" },
+    { key: "radiology",      label: "Radiology",      icon: "image_search" },
     { key: "documents",      label: "Documents",      icon: "folder_open" },
     { key: "prescriptions",  label: "Prescriptions",  icon: "medication" },
   ];
@@ -116,7 +100,10 @@ export default function EMRPage() {
     );
   }
 
-  const { patient, vitals, labOrders } = emr;
+  const { patient, consultations = [], vitals = [], labOrders = [], radiologyOrders = [] } = emr;
+  const allPrescriptions: (Prescription & { consultDate?: string })[] = consultations.flatMap((c) =>
+    (c.prescriptions ?? []).map((rx) => ({ ...rx, consultDate: c.createdAt }))
+  );
 
   return (
     <div className="space-y-6">
@@ -254,11 +241,7 @@ export default function EMRPage() {
       {/* ─── CONSULTATIONS ─── */}
       {activeTab === "consultations" && (
         <div className="space-y-4">
-          {loadingConsults ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-            </div>
-          ) : consultations.length === 0 ? (
+          {consultations.length === 0 ? (
             <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
               <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
                 <span className="material-symbols-outlined text-[#74777f] text-3xl">clinical_notes</span>
@@ -583,24 +566,98 @@ export default function EMRPage() {
         </div>
       )}
 
-      {/* ─── PLACEHOLDER TABS ─── */}
-      {(activeTab === "radiology" || activeTab === "documents" || activeTab === "prescriptions") && (
+      {/* ─── RADIOLOGY ─── */}
+      {activeTab === "radiology" && (
+        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          {radiologyOrders.length === 0 ? (
+            <div className="py-20 flex flex-col items-center gap-3">
+              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[#74777f] text-3xl">image_search</span>
+              </div>
+              <p className="text-sm font-semibold text-[#1a1c1e]">No radiology studies</p>
+              <p className="text-xs text-[#74777f]">Radiology orders are created during consultations</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {["Order ID", "Modality", "Study", "Body Part", "Priority", "Status", "Date"].map((h) => (
+                      <th key={h} className="table-header text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {radiologyOrders.map((ro) => (
+                    <tr key={ro.id} className="hover:bg-[#f4f3f7] transition-colors">
+                      <td className="table-cell"><span className="text-xs font-mono bg-[#f4f3f7] px-2 py-1 rounded">#{ro.id.slice(-8).toUpperCase()}</span></td>
+                      <td className="table-cell"><span className="text-xs font-bold bg-[#d3e4ff] text-[#00477f] px-2 py-1 rounded-full">{ro.modality}</span></td>
+                      <td className="table-cell text-sm text-[#1a1c1e]">{ro.study}</td>
+                      <td className="table-cell text-sm text-[#43474e]">{ro.bodyPart}</td>
+                      <td className="table-cell"><span className={`badge ${ro.priority === "STAT" ? "bg-[#ba1a1a] text-white" : ro.priority === "URGENT" ? "bg-[#ffddba] text-[#633f0f]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{ro.priority}</span></td>
+                      <td className="table-cell"><span className="badge bg-[#d3e4ff] text-[#00477f]">{ro.status.replace(/_/g, " ")}</span></td>
+                      <td className="table-cell text-xs text-[#74777f] whitespace-nowrap">{formatDate(ro.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── PRESCRIPTIONS ─── */}
+      {activeTab === "prescriptions" && (
+        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          {allPrescriptions.length === 0 ? (
+            <div className="py-20 flex flex-col items-center gap-3">
+              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[#74777f] text-3xl">medication</span>
+              </div>
+              <p className="text-sm font-semibold text-[#1a1c1e]">No prescriptions</p>
+              <p className="text-xs text-[#74777f]">Prescriptions are issued during consultations</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {["Medication", "Dosage", "Frequency", "Duration", "Instructions", "Date", "Dispensed"].map((h) => (
+                      <th key={h} className="table-header text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {allPrescriptions.map((rx) => (
+                    <tr key={rx.id} className="hover:bg-[#f4f3f7] transition-colors">
+                      <td className="table-cell font-semibold text-[#1a1c1e]">{rx.medicationName}</td>
+                      <td className="table-cell text-sm text-[#43474e]">{rx.dosage}</td>
+                      <td className="table-cell text-sm text-[#43474e]">{rx.frequency}</td>
+                      <td className="table-cell text-sm text-[#43474e]">{rx.duration}</td>
+                      <td className="table-cell text-xs text-[#74777f] max-w-[180px] truncate">{rx.instructions ?? "—"}</td>
+                      <td className="table-cell text-xs text-[#74777f] whitespace-nowrap">{rx.consultDate ? formatDate(rx.consultDate) : "—"}</td>
+                      <td className="table-cell">
+                        <span className={`badge ${rx.isDispensed ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e9e7eb] text-[#43474e]"}`}>
+                          {rx.isDispensed ? "Dispensed" : "Pending"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── DOCUMENTS ─── */}
+      {activeTab === "documents" && (
         <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
           <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-[#74777f] text-3xl">
-              {activeTab === "radiology" ? "radiology" : activeTab === "documents" ? "folder_open" : "medication"}
-            </span>
+            <span className="material-symbols-outlined text-[#74777f] text-3xl">folder_open</span>
           </div>
-          <p className="text-sm font-semibold text-[#1a1c1e]">
-            {activeTab === "radiology" ? "No radiology studies"
-              : activeTab === "documents" ? "No documents uploaded"
-              : "No prescriptions"}
-          </p>
-          <p className="text-xs text-[#74777f]">
-            {activeTab === "radiology" ? "Radiology orders are created during consultations"
-              : activeTab === "documents" ? "Upload patient documents from the profile page"
-              : "Prescriptions are issued during consultations"}
-          </p>
+          <p className="text-sm font-semibold text-[#1a1c1e]">No documents uploaded</p>
+          <p className="text-xs text-[#74777f]">Upload patient documents from the profile page</p>
         </div>
       )}
     </div>

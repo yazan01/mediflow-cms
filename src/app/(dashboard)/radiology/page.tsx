@@ -89,7 +89,7 @@ export default function RadiologyPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
-          { label: "Total Orders",   value: stats.total,       icon: "radiology",     color: "text-[#1960a3]", bg: "bg-[#d3e4ff]" },
+          { label: "Total Orders",   value: stats.total,       icon: "image_search",  color: "text-[#1960a3]", bg: "bg-[#d3e4ff]" },
           { label: "Pending",        value: stats.pending,     icon: "pending",        color: "text-[#74777f]", bg: "bg-[#f4f3f7]" },
           { label: "In Progress",    value: stats.inProgress,  icon: "hourglass",      color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
           { label: "Reports Ready",  value: stats.reportReady, icon: "description",    color: "text-[#0d9488]", bg: "bg-[#ccfbf1]" },
@@ -149,7 +149,7 @@ export default function RadiologyPage() {
                 <tr><td colSpan={9} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#74777f] text-2xl">radiology</span>
+                      <span className="material-symbols-outlined text-[#74777f] text-2xl">image_search</span>
                     </div>
                     <p className="text-sm font-semibold text-[#1a1c1e]">No radiology orders found</p>
                     <p className="text-xs text-[#74777f]">{search ? "Try adjusting your search" : "Imaging orders from consultations will appear here"}</p>

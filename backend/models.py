@@ -523,6 +523,26 @@ class Expense(Base):
     recordedBy = relationship("User", back_populates="recordedExpenses", foreign_keys=[recordedById])
 
 
+class ClinicSetting(Base):
+    __tablename__ = "clinic_settings"
+    id = Column(Integer, primary_key=True, default=1)
+    clinicName = Column(String(255), default="")
+    licenseNumber = Column(String(100), default="")
+    phone = Column(String(50), default="")
+    email = Column(String(255), default="")
+    address = Column(Text, default="")
+    taxId = Column(String(100), default="")
+    currency = Column(String(10), default="USD")
+    timezone = Column(String(50), default="Asia/Amman")
+    taxRate = Column(Numeric(5, 2), default=7)
+    invoicePrefix = Column(String(20), default="INV")
+    paymentTerms = Column(Integer, default=30)
+    sessionTimeout = Column(Integer, default=480)
+    passwordMinLength = Column(Integer, default=8)
+    require2FA = Column(Boolean, default=False)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class Asset(Base):
     __tablename__ = "assets"
     id = Column(String(36), primary_key=True)
