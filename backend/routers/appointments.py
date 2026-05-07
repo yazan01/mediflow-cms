@@ -285,7 +285,7 @@ def send_reminder(
             error_msg = str(e)
 
     from auth import log_audit
-    log_audit(db, current_user["id"], "WHATSAPP_SENT" if sent else "WHATSAPP_PREVIEW",
+    log_audit(db, current_user.id, "WHATSAPP_SENT" if sent else "WHATSAPP_PREVIEW",
               "appointments", appointment_id, "Appointment")
 
     return {

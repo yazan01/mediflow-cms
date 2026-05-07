@@ -48,9 +48,15 @@ def generate_mrn(db=None) -> str:
     raise RuntimeError("Failed to generate unique MRN after 10 attempts")
 
 
-def generate_emp_code() -> str:
-    rand = secrets.randbelow(9000) + 1000
-    return f"EMP-{rand}"
+def generate_emp_code(db=None) -> str:
+    for _ in range(20):
+        rand = secrets.randbelow(900000) + 100000
+        candidate = f"EMP-{rand}"
+        if db is None:
+            return candidate
+        if not db.query(models.Employee).filter(models.Employee.empCode == candidate).first():
+            return candidate
+    raise RuntimeError("Failed to generate unique employee code after 20 attempts")
 
 
 def generate_invoice_no(db=None) -> str:
@@ -66,9 +72,16 @@ def generate_invoice_no(db=None) -> str:
     raise RuntimeError("Failed to generate unique invoice number after 10 attempts")
 
 
-def generate_po_number() -> str:
-    rand = secrets.randbelow(90000) + 10000
-    return f"PO-{datetime.now().year}-{rand}"
+def generate_po_number(db=None) -> str:
+    year = datetime.now().year
+    for _ in range(10):
+        rand = secrets.randbelow(900000) + 100000
+        candidate = f"PO-{year}-{rand}"
+        if db is None:
+            return candidate
+        if not db.query(models.PurchaseOrder).filter(models.PurchaseOrder.poNumber == candidate).first():
+            return candidate
+    raise RuntimeError("Failed to generate unique PO number after 10 attempts")
 
 
 def create_access_token(data: dict) -> str:
@@ -112,7 +125,7 @@ def revoke_token(db: Session, token: str, exp: datetime) -> None:
         db.commit()
     # Prune expired entries to keep the table lean
     db.query(models.TokenBlocklist).filter(
-        models.TokenBlocklist.expiresAt < datetime.utcnow()
+        models.TokenBlocklist.expiresAt < datetime.now()
     ).delete()
     db.commit()
 
@@ -139,6 +152,10 @@ def get_current_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if not user.isActive:
+        raise HTTPException(status_code=401, detail="Account is disabled")
+    if user.lockedUntil and user.lockedUntil > datetime.utcnow():
+        raise HTTPException(status_code=401, detail="Account is temporarily locked")
     return user
 
 

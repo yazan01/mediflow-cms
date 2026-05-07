@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
@@ -37,6 +37,22 @@ class InvoiceCreate(BaseModel):
     insuranceClaim: Optional[bool] = False
     insuranceProvider: Optional[str] = None
     insurancePolicyNo: Optional[str] = None
+
+
+VALID_INVOICE_STATUSES = {"PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"}
+
+
+class InvoiceUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+    dueDate: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in VALID_INVOICE_STATUSES:
+            raise ValueError(f"Invalid status. Allowed: {', '.join(sorted(VALID_INVOICE_STATUSES))}")
+        return v
 
 
 class PaymentIn(BaseModel):
@@ -131,7 +147,7 @@ def get_invoices(
     dateFrom: Optional[str] = None,
     dateTo: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*BILLING_ROLES)),
 ):
     query = db.query(models.Invoice)
 
@@ -223,7 +239,7 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Dep
 
 
 @router.get("/{invoice_id}")
-def get_invoice(invoice_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_invoice(invoice_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*BILLING_ROLES))):
     inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -233,7 +249,7 @@ def get_invoice(invoice_id: str, db: Session = Depends(get_db), _user=Depends(ge
 @router.patch("/{invoice_id}")
 def update_invoice(
     invoice_id: str,
-    body: dict,
+    body: InvoiceUpdate,
     db: Session = Depends(get_db),
     _user=Depends(require_roles(*BILLING_ROLES)),
 ):
@@ -241,10 +257,14 @@ def update_invoice(
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    allowed = ["status", "notes", "dueDate"]
-    for field in allowed:
-        if field in body:
-            setattr(inv, field, body[field])
+    updates = body.model_dump(exclude_none=True)
+    for field, val in updates.items():
+        if field == "dueDate" and val:
+            try:
+                val = datetime.fromisoformat(val)
+            except (ValueError, TypeError):
+                raise HTTPException(422, f"Invalid dueDate format: {val!r}")
+        setattr(inv, field, val)
 
     db.commit()
     db.refresh(inv)

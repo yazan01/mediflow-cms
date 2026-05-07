@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_roles
+
+RADIOLOGY_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RADIOLOGIST")
 import models
 
 router = APIRouter(prefix="/api/radiology", tags=["radiology"])
@@ -41,7 +43,7 @@ def get_radiology_orders(
     status: Optional[str] = None,
     modality: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*RADIOLOGY_ROLES)),
 ):
     query = db.query(models.RadiologyOrder).join(models.Patient, isouter=True)
 

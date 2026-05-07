@@ -73,7 +73,7 @@ class PurchaseOrderCreate(BaseModel):
 # ── Overview ───────────────────────────────────────────────────────────────────
 
 @router.get("/overview")
-def get_overview(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_overview(db: Session = Depends(get_db), _user=Depends(require_roles(*ACCT_ROLES))):
     total_revenue = db.query(func.sum(models.Payment.amount)).scalar() or 0
     total_expenses = db.query(func.sum(models.Expense.amount)).filter(models.Expense.status == "APPROVED").scalar() or 0
     accounts_receivable = db.query(func.sum(models.Invoice.balance)).filter(
@@ -379,7 +379,7 @@ def create_purchase_order(
 
     po = models.PurchaseOrder(
         id=generate_id(),
-        poNumber=generate_po_number(),
+        poNumber=generate_po_number(db),
         vendorId=body.vendorId,
         date=datetime.fromisoformat(body.date),
         expectedDelivery=datetime.fromisoformat(body.expectedDelivery) if body.expectedDelivery else None,

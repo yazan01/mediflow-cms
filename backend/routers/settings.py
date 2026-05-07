@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -68,7 +68,14 @@ def update_settings(
     _user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER")),
 ):
     s = get_or_create(db)
-    for field, val in body.model_dump(exclude_none=True).items():
+    updates = body.model_dump(exclude_none=True)
+    if "timezone" in updates and updates["timezone"]:
+        import zoneinfo
+        try:
+            zoneinfo.ZoneInfo(updates["timezone"])
+        except (zoneinfo.ZoneInfoNotFoundError, KeyError):
+            raise HTTPException(422, f"Invalid timezone: {updates['timezone']!r}")
+    for field, val in updates.items():
         setattr(s, field, val)
     db.commit()
     db.refresh(s)

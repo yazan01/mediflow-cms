@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database import get_db
-from auth import get_current_user, generate_id, log_audit
+from auth import get_current_user, require_roles, generate_id, log_audit
+from sqlalchemy.orm import joinedload
+
+SHIFT_ADMIN_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "HR_OFFICER")
 import models
 
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
@@ -40,12 +43,9 @@ class AssignmentCreate(BaseModel):
     notes: Optional[str] = None
 
 
-def shift_to_dict(s: models.Shift, db: Session) -> dict:
-    branch_name = None
-    if s.branchId:
-        b = db.query(models.Branch).filter(models.Branch.id == s.branchId).first()
-        if b:
-            branch_name = b.name
+def shift_to_dict(s: models.Shift, db: Session = None) -> dict:
+    # Uses pre-loaded branch relationship if available (avoids N+1 on list endpoints)
+    branch_name = s.branch.name if s.branch else None
     days = s.daysOfWeek or []
     return {
         "id": s.id,
@@ -63,22 +63,17 @@ def shift_to_dict(s: models.Shift, db: Session) -> dict:
     }
 
 
-def assignment_to_dict(a: models.ShiftAssignment, db: Session) -> dict:
-    emp = db.query(models.Employee).filter(models.Employee.id == a.employeeId).first()
-    emp_name = None
-    job_title = None
-    if emp:
-        u = db.query(models.User).filter(models.User.id == emp.userId).first()
-        emp_name = u.name if u else None
-        job_title = emp.jobTitle
-    shift = db.query(models.Shift).filter(models.Shift.id == a.shiftId).first()
+def assignment_to_dict(a: models.ShiftAssignment, db: Session = None) -> dict:
+    # Uses pre-loaded relationships if available (avoids N+1 on list endpoints)
+    emp_name = a.employee.user.name if a.employee and a.employee.user else None
+    job_title = a.employee.jobTitle if a.employee else None
     return {
         "id": a.id,
         "employeeId": a.employeeId,
         "employeeName": emp_name,
         "jobTitle": job_title,
         "shiftId": a.shiftId,
-        "shiftName": shift.name if shift else None,
+        "shiftName": a.shift.name if a.shift else None,
         "startDate": a.startDate.isoformat() if a.startDate else None,
         "endDate": a.endDate.isoformat() if a.endDate else None,
         "notes": a.notes or "",
@@ -89,14 +84,14 @@ def assignment_to_dict(a: models.ShiftAssignment, db: Session) -> dict:
 
 @router.get("")
 def list_shifts(branch_id: Optional[str] = None, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    q = db.query(models.Shift)
+    q = db.query(models.Shift).options(joinedload(models.Shift.branch))
     if branch_id:
         q = q.filter(models.Shift.branchId == branch_id)
-    return [shift_to_dict(s, db) for s in q.order_by(models.Shift.name).all()]
+    return [shift_to_dict(s) for s in q.order_by(models.Shift.name).all()]
 
 
 @router.post("", status_code=201)
-def create_shift(body: ShiftCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def create_shift(body: ShiftCreate, db: Session = Depends(get_db), user=Depends(require_roles(*SHIFT_ADMIN_ROLES))):
     shift = models.Shift(
         id=generate_id(),
         name=body.name,
@@ -110,11 +105,11 @@ def create_shift(body: ShiftCreate, db: Session = Depends(get_db), user=Depends(
     db.commit()
     db.refresh(shift)
     log_audit(db, user.id, "CREATE", "Shift", shift.id, {"name": shift.name})
-    return shift_to_dict(shift, db)
+    return shift_to_dict(shift)
 
 
 @router.patch("/{shift_id}")
-def update_shift(shift_id: str, body: ShiftUpdate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def update_shift(shift_id: str, body: ShiftUpdate, db: Session = Depends(get_db), user=Depends(require_roles(*SHIFT_ADMIN_ROLES))):
     shift = db.query(models.Shift).filter(models.Shift.id == shift_id).first()
     if not shift:
         raise HTTPException(404, "Shift not found")
@@ -123,11 +118,11 @@ def update_shift(shift_id: str, body: ShiftUpdate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(shift)
     log_audit(db, user.id, "UPDATE", "Shift", shift.id, {"name": shift.name})
-    return shift_to_dict(shift, db)
+    return shift_to_dict(shift)
 
 
 @router.delete("/{shift_id}", status_code=204)
-def delete_shift(shift_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def delete_shift(shift_id: str, db: Session = Depends(get_db), user=Depends(require_roles(*SHIFT_ADMIN_ROLES))):
     shift = db.query(models.Shift).filter(models.Shift.id == shift_id).first()
     if not shift:
         raise HTTPException(404, "Shift not found")
@@ -140,12 +135,20 @@ def delete_shift(shift_id: str, db: Session = Depends(get_db), user=Depends(get_
 
 @router.get("/{shift_id}/assignments")
 def list_assignments(shift_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    assignments = db.query(models.ShiftAssignment).filter(models.ShiftAssignment.shiftId == shift_id).all()
-    return [assignment_to_dict(a, db) for a in assignments]
+    assignments = (
+        db.query(models.ShiftAssignment)
+        .filter(models.ShiftAssignment.shiftId == shift_id)
+        .options(
+            joinedload(models.ShiftAssignment.employee).joinedload(models.Employee.user),
+            joinedload(models.ShiftAssignment.shift),
+        )
+        .all()
+    )
+    return [assignment_to_dict(a) for a in assignments]
 
 
 @router.post("/assignments", status_code=201)
-def create_assignment(body: AssignmentCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def create_assignment(body: AssignmentCreate, db: Session = Depends(get_db), user=Depends(require_roles(*SHIFT_ADMIN_ROLES))):
     assignment = models.ShiftAssignment(
         id=generate_id(),
         employeeId=body.employeeId,
@@ -158,11 +161,11 @@ def create_assignment(body: AssignmentCreate, db: Session = Depends(get_db), use
     db.commit()
     db.refresh(assignment)
     log_audit(db, user.id, "CREATE", "ShiftAssignment", assignment.id, {"employeeId": body.employeeId, "shiftId": body.shiftId})
-    return assignment_to_dict(assignment, db)
+    return assignment_to_dict(assignment)
 
 
 @router.delete("/assignments/{assignment_id}", status_code=204)
-def delete_assignment(assignment_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def delete_assignment(assignment_id: str, db: Session = Depends(get_db), user=Depends(require_roles(*SHIFT_ADMIN_ROLES))):
     a = db.query(models.ShiftAssignment).filter(models.ShiftAssignment.id == assignment_id).first()
     if not a:
         raise HTTPException(404, "Assignment not found")

@@ -145,7 +145,10 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
         raise HTTPException(status_code=422, detail=f"Invalid blood type: {body.bloodType!r}")
 
     if body.nationalId:
-        existing = db.query(models.Patient).filter(models.Patient.nationalId == body.nationalId).first()
+        existing = db.query(models.Patient).filter(
+            models.Patient.nationalId == body.nationalId,
+            models.Patient.deletedAt == None,  # noqa: E711
+        ).first()
         if existing:
             raise HTTPException(status_code=409, detail="A patient with this national ID already exists")
 
@@ -188,7 +191,10 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
 
 @router.get("/{patient_id}")
 def get_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    p = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    p = db.query(models.Patient).filter(
+        models.Patient.id == patient_id,
+        models.Patient.deletedAt == None,  # noqa: E711
+    ).first()
     if not p:
         raise HTTPException(status_code=404, detail="Patient not found")
 

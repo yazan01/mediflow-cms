@@ -7,8 +7,8 @@ import TopBar from "./TopBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-const INACTIVITY_WARN_MS = 25 * 60 * 1000;
 const COUNTDOWN_SECONDS = 5 * 60;
+const DEFAULT_SESSION_TIMEOUT_MINS = 30;
 
 interface Props {
   user: { name: string; role: string };
@@ -21,8 +21,21 @@ export default function DashboardShell({ user, children }: Props) {
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const router = useRouter();
   const showTimeoutRef = useRef(false);
+  const inactivityMsRef = useRef((DEFAULT_SESSION_TIMEOUT_MINS - 5) * 60 * 1000);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.sessionTimeout) {
+          const mins = Math.max(6, Number(data.sessionTimeout));
+          inactivityMsRef.current = (mins - 5) * 60 * 1000;
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const startInactivityTimer = useCallback(() => {
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
@@ -30,7 +43,7 @@ export default function DashboardShell({ user, children }: Props) {
       showTimeoutRef.current = true;
       setShowTimeout(true);
       setCountdown(COUNTDOWN_SECONDS);
-    }, INACTIVITY_WARN_MS);
+    }, inactivityMsRef.current);
   }, []);
 
   const resetInactivity = useCallback(() => {

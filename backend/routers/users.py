@@ -94,6 +94,7 @@ def user_to_dict(u: models.User) -> dict:
         "photo": u.photo,
         "roles": parse_roles(u.roles),
         "isActive": u.isActive,
+        "twoFAEnabled": bool(u.twoFAEnabled),
         "lastLogin": u.lastLogin.isoformat() if u.lastLogin else None,
         "createdAt": u.createdAt.isoformat() if u.createdAt else None,
         "department": {"id": u.department.id, "name": u.department.name} if u.department else None,
@@ -168,7 +169,7 @@ def create_user(body: UserCreate, db: Session = Depends(get_db), _user=Depends(r
         from datetime import datetime
         db.add(models.Employee(
             id=generate_id(),
-            empCode=generate_emp_code(),
+            empCode=generate_emp_code(db),
             userId=user.id,
             departmentId=body.departmentId,
             jobTitle=body.roles[0],

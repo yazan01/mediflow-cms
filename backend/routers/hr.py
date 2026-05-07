@@ -115,7 +115,7 @@ def employee_to_dict(e: models.Employee) -> dict:
 # ── Stats ──────────────────────────────────────────────────────────────────────
 
 @router.get("/stats")
-def get_hr_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_hr_stats(db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
     total = db.query(func.count(models.Employee.id)).scalar() or 0
     active = db.query(func.count(models.Employee.id)).filter(models.Employee.status == "ACTIVE").scalar() or 0
     on_leave = db.query(func.count(models.Employee.id)).filter(models.Employee.status == "ON_LEAVE").scalar() or 0
@@ -182,7 +182,7 @@ def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=De
         userId=body.userId,
         departmentId=body.departmentId,
         jobTitle=sanitize_string(body.jobTitle),
-        empCode=generate_emp_code(),
+        empCode=generate_emp_code(db),
         employmentType=body.employmentType,
         basicSalary=body.basicSalary,
         housingAllowance=body.housingAllowance or 0,
@@ -233,6 +233,10 @@ def update_employee(employee_id: str, body: EmployeeUpdate, db: Session = Depend
             if "userPhone" in data:
                 linked_user.phone = data["userPhone"]
             if "userRoles" in data and data["userRoles"]:
+                from routers.users import VALID_ROLES
+                invalid = set(data["userRoles"]) - VALID_ROLES
+                if invalid:
+                    raise HTTPException(422, f"Invalid roles: {sorted(invalid)}")
                 linked_user.roles = data["userRoles"]
 
     db.commit()

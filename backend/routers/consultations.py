@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user, generate_id
+from auth import get_current_user, require_roles, generate_id
+
+CLINICAL_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE")
 import models
 
 router = APIRouter(prefix="/api/consultations", tags=["consultations"])
@@ -125,7 +127,7 @@ def get_consultation(consultation_id: str, db: Session = Depends(get_db), _user=
 def create_consultation(
     body: ConsultationCreate,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*CLINICAL_ROLES)),
 ):
     if not all([body.appointmentId, body.patientId, body.doctorId]):
         raise HTTPException(status_code=400, detail="appointmentId, patientId, and doctorId are required")
@@ -150,6 +152,9 @@ def create_consultation(
 
     if body.vitals:
         v = body.vitals
+        bmi = v.bmi
+        if bmi is None and v.weight and v.height and v.height > 0:
+            bmi = round(v.weight / ((v.height / 100) ** 2), 1)
         vitals = models.Vitals(
             id=generate_id(),
             consultationId=consultation.id,
@@ -159,7 +164,7 @@ def create_consultation(
             temperature=v.temperature,
             weight=v.weight,
             height=v.height,
-            bmi=v.bmi,
+            bmi=bmi,
             spo2=v.spo2,
             bloodGlucose=v.bloodGlucose,
             respiratoryRate=v.respiratoryRate,

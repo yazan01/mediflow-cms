@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_roles
 import models
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -14,9 +14,9 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 def get_reports_overview(
     range: str = Query("this_month"),
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER", "ACCOUNTANT")),
 ):
-    now = datetime.now()
+    now = datetime.utcnow()
     if range == "last_year":
         start = now.replace(month=1, day=1, hour=0, minute=0, second=0)
         prev_start = start.replace(year=start.year - 1)

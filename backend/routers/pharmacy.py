@@ -258,7 +258,7 @@ def create_stock_movement(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(*PHARM_ROLES)),
 ):
-    med = db.query(models.Medication).filter(models.Medication.id == body.medicationId).first()
+    med = db.query(models.Medication).with_for_update().filter(models.Medication.id == body.medicationId).first()
     if not med:
         raise HTTPException(status_code=404, detail="Medication not found")
 
