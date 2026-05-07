@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Section = "clinic" | "security" | "notifications" | "billing" | "integrations";
 
@@ -29,6 +30,7 @@ const DEFAULT: Settings = {
 };
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState<Section>("clinic");
   const [form, setForm] = useState<Settings>(DEFAULT);
   const [loading, setLoading] = useState(true);
@@ -66,19 +68,19 @@ export default function SettingsPage() {
   }
 
   const sections = [
-    { key: "clinic",        label: "Clinic Profile",   icon: "local_hospital" },
-    { key: "security",      label: "Security & Auth",  icon: "security" },
-    { key: "notifications", label: "Notifications",    icon: "notifications" },
-    { key: "billing",       label: "Billing Config",   icon: "payments" },
-    { key: "integrations",  label: "Integrations",     icon: "cable" },
+    { key: "clinic",        label: t.settings.clinicProfile,   icon: "local_hospital" },
+    { key: "security",      label: t.settings.securityAuth,    icon: "security" },
+    { key: "notifications", label: t.settings.notifications,   icon: "notifications" },
+    { key: "billing",       label: t.settings.billingConfig,   icon: "payments" },
+    { key: "integrations",  label: t.settings.integrations,    icon: "cable" },
   ] as const;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">System Settings</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">Configure clinic-wide preferences and system behavior</p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.settings.title}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{t.settings.subtitle}</p>
         </div>
         <button
           onClick={handleSave}
@@ -86,13 +88,13 @@ export default function SettingsPage() {
           className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-60"
         >
           {saving ? (
-            <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>Saving…</>
+            <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{t.settings.saving}</>
           ) : saveStatus === "saved" ? (
-            <><span className="material-symbols-outlined text-[18px]">check_circle</span>Saved!</>
+            <><span className="material-symbols-outlined text-[18px]">check_circle</span>{t.settings.saved}</>
           ) : saveStatus === "error" ? (
-            <><span className="material-symbols-outlined text-[18px]">error</span>Error — retry</>
+            <><span className="material-symbols-outlined text-[18px]">error</span>{t.settings.errorRetry}</>
           ) : (
-            <><span className="material-symbols-outlined text-[18px]">save</span>Save Changes</>
+            <><span className="material-symbols-outlined text-[18px]">save</span>{t.settings.saveChanges}</>
           )}
         </button>
       </div>
@@ -127,15 +129,15 @@ export default function SettingsPage() {
           ) : (
             <>
               {activeSection === "clinic" && (
-                <SettingsCard title="Clinic Profile" desc="Basic information displayed on invoices, reports, and patient communications">
+                <SettingsCard title={t.settings.clinicProfileTitle} desc={t.settings.clinicProfileDesc}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Clinic Name"><input className="input-field" value={form.clinicName} onChange={(e) => set("clinicName", e.target.value)} placeholder="Al-Shifa Medical Center" /></Field>
-                    <Field label="License Number"><input className="input-field" value={form.licenseNumber} onChange={(e) => set("licenseNumber", e.target.value)} placeholder="MH-2024-XXXXX" /></Field>
-                    <Field label="Phone"><input className="input-field" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+962 6 000 0000" /></Field>
-                    <Field label="Email"><input type="email" className="input-field" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="info@clinic.com" /></Field>
-                    <Field label="Address" full><textarea className="input-field resize-none" rows={2} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Street address, city, country" /></Field>
-                    <Field label="Tax ID"><input className="input-field" value={form.taxId} onChange={(e) => set("taxId", e.target.value)} placeholder="TIN number" /></Field>
-                    <Field label="Currency">
+                    <Field label={t.settings.clinicName}><input className="input-field" value={form.clinicName} onChange={(e) => set("clinicName", e.target.value)} placeholder="Al-Shifa Medical Center" /></Field>
+                    <Field label={t.settings.licenseNumber}><input className="input-field" value={form.licenseNumber} onChange={(e) => set("licenseNumber", e.target.value)} placeholder="MH-2024-XXXXX" /></Field>
+                    <Field label={t.settings.phone}><input className="input-field" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+962 6 000 0000" /></Field>
+                    <Field label={t.settings.email}><input type="email" className="input-field" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="info@clinic.com" /></Field>
+                    <Field label={t.settings.address} full><textarea className="input-field resize-none" rows={2} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Street address, city, country" /></Field>
+                    <Field label={t.settings.taxId}><input className="input-field" value={form.taxId} onChange={(e) => set("taxId", e.target.value)} placeholder="TIN number" /></Field>
+                    <Field label={t.settings.currency}>
                       <select className="input-field" value={form.currency} onChange={(e) => set("currency", e.target.value)}>
                         <option value="USD">USD — US Dollar</option>
                         <option value="JOD">JOD — Jordanian Dinar</option>
@@ -143,7 +145,7 @@ export default function SettingsPage() {
                         <option value="AED">AED — UAE Dirham</option>
                       </select>
                     </Field>
-                    <Field label="Time Zone">
+                    <Field label={t.settings.timezone}>
                       <select className="input-field" value={form.timezone} onChange={(e) => set("timezone", e.target.value)}>
                         <option value="Asia/Amman">Asia/Amman (GMT+3)</option>
                         <option value="Asia/Riyadh">Asia/Riyadh (GMT+3)</option>
@@ -156,53 +158,53 @@ export default function SettingsPage() {
               )}
 
               {activeSection === "security" && (
-                <SettingsCard title="Security & Authentication" desc="Password policies, session management, and access controls">
+                <SettingsCard title={t.settings.securityTitle} desc={t.settings.securityDesc}>
                   <div className="space-y-5">
-                    <Toggle label="Two-Factor Authentication (2FA)" desc="Require 2FA for all users on login" checked={form.require2FA} onChange={(v) => set("require2FA", v)} />
-                    <Toggle label="Account Lockout" desc="Lock account after 5 failed login attempts for 15 minutes" checked defaultChecked />
+                    <Toggle label={t.settings.twoFactor} desc={t.settings.twoFactorDesc} checked={form.require2FA} onChange={(v) => set("require2FA", v)} />
+                    <Toggle label={t.settings.accountLockout} desc={t.settings.accountLockoutDesc} checked defaultChecked />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-                      <Field label="Session Timeout (minutes)"><input type="number" className="input-field" value={form.sessionTimeout} min={5} max={480} onChange={(e) => set("sessionTimeout", Number(e.target.value))} /></Field>
-                      <Field label="Password Min Length"><input type="number" className="input-field" value={form.passwordMinLength} min={8} max={32} onChange={(e) => set("passwordMinLength", Number(e.target.value))} /></Field>
+                      <Field label={t.settings.sessionTimeout}><input type="number" className="input-field" value={form.sessionTimeout} min={5} max={480} onChange={(e) => set("sessionTimeout", Number(e.target.value))} /></Field>
+                      <Field label={t.settings.passwordMinLength}><input type="number" className="input-field" value={form.passwordMinLength} min={8} max={32} onChange={(e) => set("passwordMinLength", Number(e.target.value))} /></Field>
                     </div>
                   </div>
                 </SettingsCard>
               )}
 
               {activeSection === "notifications" && (
-                <SettingsCard title="Notifications & Alerts" desc="Configure how and when the system sends notifications">
+                <SettingsCard title={t.settings.notificationsTitle} desc={t.settings.notificationsDesc}>
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <Field label="SMS Gateway Provider"><select className="input-field"><option value="">Not configured</option><option>Twilio</option><option>Local Gateway</option><option>Infobip</option></select></Field>
-                      <Field label="SMS API Key"><input type="password" className="input-field" placeholder="Enter API key" /></Field>
-                      <Field label="Email Provider"><select className="input-field"><option>SMTP</option><option>SendGrid</option><option>Mailgun</option></select></Field>
-                      <Field label="SMTP Host"><input className="input-field" placeholder="smtp.example.com" /></Field>
+                      <Field label={t.settings.smsGateway}><select className="input-field"><option value="">{t.settings.notConfigured}</option><option>Twilio</option><option>Local Gateway</option><option>Infobip</option></select></Field>
+                      <Field label={t.settings.smsApiKey}><input type="password" className="input-field" placeholder={t.settings.enterApiKey} /></Field>
+                      <Field label={t.settings.emailProvider}><select className="input-field"><option>SMTP</option><option>SendGrid</option><option>Mailgun</option></select></Field>
+                      <Field label={t.settings.smtpHost}><input className="input-field" placeholder="smtp.example.com" /></Field>
                     </div>
                     <div className="pt-2 space-y-4">
-                      <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">Notification Triggers</h3>
-                      <Toggle label="Appointment Reminders" desc="Send SMS/email 24h and 2h before appointment" defaultChecked />
-                      <Toggle label="Lab Critical Values" desc="Alert ordering physician when critical lab values are flagged" defaultChecked />
-                      <Toggle label="Low Stock Alerts" desc="Notify pharmacist when medication falls below minimum stock" defaultChecked />
-                      <Toggle label="Invoice Overdue Alerts" desc="Send reminders for overdue invoices" defaultChecked />
-                      <Toggle label="Leave Request Notifications" desc="Notify HR officers of pending leave requests" defaultChecked />
+                      <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">{t.settings.notifTriggers}</h3>
+                      <Toggle label={t.settings.apptReminders} desc={t.settings.apptRemindersDesc} defaultChecked />
+                      <Toggle label={t.settings.labCritical} desc={t.settings.labCriticalDesc} defaultChecked />
+                      <Toggle label={t.settings.lowStockAlert} desc={t.settings.lowStockAlertDesc} defaultChecked />
+                      <Toggle label={t.settings.overdueInvoice} desc={t.settings.overdueInvoiceDesc} defaultChecked />
+                      <Toggle label={t.settings.leaveNotif} desc={t.settings.leaveNotifDesc} defaultChecked />
                     </div>
                   </div>
                 </SettingsCard>
               )}
 
               {activeSection === "billing" && (
-                <SettingsCard title="Billing Configuration" desc="Tax rates, invoice numbering, and payment settings">
+                <SettingsCard title={t.settings.billingTitle} desc={t.settings.billingDesc}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Default Tax Rate (%)"><input type="number" className="input-field" value={form.taxRate} min={0} max={100} step={0.5} onChange={(e) => set("taxRate", Number(e.target.value))} /></Field>
-                    <Field label="Invoice Prefix"><input className="input-field" value={form.invoicePrefix} onChange={(e) => set("invoicePrefix", e.target.value)} /></Field>
-                    <Field label="Payment Terms (days)"><input type="number" className="input-field" value={form.paymentTerms} onChange={(e) => set("paymentTerms", Number(e.target.value))} /></Field>
+                    <Field label={t.settings.taxRate}><input type="number" className="input-field" value={form.taxRate} min={0} max={100} step={0.5} onChange={(e) => set("taxRate", Number(e.target.value))} /></Field>
+                    <Field label={t.settings.invoicePrefix}><input className="input-field" value={form.invoicePrefix} onChange={(e) => set("invoicePrefix", e.target.value)} /></Field>
+                    <Field label={t.settings.paymentTerms}><input type="number" className="input-field" value={form.paymentTerms} onChange={(e) => set("paymentTerms", Number(e.target.value))} /></Field>
                   </div>
                   <div className="pt-4 space-y-4">
-                    <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">Payment Methods</h3>
-                    <Toggle label="Cash" defaultChecked />
-                    <Toggle label="Credit / Debit Card" defaultChecked />
-                    <Toggle label="Insurance" defaultChecked />
-                    <Toggle label="Bank Transfer" defaultChecked />
-                    <Toggle label="Mobile Payment" />
+                    <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">{t.settings.paymentMethods}</h3>
+                    <Toggle label={t.settings.cash} defaultChecked />
+                    <Toggle label={t.settings.card} defaultChecked />
+                    <Toggle label={t.settings.insurance} defaultChecked />
+                    <Toggle label={t.settings.bankTransfer} defaultChecked />
+                    <Toggle label={t.settings.mobilePayment} />
                   </div>
                 </SettingsCard>
               )}
@@ -210,12 +212,12 @@ export default function SettingsPage() {
               {activeSection === "integrations" && (
                 <div className="space-y-4">
                   {[
-                    { icon: "sms",         label: "SMS Gateway",       desc: "Twilio / local SMS provider for patient alerts",   status: "Not configured", ok: false },
-                    { icon: "email",       label: "Email Server",      desc: "SMTP or SendGrid for email notifications",         status: "Not configured", ok: false },
-                    { icon: "payments",    label: "Payment Gateway",   desc: "Stripe or local payment processor",                 status: "Not configured", ok: false },
-                    { icon: "health_and_safety", label: "Insurance Portal", desc: "HL7 / REST integration with insurance providers", status: "Phase 2",     ok: null },
-                    { icon: "biotech",     label: "Lab Analyzers",     desc: "HL7 v2.x / FHIR interface with lab equipment",     status: "Phase 2",       ok: null },
-                    { icon: "image_search",label: "PACS System",       desc: "DICOM integration for radiology images",            status: "Phase 3",       ok: null },
+                    { icon: "sms",               label: t.settings.smsGatewayLabel,      desc: t.settings.smsGatewayDesc,      status: t.settings.notConfigured, ok: false },
+                    { icon: "email",              label: t.settings.emailServerLabel,     desc: t.settings.emailServerDesc,     status: t.settings.notConfigured, ok: false },
+                    { icon: "payments",           label: t.settings.paymentGatewayLabel,  desc: t.settings.paymentGatewayDesc,  status: t.settings.notConfigured, ok: false },
+                    { icon: "health_and_safety",  label: t.settings.insurancePortalLabel, desc: t.settings.insurancePortalDesc, status: t.settings.phase2,        ok: null },
+                    { icon: "biotech",            label: t.settings.labAnalyzersLabel,    desc: t.settings.labAnalyzersDesc,    status: t.settings.phase2,        ok: null },
+                    { icon: "image_search",       label: t.settings.pacsLabel,            desc: t.settings.pacsDesc,            status: t.settings.phase3,        ok: null },
                   ].map((intg) => (
                     <div key={intg.label} className="bg-white rounded-xl border border-[#e3e2e6] p-5 flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -229,7 +231,7 @@ export default function SettingsPage() {
                         <span className={`text-xs font-semibold ${intg.ok === false ? "text-[#d97706]" : "text-[#74777f]"}`}>{intg.status}</span>
                         <button className="flex items-center gap-1 border border-[#c4c6cf] bg-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#f4f3f7] transition-colors">
                           <span className="material-symbols-outlined text-[14px]">settings</span>
-                          Configure
+                          {t.settings.configure}
                         </button>
                       </div>
                     </div>

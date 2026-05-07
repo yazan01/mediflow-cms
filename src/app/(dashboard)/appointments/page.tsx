@@ -1,24 +1,27 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { Appointment } from "@/types";
-
-const STATUS_STYLES: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  SCHEDULED:       { label: "Scheduled",        bg: "bg-[#e9e7eb]",      text: "text-[#43474e]",  dot: "bg-[#74777f]" },
-  CHECKED_IN:      { label: "Checked In",       bg: "bg-[#d3e4ff]",      text: "text-[#00477f]",  dot: "bg-[#1960a3]" },
-  IN_CONSULTATION: { label: "In Consultation",  bg: "bg-[#dbeafe]",      text: "text-[#1960a3]",  dot: "bg-[#1960a3] animate-pulse" },
-  COMPLETED:       { label: "Completed",        bg: "bg-[#ccfbf1]",      text: "text-[#0d9488]",  dot: "bg-[#0d9488]" },
-  NO_SHOW:         { label: "No Show",          bg: "bg-[#ffdad6]",      text: "text-[#93000a]",  dot: "bg-[#ba1a1a]" },
-  CANCELLED:       { label: "Cancelled",        bg: "bg-[#e3e2e6]",      text: "text-[#74777f]",  dot: "bg-[#74777f]" },
-  RESCHEDULED:     { label: "Rescheduled",      bg: "bg-[#ffddba]",      text: "text-[#633f0f]",  dot: "bg-[#d97706]" },
-  URGENT:          { label: "Urgent",           bg: "bg-[#ba1a1a]",      text: "text-white",      dot: "bg-white" },
-};
-
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8 AM to 6 PM
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function AppointmentsPage() {
+  const { t } = useLanguage();
+
+  const STATUS_STYLES: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+    SCHEDULED:       { label: t.appointments.scheduled,       bg: "bg-[#e9e7eb]",      text: "text-[#43474e]",  dot: "bg-[#74777f]" },
+    CHECKED_IN:      { label: t.appointments.checkedIn,       bg: "bg-[#d3e4ff]",      text: "text-[#00477f]",  dot: "bg-[#1960a3]" },
+    IN_CONSULTATION: { label: t.appointments.inConsultation,  bg: "bg-[#dbeafe]",      text: "text-[#1960a3]",  dot: "bg-[#1960a3] animate-pulse" },
+    COMPLETED:       { label: t.appointments.completed,       bg: "bg-[#ccfbf1]",      text: "text-[#0d9488]",  dot: "bg-[#0d9488]" },
+    NO_SHOW:         { label: t.appointments.noShow,          bg: "bg-[#ffdad6]",      text: "text-[#93000a]",  dot: "bg-[#ba1a1a]" },
+    CANCELLED:       { label: t.appointments.cancelled,       bg: "bg-[#e3e2e6]",      text: "text-[#74777f]",  dot: "bg-[#74777f]" },
+    RESCHEDULED:     { label: t.appointments.rescheduled,     bg: "bg-[#ffddba]",      text: "text-[#633f0f]",  dot: "bg-[#d97706]" },
+    URGENT:          { label: t.appointments.urgent,          bg: "bg-[#ba1a1a]",      text: "text-white",      dot: "bg-white" },
+  };
+
+  const DAYS = t.appointments.days;
+  const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8 AM to 6 PM
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"week" | "day" | "list">("week");
@@ -90,8 +93,8 @@ export default function AppointmentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1a1c1e]">Appointments</h1>
-            <p className="text-sm text-[#74777f] mt-0.5">{stats.total} appointments loaded</p>
+            <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.appointments.title}</h1>
+            <p className="text-sm text-[#74777f] mt-0.5">{stats.total} {t.appointments.title.toLowerCase()}</p>
           </div>
           <div className="flex items-center gap-3">
             <select
@@ -99,7 +102,7 @@ export default function AppointmentsPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             >
-              <option value="ALL">All Statuses</option>
+              <option value="ALL">{t.appointments.allStatuses}</option>
               {Object.entries(STATUS_STYLES).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
               ))}
@@ -122,7 +125,7 @@ export default function AppointmentsPage() {
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
-              New Appointment
+              {t.appointments.newAppointment}
             </Link>
           </div>
         </div>
@@ -130,11 +133,11 @@ export default function AppointmentsPage() {
         {/* Stats bar */}
         <div className="flex items-center gap-6">
           {[
-            { label: "Total", value: stats.total, color: "text-[#1a1c1e]" },
-            { label: "Scheduled", value: stats.scheduled, color: "text-[#74777f]" },
-            { label: "Checked In", value: stats.checkedIn, color: "text-[#1960a3]" },
-            { label: "In Consultation", value: stats.inConsult, color: "text-[#1960a3]" },
-            { label: "Urgent", value: stats.urgent, color: "text-[#ba1a1a]" },
+            { label: t.appointments.total, value: stats.total, color: "text-[#1a1c1e]" },
+            { label: t.appointments.scheduled, value: stats.scheduled, color: "text-[#74777f]" },
+            { label: t.appointments.checkedIn, value: stats.checkedIn, color: "text-[#1960a3]" },
+            { label: t.appointments.inConsultation, value: stats.inConsult, color: "text-[#1960a3]" },
+            { label: t.appointments.urgent, value: stats.urgent, color: "text-[#ba1a1a]" },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -150,7 +153,7 @@ export default function AppointmentsPage() {
               onClick={() => setCurrentDate(new Date())}
               className="px-3 py-1.5 text-sm font-semibold text-[#1a1c1e] hover:bg-white rounded-lg transition-colors"
             >
-              Today
+              {t.appointments.today}
             </button>
             <span className="text-sm font-semibold text-[#1a1c1e] px-2">{monthLabel}</span>
             <button onClick={nextWeek} className="p-1.5 hover:bg-white rounded-lg transition-colors">
@@ -173,9 +176,9 @@ export default function AppointmentsPage() {
                 <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
                   <span className="material-symbols-outlined text-[#74777f] text-3xl">event_busy</span>
                 </div>
-                <p className="text-sm font-semibold text-[#1a1c1e]">No appointments found</p>
+                <p className="text-sm font-semibold text-[#1a1c1e]">{t.appointments.noAppointments}</p>
                 <Link href="/appointments/new" className="text-sm text-[#1960a3] font-semibold hover:underline">
-                  Book first appointment →
+                  {t.appointments.bookFirst}
                 </Link>
               </div>
             ) : (
@@ -315,7 +318,7 @@ export default function AppointmentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setSelectedAppt(null)}>
           <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-[#1a1c1e]">Appointment Details</h3>
+              <h3 className="text-lg font-bold text-[#1a1c1e]">{t.appointments.detailTitle}</h3>
               <button onClick={() => setSelectedAppt(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
                 <span className="material-symbols-outlined text-[20px] text-[#74777f]">close</span>
               </button>
@@ -338,15 +341,15 @@ export default function AppointmentsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 p-4 bg-[#f4f3f7] rounded-xl">
-                <InfoRow icon="calendar_today" label="Date" value={new Date(selectedAppt.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} />
-                <InfoRow icon="schedule" label="Time" value={new Date(selectedAppt.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} />
-                <InfoRow icon="monitor_heart" label="Doctor" value={selectedAppt.doctorName} />
-                {selectedAppt.room && <InfoRow icon="meeting_room" label="Room" value={selectedAppt.room} />}
+                <InfoRow icon="calendar_today" label={t.common.date} value={new Date(selectedAppt.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} />
+                <InfoRow icon="schedule" label={t.common.time} value={new Date(selectedAppt.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} />
+                <InfoRow icon="monitor_heart" label={t.appointments.doctor} value={selectedAppt.doctorName} />
+                {selectedAppt.room && <InfoRow icon="meeting_room" label={t.common.room} value={selectedAppt.room} />}
               </div>
 
               {selectedAppt.notes && (
                 <div className="p-3 bg-[#eff6ff] rounded-xl">
-                  <p className="text-xs font-semibold text-[#1960a3] mb-1">Notes</p>
+                  <p className="text-xs font-semibold text-[#1960a3] mb-1">{t.appointments.notes}</p>
                   <p className="text-sm text-[#1a1c1e]">{selectedAppt.notes}</p>
                 </div>
               )}
@@ -357,11 +360,11 @@ export default function AppointmentsPage() {
                   className="flex-1 flex items-center justify-center gap-2 bg-[#002045] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
-                  Open EMR
+                  {t.appointments.openEMR}
                 </Link>
                 <button className="flex-1 flex items-center justify-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
                   <span className="material-symbols-outlined text-[18px]">edit</span>
-                  Edit
+                  {t.common.edit}
                 </button>
               </div>
             </div>

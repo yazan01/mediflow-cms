@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
 import type { Patient } from "@/types";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const BLOOD_LABELS: Record<string, string> = {
   A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−",
@@ -11,6 +12,7 @@ const BLOOD_LABELS: Record<string, string> = {
 };
 
 export default function PatientsPage() {
+  const { t } = useLanguage();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,7 @@ export default function PatientsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [activateId, setActivateId] = useState<string | null>(null);
 
   const pageSize = 10;
 
@@ -47,12 +50,18 @@ export default function PatientsPage() {
     fetchPatients();
   }, [fetchPatients]);
 
-  async function handleDelete(id: string) {
+  async function handleDeactivate(id: string) {
     const res = await fetch(`/api/patients/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setDeleteId(null);
-      fetchPatients();
-    }
+    if (res.ok) { setDeleteId(null); fetchPatients(); }
+  }
+
+  async function handleActivate(id: string) {
+    const res = await fetch(`/api/patients/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: true }),
+    });
+    if (res.ok) { setActivateId(null); fetchPatients(); }
   }
 
   const totalPages = Math.ceil(total / pageSize);
@@ -62,20 +71,20 @@ export default function PatientsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">Patient Management</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{total} total patients registered</p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.patients.title}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{total} {t.patients.totalPatients}</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
             <span className="material-symbols-outlined text-[18px]">upload_file</span>
-            Import CSV
+            {t.patients.importCsv}
           </button>
           <Link
             href="/patients/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">person_add</span>
-            Register Patient
+            {t.patients.addPatient}
           </Link>
         </div>
       </div>
@@ -87,7 +96,7 @@ export default function PatientsPage() {
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
             <input
               className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 pl-10 pr-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-              placeholder="Search by name, MRN, phone, national ID..."
+              placeholder={t.patients.searchPlaceholder}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -97,17 +106,13 @@ export default function PatientsPage() {
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           >
-            <option value="ALL">All Patients</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
+            <option value="ALL">{t.patients.allStatuses}</option>
+            <option value="ACTIVE">{t.patients.active}</option>
+            <option value="INACTIVE">{t.patients.inactive}</option>
           </select>
           <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
-            <span className="material-symbols-outlined text-[18px]">filter_list</span>
-            More Filters
-          </button>
-          <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
             <span className="material-symbols-outlined text-[18px]">download</span>
-            Export
+            {t.patients.export}
           </button>
         </div>
       </div>
@@ -118,14 +123,14 @@ export default function PatientsPage() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Patient</th>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">MRN</th>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Contact</th>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Blood</th>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Insurance</th>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Last Visit</th>
-                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Status</th>
-                <th className="text-right text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">Actions</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.patients.patient}</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.patients.mrn}</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.patients.phone}</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.patients.bloodType}</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.patients.insurance}</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.patients.lastVisit}</th>
+                <th className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.common.status}</th>
+                <th className="text-right text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{t.common.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -134,7 +139,7 @@ export default function PatientsPage() {
                   <td colSpan={8} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-                      <p className="text-sm text-[#74777f]">Loading patients...</p>
+                      <p className="text-sm text-[#74777f]">{t.common.loading}</p>
                     </div>
                   </td>
                 </tr>
@@ -145,13 +150,10 @@ export default function PatientsPage() {
                       <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
                         <span className="material-symbols-outlined text-[#74777f] text-3xl">person_search</span>
                       </div>
-                      <p className="text-sm font-semibold text-[#1a1c1e]">No patients found</p>
-                      <p className="text-xs text-[#74777f]">
-                        {search ? "Try adjusting your search terms" : "Start by registering your first patient"}
-                      </p>
+                      <p className="text-sm font-semibold text-[#1a1c1e]">{t.patients.noPatients}</p>
                       {!search && (
                         <Link href="/patients/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
-                          Register first patient →
+                          {t.patients.addFirst}
                         </Link>
                       )}
                     </div>
@@ -175,7 +177,7 @@ export default function PatientsPage() {
                             {patient.firstName} {patient.lastName}
                           </p>
                           <p className="text-xs text-[#74777f]">
-                            {patient.gender === "MALE" ? "M" : "F"} · {patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}
+                            {patient.gender === "MALE" ? t.patients.male : patient.gender === "FEMALE" ? t.patients.female : t.patients.other} · {patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}
                           </p>
                         </div>
                       </div>
@@ -199,11 +201,11 @@ export default function PatientsPage() {
                       )}
                     </td>
                     <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                      <p className="text-sm text-[#1a1c1e]">{patient.insuranceProvider ?? "Self-Pay"}</p>
+                      <p className="text-sm text-[#1a1c1e]">{patient.insuranceProvider ?? t.patients.noInsurance}</p>
                     </td>
                     <td className="px-5 py-4 border-b border-[#e3e2e6]">
                       <p className="text-sm text-[#43474e]">
-                        {patient.lastVisit ? formatDate(patient.lastVisit) : "—"}
+                        {patient.lastVisit ? formatDate(patient.lastVisit) : t.patients.neverVisited}
                       </p>
                     </td>
                     <td className="px-5 py-4 border-b border-[#e3e2e6]">
@@ -214,7 +216,7 @@ export default function PatientsPage() {
                             : "bg-[#e3e2e6] text-[#74777f]"
                         }`}
                       >
-                        {patient.isActive ? "Active" : "Inactive"}
+                        {patient.isActive ? t.patients.active : t.patients.inactive}
                       </span>
                     </td>
                     <td className="px-5 py-4 border-b border-[#e3e2e6]">
@@ -222,31 +224,41 @@ export default function PatientsPage() {
                         <Link
                           href={`/patients/${patient.id}`}
                           className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
-                          title="View Profile"
+                          title={t.patients.viewProfile}
                         >
                           <span className="material-symbols-outlined text-[18px]">visibility</span>
                         </Link>
                         <Link
                           href={`/emr/${patient.id}`}
                           className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
-                          title="View EMR"
+                          title={t.patients.viewEmr}
                         >
                           <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
                         </Link>
                         <Link
                           href={`/appointments/new?patient=${patient.id}`}
                           className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
-                          title="Book Appointment"
+                          title={t.patients.bookAppt}
                         >
                           <span className="material-symbols-outlined text-[18px]">event</span>
                         </Link>
-                        <button
-                          onClick={() => setDeleteId(patient.id)}
-                          className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors text-[#74777f] hover:text-[#ba1a1a]"
-                          title="Deactivate"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">person_off</span>
-                        </button>
+                        {patient.isActive ? (
+                          <button
+                            onClick={() => setDeleteId(patient.id)}
+                            className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors text-[#74777f] hover:text-[#ba1a1a]"
+                            title={t.patients.deactivate}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">person_off</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setActivateId(patient.id)}
+                            className="p-1.5 hover:bg-[#ccfbf1] rounded-lg transition-colors text-[#74777f] hover:text-[#0d9488]"
+                            title={t.patients.activate}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -260,7 +272,7 @@ export default function PatientsPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
             <p className="text-xs text-[#74777f]">
-              Showing {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total} patients
+              {t.common.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} {t.common.of} {total} {t.patients.totalPatients}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -298,29 +310,58 @@ export default function PatientsPage() {
         )}
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Activate confirmation modal */}
+      {activateId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] p-6 w-full max-w-sm mx-4">
+            <div className="w-12 h-12 bg-[#ccfbf1] rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[#0d9488] text-2xl">how_to_reg</span>
+            </div>
+            <h3 className="text-lg font-bold text-[#1a1c1e] mb-2">{t.patients.activateTitle}</h3>
+            <p className="text-sm text-[#74777f] mb-6">
+              {t.patients.activateDesc}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setActivateId(null)}
+                className="flex-1 border border-[#c4c6cf] bg-white text-[#1a1c1e] py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                onClick={() => handleActivate(activateId)}
+                className="flex-1 bg-[#0d9488] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                {t.patients.activateBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate confirmation modal */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] p-6 w-full max-w-sm mx-4">
             <div className="w-12 h-12 bg-[#ffdad6] rounded-2xl flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-[#ba1a1a] text-2xl">person_off</span>
             </div>
-            <h3 className="text-lg font-bold text-[#1a1c1e] mb-2">Deactivate Patient?</h3>
+            <h3 className="text-lg font-bold text-[#1a1c1e] mb-2">{t.patients.deactivateTitle}</h3>
             <p className="text-sm text-[#74777f] mb-6">
-              The patient record will be deactivated. All history is preserved and the record can be reactivated at any time.
+              {t.patients.deactivateDesc}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
                 className="flex-1 border border-[#c4c6cf] bg-white text-[#1a1c1e] py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
               >
-                Cancel
+                {t.common.cancel}
               </button>
               <button
-                onClick={() => handleDelete(deleteId)}
+                onClick={() => handleDeactivate(deleteId)}
                 className="flex-1 bg-[#ba1a1a] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
               >
-                Deactivate
+                {t.patients.deactivateBtn}
               </button>
             </div>
           </div>

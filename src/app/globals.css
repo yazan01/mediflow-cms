@@ -23,6 +23,13 @@
     color: #1a1c1e;
     -webkit-font-smoothing: antialiased;
   }
+  [lang="ar"] body,
+  [lang="ar"] input,
+  [lang="ar"] textarea,
+  [lang="ar"] select,
+  [lang="ar"] button {
+    font-family: 'Cairo', sans-serif;
+  }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #c4c6cf; border-radius: 10px; }

@@ -68,6 +68,10 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_cu
         "phone": patient.phone,
         "email": patient.email,
         "insuranceProvider": patient.insuranceProvider,
+        "isActive": bool(patient.isActive),
+        "photo": patient.photo,
+        "nationality": patient.nationality,
+        "address": patient.address,
     }
 
     consultations_data = [

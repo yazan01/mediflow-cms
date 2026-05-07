@@ -160,6 +160,55 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
     return patient_to_dict(patient)
 
 
+@router.get("/{patient_id}")
+def get_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    p = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    base = patient_to_dict(p)
+
+    appointments = []
+    for a in sorted(p.appointments, key=lambda x: x.scheduledAt, reverse=True):
+        doc_name = None
+        if a.doctor and a.doctor.user:
+            doc_name = a.doctor.user.name
+        appointments.append({
+            "id": a.id,
+            "scheduledAt": a.scheduledAt.isoformat() if a.scheduledAt else None,
+            "status": a.status,
+            "type": a.type,
+            "reason": a.reason,
+            "doctor": {"user": {"name": doc_name}} if doc_name else None,
+        })
+
+    consultations = []
+    for c in sorted(p.consultations, key=lambda x: x.createdAt, reverse=True):
+        consultations.append({
+            "id": c.id,
+            "createdAt": c.createdAt.isoformat() if c.createdAt else None,
+            "chiefComplaint": c.chiefComplaint,
+            "subjective": c.subjective,
+            "assessment": c.assessment,
+            "plan": c.plan,
+            "isLocked": c.isLocked,
+        })
+
+    invoices = []
+    for inv in sorted(p.invoices, key=lambda x: x.createdAt, reverse=True):
+        invoices.append({
+            "id": inv.id,
+            "invoiceNo": inv.invoiceNo,
+            "createdAt": inv.createdAt.isoformat() if inv.createdAt else None,
+            "totalAmount": float(inv.totalAmount),
+            "paidAmount": float(inv.paidAmount),
+            "balance": float(inv.balance),
+            "status": inv.status,
+        })
+
+    return {**base, "appointments": appointments, "consultations": consultations, "invoices": invoices}
+
+
 @router.patch("/{patient_id}")
 def update_patient(
     patient_id: str,

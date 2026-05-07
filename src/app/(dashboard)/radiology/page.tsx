@@ -2,15 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/lib/utils";
-
-const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  PENDING:          { label: "Pending",          bg: "bg-[#e9e7eb]",   text: "text-[#43474e]" },
-  SCHEDULED:        { label: "Scheduled",        bg: "bg-[#d3e4ff]",   text: "text-[#00477f]" },
-  IN_PROGRESS:      { label: "In Progress",      bg: "bg-[#ffddba]",   text: "text-[#633f0f]" },
-  IMAGES_ACQUIRED:  { label: "Images Acquired",  bg: "bg-[#ccfbf1]",   text: "text-[#0d9488]" },
-  REPORT_READY:     { label: "Report Ready",     bg: "bg-[#d6e3ff]",   text: "text-[#002045]" },
-  CANCELLED:        { label: "Cancelled",        bg: "bg-[#ffdad6]",   text: "text-[#ba1a1a]" },
-};
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
   XRAY:  { bg: "bg-[#f4f3f7]",   text: "text-[#43474e]" },
@@ -38,6 +30,17 @@ interface RadiologyOrder {
 }
 
 export default function RadiologyPage() {
+  const { t } = useLanguage();
+
+  const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
+    PENDING:          { label: t.radiology.pendingStatus,    bg: "bg-[#e9e7eb]",   text: "text-[#43474e]" },
+    SCHEDULED:        { label: t.radiology.scheduledStatus,  bg: "bg-[#d3e4ff]",   text: "text-[#00477f]" },
+    IN_PROGRESS:      { label: t.radiology.inProgressStatus, bg: "bg-[#ffddba]",   text: "text-[#633f0f]" },
+    IMAGES_ACQUIRED:  { label: t.radiology.imagesAcquired,   bg: "bg-[#ccfbf1]",   text: "text-[#0d9488]" },
+    REPORT_READY:     { label: t.radiology.reportReady,      bg: "bg-[#d6e3ff]",   text: "text-[#002045]" },
+    CANCELLED:        { label: t.radiology.cancelledStatus,  bg: "bg-[#ffdad6]",   text: "text-[#ba1a1a]" },
+  };
+
   const [orders, setOrders] = useState<RadiologyOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,23 +80,23 @@ export default function RadiologyPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">Radiology</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">Imaging orders, scheduling, and report management</p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.radiology.title}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{t.radiology.subtitle}</p>
         </div>
         <button className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
           <span className="material-symbols-outlined text-[18px]">add</span>
-          New Imaging Order
+          {t.radiology.newOrder}
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
-          { label: "Total Orders",   value: stats.total,       icon: "image_search",  color: "text-[#1960a3]", bg: "bg-[#d3e4ff]" },
-          { label: "Pending",        value: stats.pending,     icon: "pending",        color: "text-[#74777f]", bg: "bg-[#f4f3f7]" },
-          { label: "In Progress",    value: stats.inProgress,  icon: "hourglass",      color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
-          { label: "Reports Ready",  value: stats.reportReady, icon: "description",    color: "text-[#0d9488]", bg: "bg-[#ccfbf1]" },
-          { label: "Urgent / STAT",  value: stats.urgent,      icon: "emergency",      color: "text-[#ba1a1a]", bg: "bg-[#ffdad6]" },
+          { label: t.radiology.totalOrders,  value: stats.total,       icon: "image_search",  color: "text-[#1960a3]", bg: "bg-[#d3e4ff]" },
+          { label: t.radiology.pending,       value: stats.pending,     icon: "pending",        color: "text-[#74777f]", bg: "bg-[#f4f3f7]" },
+          { label: t.radiology.inProgress,    value: stats.inProgress,  icon: "hourglass",      color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
+          { label: t.radiology.reportsReady,  value: stats.reportReady, icon: "description",    color: "text-[#0d9488]", bg: "bg-[#ccfbf1]" },
+          { label: t.radiology.urgentStat,    value: stats.urgent,      icon: "emergency",      color: "text-[#ba1a1a]", bg: "bg-[#ffdad6]" },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex items-center gap-3 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             <div className={`p-2 ${s.bg} rounded-xl`}><span className={`material-symbols-outlined ${s.color} text-[20px]`}>{s.icon}</span></div>
@@ -111,17 +114,17 @@ export default function RadiologyPage() {
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
           <input
             className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            placeholder="Search patient or study..."
+            placeholder={t.radiology.searchPlaceholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
         <select value={modalityFilter} onChange={(e) => { setModalityFilter(e.target.value); setPage(1); }} className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
-          <option value="ALL">All Modalities</option>
+          <option value="ALL">{t.radiology.allModalities}</option>
           {["XRAY", "CT", "MRI", "US", "ECHO", "DEXA", "MAMMO"].map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
-          <option value="ALL">All Statuses</option>
+          <option value="ALL">{t.radiology.allStatuses}</option>
           {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
       </div>
@@ -132,7 +135,7 @@ export default function RadiologyPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {["Order ID", "Patient", "Modality", "Study / Body Part", "Priority", "Ordered By", "Scheduled", "Status", "Actions"].map((h) => (
+                {[t.radiology.orderId, t.radiology.patient, t.radiology.modality, t.radiology.study, t.radiology.priority, t.radiology.orderedBy, t.radiology.scheduled, t.radiology.status, t.radiology.actions].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -142,7 +145,7 @@ export default function RadiologyPage() {
                 <tr><td colSpan={9} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-                    <p className="text-sm text-[#74777f]">Loading radiology orders...</p>
+                    <p className="text-sm text-[#74777f]">{t.radiology.loading}</p>
                   </div>
                 </td></tr>
               ) : orders.length === 0 ? (
@@ -151,8 +154,8 @@ export default function RadiologyPage() {
                     <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
                       <span className="material-symbols-outlined text-[#74777f] text-2xl">image_search</span>
                     </div>
-                    <p className="text-sm font-semibold text-[#1a1c1e]">No radiology orders found</p>
-                    <p className="text-xs text-[#74777f]">{search ? "Try adjusting your search" : "Imaging orders from consultations will appear here"}</p>
+                    <p className="text-sm font-semibold text-[#1a1c1e]">{t.radiology.noOrders}</p>
+                    <p className="text-xs text-[#74777f]">{search ? t.radiology.trySearch : t.radiology.noOrdersDesc}</p>
                   </div>
                 </td></tr>
               ) : (
@@ -193,10 +196,10 @@ export default function RadiologyPage() {
                       </td>
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">
                         <div className="flex items-center gap-1">
-                          <button title="View Report" className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">description</span></button>
-                          <button title="Schedule" className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">calendar_month</span></button>
-                          <button title="Print" className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">print</span></button>
-                          <button title="Cancel" className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"><span className="material-symbols-outlined text-[18px]">cancel</span></button>
+                          <button title={t.radiology.viewReport} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">description</span></button>
+                          <button title={t.radiology.schedule} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">calendar_month</span></button>
+                          <button title={t.radiology.printAction} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">print</span></button>
+                          <button title={t.radiology.cancelAction} className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"><span className="material-symbols-outlined text-[18px]">cancel</span></button>
                         </div>
                       </td>
                     </tr>
@@ -208,7 +211,7 @@ export default function RadiologyPage() {
         </div>
         {Math.ceil(total / pageSize) > 1 && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
-            <p className="text-xs text-[#74777f]">Showing {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total}</p>
+            <p className="text-xs text-[#74777f]">{t.radiology.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total}</p>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
               <button onClick={() => setPage((p) => Math.min(Math.ceil(total / pageSize), p + 1))} disabled={page === Math.ceil(total / pageSize)} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>

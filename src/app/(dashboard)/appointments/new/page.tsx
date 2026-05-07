@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Doctor {
   id: string;
@@ -18,6 +19,7 @@ interface Patient {
 
 export default function NewAppointmentPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -56,7 +58,7 @@ export default function NewAppointmentPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.patientId || !form.doctorId || !form.scheduledAt) {
-      setError("Patient, doctor, and date/time are required.");
+      setError(t.appointments.requiredFields);
       return;
     }
     setSaving(true);
@@ -72,10 +74,10 @@ export default function NewAppointmentPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed to create appointment"); return; }
+      if (!res.ok) { setError(data.error ?? t.appointments.createFailed); return; }
       router.push("/appointments");
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.appointments.networkError);
     } finally {
       setSaving(false);
     }
@@ -84,12 +86,12 @@ export default function NewAppointmentPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <button onClick={() => router.back()} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+        <button onClick={() => router.back()} aria-label={t.common.back} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
           <span className="material-symbols-outlined text-[#74777f]">arrow_back</span>
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">New Appointment</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">Schedule an appointment for a patient</p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.appointments.newAppointment}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{t.appointments.scheduleTitle}</p>
         </div>
       </div>
 
@@ -104,17 +106,17 @@ export default function NewAppointmentPage() {
 
         {/* Patient selection */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Patient</label>
+          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.patientLabel}</label>
           <input
             className="input-field mb-2"
-            placeholder="Search by name or MRN..."
+            placeholder={t.appointments.patientSearch}
             value={patientSearch}
             onChange={(e) => setPatientSearch(e.target.value)}
           />
           {patientSearch && (
             <div className="border border-[#e3e2e6] rounded-xl overflow-hidden max-h-48 overflow-y-auto">
               {filteredPatients.length === 0 ? (
-                <p className="text-sm text-[#74777f] p-3">No patients found</p>
+                <p className="text-sm text-[#74777f] p-3">{t.appointments.noPatients}</p>
               ) : (
                 filteredPatients.slice(0, 8).map((p) => (
                   <button
@@ -134,14 +136,14 @@ export default function NewAppointmentPage() {
 
         {/* Doctor */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Doctor</label>
+          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.doctorLabel}</label>
           <select
             className="input-field"
             value={form.doctorId}
             onChange={(e) => setForm((f) => ({ ...f, doctorId: e.target.value }))}
             required
           >
-            <option value="">Select a doctor</option>
+            <option value="">{t.appointments.selectDoctor}</option>
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>{d.user.name} — {d.specialization}</option>
             ))}
@@ -151,7 +153,7 @@ export default function NewAppointmentPage() {
         {/* Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Start Date & Time</label>
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.startTime}</label>
             <input
               type="datetime-local"
               className="input-field"
@@ -161,7 +163,7 @@ export default function NewAppointmentPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">End Time (optional)</label>
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.endTime}</label>
             <input
               type="datetime-local"
               className="input-field"
@@ -173,29 +175,29 @@ export default function NewAppointmentPage() {
 
         {/* Type */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Appointment Type</label>
+          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.apptType}</label>
           <select
             className="input-field"
             value={form.type}
             onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
           >
-            <option value="CONSULTATION">Consultation</option>
-            <option value="FOLLOW_UP">Follow-up</option>
-            <option value="PROCEDURE">Procedure</option>
-            <option value="LAB_VISIT">Lab Visit</option>
-            <option value="IMAGING">Imaging</option>
-            <option value="EMERGENCY">Emergency</option>
-            <option value="DENTAL">Dental</option>
-            <option value="CHECKUP">Check-up</option>
+            <option value="CONSULTATION">{t.appointments.consultation}</option>
+            <option value="FOLLOW_UP">{t.appointments.followUp}</option>
+            <option value="PROCEDURE">{t.appointments.procedure}</option>
+            <option value="LAB_VISIT">{t.appointments.labVisit}</option>
+            <option value="IMAGING">{t.appointments.imaging}</option>
+            <option value="EMERGENCY">{t.appointments.emergency}</option>
+            <option value="DENTAL">{t.appointments.dental}</option>
+            <option value="CHECKUP">{t.appointments.checkUp}</option>
           </select>
         </div>
 
         {/* Reason */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Chief Complaint / Reason</label>
+          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.chiefComplaint}</label>
           <input
             className="input-field"
-            placeholder="Reason for visit..."
+            placeholder={t.appointments.reasonPlaceholder}
             value={form.reason}
             onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
           />
@@ -203,11 +205,11 @@ export default function NewAppointmentPage() {
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Additional Notes</label>
+          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.additionalNotes}</label>
           <textarea
             className="input-field resize-none"
             rows={3}
-            placeholder="Any relevant notes..."
+            placeholder={t.appointments.notesPlaceholder}
             value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           />
@@ -223,21 +225,21 @@ export default function NewAppointmentPage() {
             className="w-4 h-4 accent-[#002045]"
           />
           <label htmlFor="urgent" className="text-sm font-semibold text-[#1a1c1e] cursor-pointer">
-            Mark as Urgent
+            {t.appointments.markUrgent}
           </label>
-          <p className="text-xs text-[#74777f]">Urgent appointments are highlighted in the schedule view</p>
+          <p className="text-xs text-[#74777f]">{t.appointments.urgentNote}</p>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-2 border-t border-[#e3e2e6]">
           <button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-[#c4c6cf] text-sm font-semibold text-[#43474e] hover:bg-[#f4f3f7] transition-colors">
-            Cancel
+            {t.common.cancel}
           </button>
           <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[#002045] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm">
             {saving ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>Saving...</>
+              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{t.appointments.saving}</>
             ) : (
-              <><span className="material-symbols-outlined text-[18px]">calendar_add_on</span>Book Appointment</>
+              <><span className="material-symbols-outlined text-[18px]">calendar_add_on</span>{t.appointments.bookBtn}</>
             )}
           </button>
         </div>

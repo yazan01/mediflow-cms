@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getInitials } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface TopBarProps {
   user?: { name: string; role: string; photo?: string };
@@ -15,6 +16,15 @@ export default function TopBar({ user }: TopBarProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { t, lang, setLang } = useLanguage();
+
+  const notifications = [
+    { icon: "warning",   iconColor: "text-[#d97706]", title: t.topbar.lowStock,     msg: t.topbar.lowStockMsg,     time: "5 min ago",   unread: true },
+    { icon: "emergency", iconColor: "text-[#ba1a1a]", title: t.topbar.urgentAppt,   msg: t.topbar.urgentApptMsg,   time: "12 min ago",  unread: true },
+    { icon: "biotech",   iconColor: "text-[#1960a3]", title: t.topbar.labResults,   msg: t.topbar.labResultsMsg,   time: "1 hour ago",  unread: false },
+    { icon: "payments",  iconColor: "text-[#ba1a1a]", title: t.topbar.overdueInvoice, msg: t.topbar.overdueInvoiceMsg, time: "2 hours ago", unread: false },
+  ];
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   const displayName = user?.name ?? "User";
   const displayRole = user?.role ?? "Staff";
@@ -33,26 +43,40 @@ export default function TopBar({ user }: TopBarProps) {
     router.push("/login");
   }
 
+  function toggleLang() {
+    setLang(lang === "en" ? "ar" : "en");
+  }
+
   return (
     <header className="flex justify-between items-center w-full h-16 px-6 sticky top-0 z-40 bg-[#faf9fd] border-b border-[#e3e2e6]">
       <div className="flex items-center gap-4 flex-1">
         <div className="relative w-full max-w-md">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
           <input
-            className="w-full bg-[#f4f3f7] border-none rounded-full py-2 pl-10 pr-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            placeholder="Search patients, records, appointments..."
+            className="w-full bg-[#f4f3f7] border-none rounded-full py-2 ps-10 pe-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            placeholder={t.topbar.search}
             type="text"
           />
         </div>
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Language toggle */}
+        <button
+          onClick={toggleLang}
+          className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-[#43474e] hover:bg-[#f4f3f7] transition-colors border border-[#e3e2e6]"
+          title={t.topbar.language}
+        >
+          <span className="material-symbols-outlined text-[16px] text-[#74777f]">language</span>
+          {lang === "en" ? "العربية" : "English"}
+        </button>
+
         <Link
           href="/appointments/new"
           className="hidden md:flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
-          New Appointment
+          {t.topbar.newAppointment}
         </Link>
 
         {/* Notifications */}
@@ -60,26 +84,25 @@ export default function TopBar({ user }: TopBarProps) {
           <button
             onClick={() => { setNotifOpen((v) => !v); setUserMenuOpen(false); }}
             className="p-2 hover:bg-[#f4f3f7] rounded-full transition-colors relative"
-            aria-label="Notifications"
+            aria-label={t.topbar.notifications}
           >
             <span className="material-symbols-outlined text-[#43474e]">notifications</span>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ba1a1a] rounded-full"></span>
+            {unreadCount > 0 && <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-[#ba1a1a] rounded-full"></span>}
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] z-50">
+            <div className="absolute end-0 top-full mt-2 w-80 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] z-50">
               <div className="p-4 border-b border-[#e3e2e6] flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-[#1a1c1e]">Notifications</h3>
-                <button className="text-xs text-[#1960a3] hover:underline">Mark all read</button>
+                <h3 className="font-semibold text-sm text-[#1a1c1e]">{t.topbar.notifications}</h3>
+                <button className="text-xs text-[#1960a3] hover:underline">{t.topbar.markAllRead}</button>
               </div>
               <div className="max-h-72 overflow-y-auto divide-y divide-[#e3e2e6]">
-                <NotifItem icon="warning" iconColor="text-[#d97706]" title="Low Stock Alert" msg="Salbutamol Inhaler below minimum threshold" time="5 min ago" unread />
-                <NotifItem icon="emergency" iconColor="text-[#ba1a1a]" title="Urgent Appointment" msg="Patient marked as Urgent — Room 3" time="12 min ago" unread />
-                <NotifItem icon="biotech" iconColor="text-[#1960a3]" title="Lab Results Ready" msg="BMP results ready for review" time="1 hour ago" unread={false} />
-                <NotifItem icon="payments" iconColor="text-[#ba1a1a]" title="Overdue Invoice" msg="Invoice #INV-2026-005 is 3 days overdue" time="2 hours ago" unread={false} />
+                {notifications.map((n, i) => (
+                  <NotifItem key={i} icon={n.icon} iconColor={n.iconColor} title={n.title} msg={n.msg} time={n.time} unread={n.unread} />
+                ))}
               </div>
               <div className="p-3 text-center border-t border-[#e3e2e6]">
-                <button className="text-xs text-[#1960a3] hover:underline font-semibold">View all notifications</button>
+                <button className="text-xs text-[#1960a3] hover:underline font-semibold">{t.topbar.viewAll}</button>
               </div>
             </div>
           )}
@@ -93,7 +116,7 @@ export default function TopBar({ user }: TopBarProps) {
             onClick={() => { setUserMenuOpen((v) => !v); setNotifOpen(false); }}
             className="flex items-center gap-2 hover:bg-[#f4f3f7] rounded-lg px-2 py-1.5 transition-colors"
           >
-            <div className="text-right hidden sm:block">
+            <div className="text-end hidden sm:block">
               <p className="text-xs font-semibold text-[#1a1c1e]">{displayName}</p>
               <p className="text-[11px] text-[#74777f]">{displayRole}</p>
             </div>
@@ -109,25 +132,33 @@ export default function TopBar({ user }: TopBarProps) {
           </button>
 
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] z-50 py-1">
+            <div className="absolute end-0 top-full mt-2 w-52 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] z-50 py-1">
               <div className="px-4 py-3 border-b border-[#e3e2e6]">
                 <p className="text-sm font-semibold text-[#1a1c1e]">{displayName}</p>
                 <p className="text-xs text-[#74777f]">{displayRole}</p>
               </div>
+              {/* Language toggle inside menu for mobile */}
+              <button
+                onClick={toggleLang}
+                className="md:hidden w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#43474e] hover:bg-[#f4f3f7] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px] text-[#74777f]">language</span>
+                {lang === "en" ? "العربية" : "English"}
+              </button>
               <Link
                 href="/settings"
                 onClick={() => setUserMenuOpen(false)}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#43474e] hover:bg-[#f4f3f7] transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px] text-[#74777f]">settings</span>
-                Settings
+                {t.topbar.settings}
               </Link>
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#ba1a1a] hover:bg-[#ffdad6]/40 transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">logout</span>
-                Sign Out
+                {t.topbar.signOut}
               </button>
             </div>
           )}

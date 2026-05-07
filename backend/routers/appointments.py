@@ -148,6 +148,29 @@ def create_appointment(
     return appt_to_dict(appointment)
 
 
+@router.get("/{appointment_id}")
+def get_appointment(appointment_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    appt = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    data = appt_to_dict(appt)
+    # include consultation id if exists
+    if appt.consultation:
+        data["consultationId"] = appt.consultation.id
+        data["chiefComplaint"] = appt.consultation.chiefComplaint
+        data["assessment"] = appt.consultation.assessment
+    else:
+        data["consultationId"] = None
+    # include patient details
+    if appt.patient:
+        data["patientPhone"] = appt.patient.phone
+        data["patientDob"] = appt.patient.dateOfBirth.isoformat() if appt.patient.dateOfBirth else None
+        data["patientBloodType"] = appt.patient.bloodType
+        data["patientAllergies"] = appt.patient.allergies or []
+        data["patientChronicConditions"] = appt.patient.chronicConditions or []
+    return data
+
+
 @router.patch("/{appointment_id}")
 def update_appointment(
     appointment_id: str,

@@ -1,30 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Medication, StockStatus } from "@/types";
-
-const STOCK_STYLES: Record<StockStatus, { label: string; bg: string; text: string; rowBg: string }> = {
-  IN_STOCK:     { label: "In Stock",     bg: "bg-[#ccfbf1]",  text: "text-[#0d9488]", rowBg: "" },
-  LOW_STOCK:    { label: "Low Stock",    bg: "bg-[#ffddba]",  text: "text-[#633f0f]", rowBg: "bg-[#fffbeb]" },
-  CRITICAL:     { label: "Critical",    bg: "bg-[#ffdad6]",  text: "text-[#ba1a1a]", rowBg: "bg-[#fff8f7]" },
-  OUT_OF_STOCK: { label: "Out of Stock", bg: "bg-[#3b1218]",  text: "text-[#ffdad6]", rowBg: "bg-[#fff0f0]" },
-};
-
-const CATEGORIES = [
-  "ALL",
-  "Antibiotics",
-  "Analgesics",
-  "Antihypertensives",
-  "Antidiabetics",
-  "Cardiovascular",
-  "Respiratory",
-  "Gastrointestinal",
-  "Vitamins & Supplements",
-  "Dermatology",
-  "Other",
-] as const;
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type PharmacyStats = {
   totalSKUs: number;
@@ -36,6 +16,29 @@ type PharmacyStats = {
 type StockFilter = "ALL" | StockStatus;
 
 export default function PharmacyPage() {
+  const { t } = useLanguage();
+
+  const STOCK_STYLES: Record<StockStatus, { label: string; bg: string; text: string; rowBg: string }> = {
+    IN_STOCK:     { label: t.pharmacy.inStock,         bg: "bg-[#ccfbf1]",  text: "text-[#0d9488]", rowBg: "" },
+    LOW_STOCK:    { label: t.pharmacy.lowStockStatus,  bg: "bg-[#ffddba]",  text: "text-[#633f0f]", rowBg: "bg-[#fffbeb]" },
+    CRITICAL:     { label: t.pharmacy.criticalStock,   bg: "bg-[#ffdad6]",  text: "text-[#ba1a1a]", rowBg: "bg-[#fff8f7]" },
+    OUT_OF_STOCK: { label: t.pharmacy.outOfStockStatus, bg: "bg-[#3b1218]", text: "text-[#ffdad6]", rowBg: "bg-[#fff0f0]" },
+  };
+
+  const CATEGORIES = [
+    "ALL",
+    t.pharmacy.antibiotics,
+    t.pharmacy.analgesics,
+    t.pharmacy.antihypertensives,
+    t.pharmacy.antidiabetics,
+    t.pharmacy.cardiovascular,
+    t.pharmacy.respiratory,
+    t.pharmacy.gastrointestinal,
+    t.pharmacy.vitamins,
+    t.pharmacy.dermatology,
+    t.pharmacy.other,
+  ] as const;
+
   const [medications, setMedications] = useState<Medication[]>([]);
   const [stats, setStats]             = useState<PharmacyStats | null>(null);
   const [total, setTotal]             = useState(0);
@@ -132,8 +135,8 @@ export default function PharmacyPage() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">Pharmacy & Inventory</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{total} medication{total !== 1 ? "s" : ""} in inventory</p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.pharmacy.title}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{total} {t.pharmacy.medications}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -141,14 +144,14 @@ export default function PharmacyPage() {
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">local_shipping</span>
-            Record Purchase
+            {t.pharmacy.recordPurchase}
           </Link>
           <Link
             href="/pharmacy/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Add Medication
+            {t.pharmacy.addMedication}
           </Link>
         </div>
       </div>
@@ -158,9 +161,9 @@ export default function PharmacyPage() {
         <div className="flex items-start gap-3 p-4 bg-[#ffddba] border border-[#d97706]/30 rounded-xl">
           <span className="material-symbols-outlined text-[#d97706] text-[22px] flex-shrink-0 mt-0.5">warning</span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#633f0f]">Expiry Alert</p>
+            <p className="text-sm font-bold text-[#633f0f]">{t.pharmacy.expiryAlert}</p>
             <p className="text-xs text-[#7c4a00] mt-0.5">
-              {expiryAlert.length} medication{expiryAlert.length > 1 ? "s" : ""} expiring within 90 days:&nbsp;
+              {expiryAlert.length} {t.pharmacy.expiryAlertDesc}:&nbsp;
               {expiryAlert.slice(0, 4).map((m) => m.brandName ?? m.genericName).join(", ")}
               {expiryAlert.length > 4 && ` and ${expiryAlert.length - 4} more`}.
             </p>
@@ -169,7 +172,7 @@ export default function PharmacyPage() {
             onClick={() => setStatusFilter("ALL")}
             className="text-xs text-[#633f0f] font-semibold underline hover:no-underline whitespace-nowrap"
           >
-            View All
+            {t.pharmacy.viewAll}
           </button>
         </div>
       )}
@@ -177,14 +180,14 @@ export default function PharmacyPage() {
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <PharmStatCard
-          label="Total SKUs"
+          label={t.pharmacy.totalSKUs}
           value={loadingStats ? null : (stats?.totalSKUs ?? 0).toString()}
           icon="inventory_2"
           iconBg="bg-[#eff6ff]"
           iconColor="text-[#1960a3]"
         />
         <PharmStatCard
-          label="Low Stock Items"
+          label={t.pharmacy.lowStock}
           value={loadingStats ? null : (stats?.lowStockItems ?? 0).toString()}
           icon="trending_down"
           iconBg="bg-[#ffddba]"
@@ -192,7 +195,7 @@ export default function PharmacyPage() {
           onClick={() => setStatusFilter("LOW_STOCK")}
         />
         <PharmStatCard
-          label="Out of Stock"
+          label={t.pharmacy.outOfStock}
           value={loadingStats ? null : (stats?.outOfStock ?? 0).toString()}
           icon="remove_shopping_cart"
           iconBg="bg-[#ffdad6]"
@@ -200,7 +203,7 @@ export default function PharmacyPage() {
           onClick={() => setStatusFilter("OUT_OF_STOCK")}
         />
         <PharmStatCard
-          label="Expiring Soon"
+          label={t.pharmacy.expiringSoon}
           value={loadingStats ? null : (stats?.expiringSoon ?? 0).toString()}
           icon="event_busy"
           iconBg="bg-[#ffddba]"
@@ -216,7 +219,7 @@ export default function PharmacyPage() {
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
             <input
               className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 pl-10 pr-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-              placeholder="Search by name, generic name, or barcode..."
+              placeholder={t.pharmacy.searchPlaceholder}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -229,7 +232,19 @@ export default function PharmacyPage() {
             className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]"
           >
             {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c === "ALL" ? "All Categories" : c}</option>
+              <option key={c} value={c === t.pharmacy.antibiotics ? "Antibiotics"
+                : c === t.pharmacy.analgesics ? "Analgesics"
+                : c === t.pharmacy.antihypertensives ? "Antihypertensives"
+                : c === t.pharmacy.antidiabetics ? "Antidiabetics"
+                : c === t.pharmacy.cardiovascular ? "Cardiovascular"
+                : c === t.pharmacy.respiratory ? "Respiratory"
+                : c === t.pharmacy.gastrointestinal ? "Gastrointestinal"
+                : c === t.pharmacy.vitamins ? "Vitamins & Supplements"
+                : c === t.pharmacy.dermatology ? "Dermatology"
+                : c === t.pharmacy.other ? "Other"
+                : c}>
+                {c === "ALL" ? t.pharmacy.allCategories : c}
+              </option>
             ))}
           </select>
 
@@ -239,7 +254,7 @@ export default function PharmacyPage() {
             onChange={(e) => { setStatusFilter(e.target.value as StockFilter); setPage(1); }}
             className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]"
           >
-            <option value="ALL">All Statuses</option>
+            <option value="ALL">{t.pharmacy.allStatuses}</option>
             {(Object.keys(STOCK_STYLES) as StockStatus[]).map((s) => (
               <option key={s} value={s}>{STOCK_STYLES[s].label}</option>
             ))}
@@ -251,13 +266,13 @@ export default function PharmacyPage() {
               className="flex items-center gap-1.5 border border-[#c4c6cf] bg-white px-3 py-2.5 rounded-lg text-sm text-[#74777f] hover:bg-[#f4f3f7] transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">close</span>
-              Clear
+              {t.pharmacy.clear}
             </button>
           )}
 
           <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
             <span className="material-symbols-outlined text-[18px]">download</span>
-            Export
+            {t.pharmacy.export}
           </button>
         </div>
       </div>
@@ -269,18 +284,18 @@ export default function PharmacyPage() {
             <thead>
               <tr>
                 {[
-                  "Medication",
-                  "Generic Name",
-                  "Category",
-                  "Unit",
-                  "Stock Qty",
-                  "Min Stock",
-                  "Reorder At",
-                  "Unit Price",
-                  "Expiry",
-                  "Status",
-                  "Barcode",
-                  "Actions",
+                  t.pharmacy.medication,
+                  t.pharmacy.genericName,
+                  t.pharmacy.category,
+                  t.pharmacy.unit,
+                  t.pharmacy.stockQty,
+                  t.pharmacy.minStock,
+                  t.pharmacy.reorderAt,
+                  t.pharmacy.unitPrice,
+                  t.pharmacy.expiry,
+                  t.common.status,
+                  t.pharmacy.barcode,
+                  t.common.actions,
                 ].map((h, i) => (
                   <th
                     key={h}
@@ -299,7 +314,7 @@ export default function PharmacyPage() {
                   <td colSpan={12} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-                      <p className="text-sm text-[#74777f]">Loading inventory...</p>
+                      <p className="text-sm text-[#74777f]">{t.pharmacy.loading}</p>
                     </div>
                   </td>
                 </tr>
@@ -310,15 +325,15 @@ export default function PharmacyPage() {
                       <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
                         <span className="material-symbols-outlined text-[#74777f] text-3xl">medication</span>
                       </div>
-                      <p className="text-sm font-semibold text-[#1a1c1e]">No medications found</p>
+                      <p className="text-sm font-semibold text-[#1a1c1e]">{t.pharmacy.noMedications}</p>
                       <p className="text-xs text-[#74777f]">
                         {search || categoryFilter !== "ALL" || statusFilter !== "ALL"
-                          ? "Try adjusting your filters"
-                          : "Add your first medication to get started"}
+                          ? t.common.tryAgain
+                          : t.pharmacy.addFirst}
                       </p>
                       {!search && categoryFilter === "ALL" && statusFilter === "ALL" && (
                         <Link href="/pharmacy/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
-                          Add first medication →
+                          {t.pharmacy.addFirstBtn}
                         </Link>
                       )}
                     </div>
@@ -348,7 +363,7 @@ export default function PharmacyPage() {
                           {(med.isControlled) && (
                             <span
                               className="text-[10px] font-bold text-[#ba1a1a] bg-[#ffdad6] px-1.5 py-0.5 rounded"
-                              title="Controlled Substance"
+                              title={t.pharmacy.controlled}
                             >
                               Ctrl
                             </span>
@@ -358,7 +373,7 @@ export default function PharmacyPage() {
                               {med.brandName ?? med.genericName}
                             </p>
                             {med.requiresPrescription && (
-                              <p className="text-[10px] text-[#74777f]">Rx required</p>
+                              <p className="text-[10px] text-[#74777f]">{t.pharmacy.rxRequired}</p>
                             )}
                           </div>
                         </div>
@@ -449,21 +464,21 @@ export default function PharmacyPage() {
                           <Link
                             href={`/pharmacy/${med.id}/edit`}
                             className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
-                            title="Edit"
+                            title={t.common.edit}
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </Link>
                           <button
                             onClick={() => { setAdjustId(med.id); setAdjustQty(""); setAdjustNote(""); }}
                             className="p-1.5 hover:bg-[#ccfbf1] rounded-lg transition-colors text-[#74777f] hover:text-[#0d9488]"
-                            title="Adjust Stock"
+                            title={t.pharmacy.adjustStock}
                           >
                             <span className="material-symbols-outlined text-[18px]">tune</span>
                           </button>
                           <Link
                             href={`/pharmacy/${med.id}/history`}
                             className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
-                            title="View History"
+                            title={t.common.view}
                           >
                             <span className="material-symbols-outlined text-[18px]">history</span>
                           </Link>
@@ -481,7 +496,7 @@ export default function PharmacyPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
             <p className="text-xs text-[#74777f]">
-              Showing {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total} medications
+              {t.pharmacy.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} {t.common.of} {total} {t.pharmacy.medications}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -526,7 +541,7 @@ export default function PharmacyPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-[#1a1c1e]">Adjust Stock</h3>
+              <h3 className="text-lg font-bold text-[#1a1c1e]">{t.pharmacy.adjustStock}</h3>
               <button
                 onClick={() => setAdjustId(null)}
                 className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors"
@@ -545,27 +560,27 @@ export default function PharmacyPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">
-                  Adjustment Quantity *
+                  {t.pharmacy.adjQty}
                 </label>
-                <p className="text-[10px] text-[#74777f] mb-2">Use positive (+) to add or negative (−) to deduct stock</p>
+                <p className="text-[10px] text-[#74777f] mb-2">{t.pharmacy.adjHint}</p>
                 <input
                   type="number"
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(e.target.value)}
                   className="input-field"
-                  placeholder="e.g. +50 or -10"
+                  placeholder={t.pharmacy.adjExample}
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">
-                  Reason / Note
+                  {t.pharmacy.adjReason}
                 </label>
                 <textarea
                   value={adjustNote}
                   onChange={(e) => setAdjustNote(e.target.value)}
                   className="input-field resize-none"
                   rows={3}
-                  placeholder="e.g. Stock count correction, damaged goods, etc."
+                  placeholder={t.pharmacy.adjReasonExample}
                 />
               </div>
             </div>
@@ -575,7 +590,7 @@ export default function PharmacyPage() {
                 onClick={() => setAdjustId(null)}
                 className="flex-1 border border-[#c4c6cf] bg-white text-[#1a1c1e] py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
               >
-                Cancel
+                {t.pharmacy.cancel}
               </button>
               <button
                 onClick={handleAdjustStock}
@@ -585,12 +600,12 @@ export default function PharmacyPage() {
                 {adjusting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Saving...
+                    {t.pharmacy.saving}
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]">save</span>
-                    Save Adjustment
+                    {t.pharmacy.saveAdj}
                   </>
                 )}
               </button>

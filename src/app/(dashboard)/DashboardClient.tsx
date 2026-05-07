@@ -193,7 +193,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                     tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
                   <Tooltip
                     contentStyle={{ border: "1px solid #e3e2e6", borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: number) => formatCurrency(v)}
+                    formatter={(v) => formatCurrency(v as number)}
                   />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
                   <Bar dataKey="revenue" name="Revenue" fill="#1960a3" radius={[4, 4, 0, 0]} />
