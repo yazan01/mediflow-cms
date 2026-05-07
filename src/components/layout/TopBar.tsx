@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getInitials } from "@/lib/utils";
@@ -8,6 +8,39 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface TopBarProps {
   user?: { name: string; role: string; photo?: string };
+}
+
+type ApiNotif = {
+  id: string;
+  type: string;
+  icon: string;
+  iconColor: string;
+  title: string;
+  titleData: string | null;
+  message: string;
+  messageData: Record<string, string | number>;
+  link: string;
+  createdAt: string;
+  unread: boolean;
+};
+
+const ICON_COLOR_MAP: Record<string, string> = {
+  "#d97706": "text-[#d97706]",
+  "#ba1a1a": "text-[#ba1a1a]",
+  "#1960a3": "text-[#1960a3]",
+  "#0d9488": "text-[#0d9488]",
+};
+
+function interpolate(template: string, data: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(data[key] ?? ""));
+}
+
+function timeAgo(isoStr: string, t: { justNow: string; minutesAgo: string; hoursAgo: string; daysAgo: string }): string {
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 60) return t.justNow;
+  if (diff < 3600) return interpolate(t.minutesAgo, { n: Math.floor(diff / 60) });
+  if (diff < 86400) return interpolate(t.hoursAgo, { n: Math.floor(diff / 3600) });
+  return interpolate(t.daysAgo, { n: Math.floor(diff / 86400) });
 }
 
 export default function TopBar({ user }: TopBarProps) {
@@ -18,18 +51,28 @@ export default function TopBar({ user }: TopBarProps) {
   const router = useRouter();
   const { t, lang, setLang } = useLanguage();
 
-  const [readIds, setReadIds] = useState<Set<number>>(new Set());
+  const [notifications, setNotifications] = useState<ApiNotif[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
-  const notifications = [
-    { icon: "warning",   iconColor: "text-[#d97706]", title: t.topbar.lowStock,       msg: t.topbar.lowStockMsg,       time: t.topbar.time5m,  unread: true  },
-    { icon: "emergency", iconColor: "text-[#ba1a1a]", title: t.topbar.urgentAppt,     msg: t.topbar.urgentApptMsg,     time: t.topbar.time12m, unread: true  },
-    { icon: "biotech",   iconColor: "text-[#1960a3]", title: t.topbar.labResults,     msg: t.topbar.labResultsMsg,     time: t.topbar.time1h,  unread: false },
-    { icon: "payments",  iconColor: "text-[#ba1a1a]", title: t.topbar.overdueInvoice, msg: t.topbar.overdueInvoiceMsg, time: t.topbar.time2h,  unread: false },
-  ];
-  const unreadCount = notifications.filter((n, i) => n.unread && !readIds.has(i)).length;
+  const unreadCount = notifications.filter((n) => n.unread && !readIds.has(n.id)).length;
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifications(data.data ?? []);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   function markAllRead() {
-    setReadIds(new Set(notifications.map((_, i) => i)));
+    setReadIds(new Set(notifications.map((n) => n.id)));
   }
 
   const displayName = user?.name ?? "User";
@@ -51,6 +94,18 @@ export default function TopBar({ user }: TopBarProps) {
 
   function toggleLang() {
     setLang(lang === "en" ? "ar" : "en");
+  }
+
+  function resolveTitle(n: ApiNotif): string {
+    const key = n.title as keyof typeof t.topbar;
+    const base = (t.topbar[key] as string) ?? n.title;
+    return n.titleData ? `${base}: ${n.titleData}` : base;
+  }
+
+  function resolveMsg(n: ApiNotif): string {
+    const key = n.message as keyof typeof t.topbar;
+    const template = (t.topbar[key] as string) ?? n.message;
+    return interpolate(template, n.messageData);
   }
 
   return (
@@ -93,19 +148,44 @@ export default function TopBar({ user }: TopBarProps) {
             aria-label={t.topbar.notifications}
           >
             <span className="material-symbols-outlined text-[#43474e]">notifications</span>
-            {unreadCount > 0 && <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-[#ba1a1a] rounded-full"></span>}
+            {unreadCount > 0 && (
+              <span className="absolute top-1 end-1 min-w-[16px] h-4 px-0.5 bg-[#ba1a1a] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
 
           {notifOpen && (
             <div className="absolute end-0 top-full mt-2 w-80 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] z-50">
               <div className="p-4 border-b border-[#e3e2e6] flex items-center justify-between">
                 <h3 className="font-semibold text-sm text-[#1a1c1e]">{t.topbar.notifications}</h3>
-                <button onClick={markAllRead} className="text-xs text-[#1960a3] hover:underline">{t.topbar.markAllRead}</button>
+                {unreadCount > 0 && (
+                  <button onClick={markAllRead} className="text-xs text-[#1960a3] hover:underline">
+                    {t.topbar.markAllRead}
+                  </button>
+                )}
               </div>
               <div className="max-h-72 overflow-y-auto divide-y divide-[#e3e2e6]">
-                {notifications.map((n, i) => (
-                  <NotifItem key={i} icon={n.icon} iconColor={n.iconColor} title={n.title} msg={n.msg} time={n.time} unread={n.unread && !readIds.has(i)} onRead={() => setReadIds((s) => new Set(s).add(i))} />
-                ))}
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-[#74777f]">
+                    <span className="material-symbols-outlined text-[32px] text-[#c4c6cf] block mb-2">notifications_off</span>
+                    {t.topbar.noNotifications}
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <NotifItem
+                      key={n.id}
+                      icon={n.icon}
+                      iconColor={ICON_COLOR_MAP[n.iconColor] ?? "text-[#74777f]"}
+                      title={resolveTitle(n)}
+                      msg={resolveMsg(n)}
+                      time={timeAgo(n.createdAt, t.topbar)}
+                      unread={n.unread && !readIds.has(n.id)}
+                      link={n.link}
+                      onRead={() => { setReadIds((s) => new Set(s).add(n.id)); setNotifOpen(false); router.push(n.link); }}
+                    />
+                  ))
+                )}
               </div>
               <div className="p-3 text-center border-t border-[#e3e2e6]">
                 <button
@@ -148,7 +228,6 @@ export default function TopBar({ user }: TopBarProps) {
                 <p className="text-sm font-semibold text-[#1a1c1e]">{displayName}</p>
                 <p className="text-xs text-[#74777f]">{displayRole}</p>
               </div>
-              {/* Language toggle inside menu for mobile */}
               <button
                 onClick={toggleLang}
                 className="md:hidden w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#43474e] hover:bg-[#f4f3f7] transition-colors"
@@ -180,7 +259,8 @@ export default function TopBar({ user }: TopBarProps) {
 }
 
 function NotifItem({ icon, iconColor, title, msg, time, unread, onRead }: {
-  icon: string; iconColor: string; title: string; msg: string; time: string; unread: boolean; onRead: () => void;
+  icon: string; iconColor: string; title: string; msg: string; time: string;
+  unread: boolean; link: string; onRead: () => void;
 }) {
   return (
     <div onClick={onRead} className={`p-3 flex gap-3 hover:bg-[#f4f3f7] cursor-pointer ${unread ? "bg-[#d3e4ff]/10" : ""}`}>
