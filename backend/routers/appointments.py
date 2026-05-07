@@ -206,35 +206,56 @@ def send_reminder(
         raise HTTPException(status_code=400, detail="Patient has no phone number on record")
 
     doctor_name = appt.doctor.user.name if appt.doctor and appt.doctor.user else "your doctor"
-    scheduled = appt.scheduledAt.strftime("%A %d %B %Y at %H:%M") if appt.scheduledAt else "your scheduled time"
+    specialization = appt.doctor.specialization if appt.doctor else ""
+    scheduled = appt.scheduledAt.strftime("%A, %d %B %Y at %H:%M") if appt.scheduledAt else "your scheduled time"
+    patient_name = f"{appt.patient.firstName}" if appt.patient else "Dear Patient"
+
+    # WhatsApp-formatted message (supports *bold* and line breaks)
     message = (
-        f"Reminder: You have an appointment with {doctor_name} on {scheduled}. "
-        f"Please arrive 10 minutes early. To cancel or reschedule, contact us."
+        f"🏥 *Appointment Reminder*\n\n"
+        f"Dear {patient_name},\n\n"
+        f"This is a reminder that you have an appointment:\n\n"
+        f"👨‍⚕️ *Doctor:* Dr. {doctor_name}"
+        + (f" — {specialization}" if specialization else "") + "\n"
+        f"📅 *Date & Time:* {scheduled}\n\n"
+        f"Please arrive *10 minutes early* and bring your ID and insurance card.\n\n"
+        f"To reschedule or cancel, please contact us as soon as possible.\n\n"
+        f"_Thank you for choosing our clinic._"
     )
 
-    sid   = os.getenv("TWILIO_SID", "")
-    token = os.getenv("TWILIO_TOKEN", "")
-    from_  = os.getenv("TWILIO_FROM", "")
+    # Normalise phone to international format (assume +962 if starts with 07)
+    raw_phone = appt.patient.phone.strip().replace(" ", "").replace("-", "")
+    if raw_phone.startswith("07"):
+        raw_phone = "+962" + raw_phone[1:]
+    elif raw_phone.startswith("7") and len(raw_phone) == 9:
+        raw_phone = "+962" + raw_phone
+    elif not raw_phone.startswith("+"):
+        raw_phone = "+" + raw_phone
+
+    wa_to   = f"whatsapp:{raw_phone}"
+    sid     = os.getenv("TWILIO_SID", "")
+    token   = os.getenv("TWILIO_TOKEN", "")
+    wa_from = os.getenv("TWILIO_WA_FROM", "")   # e.g. whatsapp:+14155238886
     sent = False
     error_msg = None
 
-    if sid and token and from_:
+    if sid and token and wa_from:
         try:
             from twilio.rest import Client
             client = Client(sid, token)
-            client.messages.create(body=message, from_=from_, to=appt.patient.phone)
+            client.messages.create(body=message, from_=wa_from, to=wa_to)
             sent = True
         except Exception as e:
             error_msg = str(e)
 
     from auth import log_audit
-    log_audit(db, current_user["id"], "REMINDER_SENT" if sent else "REMINDER_PREVIEW",
+    log_audit(db, current_user["id"], "WHATSAPP_SENT" if sent else "WHATSAPP_PREVIEW",
               "appointments", appointment_id, "Appointment")
 
     return {
         "sent": sent,
-        "phone": appt.patient.phone,
+        "phone": raw_phone,
         "message": message,
         "error": error_msg,
-        "configured": bool(sid and token and from_),
+        "configured": bool(sid and token and wa_from),
     }

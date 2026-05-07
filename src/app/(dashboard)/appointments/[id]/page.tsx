@@ -156,25 +156,29 @@ export default function AppointmentDetailPage() {
               )}
               <ActionBtn icon="person" label={t.appointments.patientProfile} color="bg-[#f4f3f7] text-[#43474e]" onClick={() => router.push(`/patients/${appt.patientId}`)} />
               {!["CANCELLED", "COMPLETED", "NO_SHOW"].includes(status) && (
-                <ActionBtn icon="sms" label={sendingReminder ? "Sending..." : "Send Reminder"} color="bg-[#eff6ff] text-[#1960a3]" onClick={sendReminder} loading={sendingReminder} />
+                <ActionBtn icon="chat" label={sendingReminder ? "Sending..." : "WhatsApp Reminder"} color="bg-[#d4f7dc] text-[#1a7d3a]" onClick={sendReminder} loading={sendingReminder} />
               )}
             </div>
 
             {/* Reminder result panel */}
             {reminderResult && (
-              <div className={`mt-4 p-3 rounded-xl border text-sm ${reminderResult.sent ? "bg-[#ccfbf1] border-[#0d9488]/20 text-[#0d9488]" : "bg-[#eff6ff] border-[#1960a3]/20 text-[#1a1c1e]"}`}>
+              <div className={`mt-4 p-3 rounded-xl border text-sm ${reminderResult.sent ? "bg-[#d4f7dc] border-[#1a7d3a]/20 text-[#1a7d3a]" : "bg-[#f0fdf4] border-[#1a7d3a]/20 text-[#1a1c1e]"}`}>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">{reminderResult.sent ? "check_circle" : "sms"}</span>
+                  <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">{reminderResult.sent ? "check_circle" : "chat"}</span>
                   <div className="flex-1 min-w-0">
                     {reminderResult.sent ? (
-                      <p className="font-semibold">Reminder sent to {reminderResult.phone}</p>
+                      <p className="font-semibold">WhatsApp reminder sent to {reminderResult.phone} ✓</p>
                     ) : (
                       <>
-                        <p className="font-semibold text-[#1960a3]">{reminderResult.configured ? "SMS failed — preview:" : "SMS not configured — message preview:"}</p>
+                        <p className="font-semibold text-[#1a7d3a]">
+                          {reminderResult.configured ? "Send failed — message preview:" : "WhatsApp not configured — message preview:"}
+                        </p>
                         <p className="text-xs text-[#43474e] mt-1 italic">To: {reminderResult.phone}</p>
-                        <p className="text-xs text-[#43474e] mt-0.5 bg-white/60 p-2 rounded-lg">{reminderResult.message}</p>
+                        <pre className="text-xs text-[#43474e] mt-1.5 bg-white/70 p-2.5 rounded-lg whitespace-pre-wrap font-sans leading-relaxed">{reminderResult.message}</pre>
                         {!reminderResult.configured && (
-                          <p className="text-[10px] text-[#74777f] mt-1">Add TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM to backend/.env to enable SMS sending.</p>
+                          <p className="text-[10px] text-[#74777f] mt-1.5">
+                            Add <code className="bg-white/60 px-1 rounded">TWILIO_SID</code>, <code className="bg-white/60 px-1 rounded">TWILIO_TOKEN</code>, <code className="bg-white/60 px-1 rounded">TWILIO_WA_FROM</code> to <code className="bg-white/60 px-1 rounded">backend/.env</code> to enable sending.
+                          </p>
                         )}
                       </>
                     )}
