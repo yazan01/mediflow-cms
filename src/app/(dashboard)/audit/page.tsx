@@ -5,6 +5,7 @@ import { formatDateTime } from "@/lib/utils";
 import type { AuditLog } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 const MODULE_COLORS: Record<string, string> = {
   AUTH: "bg-[#d3e4ff] text-[#00477f]",
@@ -25,6 +26,7 @@ export default function AuditPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [moduleFilter, setModuleFilter] = useState("ALL");
@@ -34,6 +36,7 @@ export default function AuditPage() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
@@ -42,8 +45,13 @@ export default function AuditPage() {
         ...(actionFilter !== "ALL" && { action: actionFilter }),
       });
       const res = await fetch(`/api/audit?${params}`);
-      if (res.ok) { const data = await res.json(); setLogs(data.data ?? []); setTotal(data.total ?? 0); }
-    } catch { /* network */ }
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setLogs(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      setFetchError(err as Error);
+    }
     finally { setLoading(false); }
   }, [page, debouncedSearch, moduleFilter, actionFilter]);
 
@@ -61,6 +69,8 @@ export default function AuditPage() {
           {t.audit.export}
         </button>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchLogs} />}
 
       <div className="bg-[#fffbeb] border border-[#d97706]/20 rounded-xl p-4 flex items-center gap-3">
         <span className="material-symbols-outlined text-[#d97706] text-[20px]">lock</span>

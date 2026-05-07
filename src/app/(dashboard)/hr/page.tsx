@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { Employee, LeaveRequest } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -158,6 +159,7 @@ export default function HRPage() {
   ];
 
   const [activeTab, setActiveTab] = useState<Tab>("employees");
+  const [empFetchError, setEmpFetchError] = useState<Error | null>(null);
 
   // Employees
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -208,6 +210,7 @@ export default function HRPage() {
   const [assignForm, setAssignForm] = useState({ employeeId: "", startDate: "", endDate: "", notes: "" });
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState("");
+  const [confirmDeleteShiftId, setConfirmDeleteShiftId] = useState<string | null>(null);
 
   const PAGE_SIZE = 10;
 
@@ -215,6 +218,7 @@ export default function HRPage() {
 
   const fetchEmployees = useCallback(async () => {
     setEmpLoading(true);
+    setEmpFetchError(null);
     try {
       const p = new URLSearchParams({
         page: String(empPage),
@@ -224,12 +228,13 @@ export default function HRPage() {
         ...(empStatusFilter !== "ALL" && { status: empStatusFilter }),
       });
       const res = await fetch(`/api/hr/employees?${p}`);
-      if (res.ok) {
-        const data = await res.json();
-        setEmployees(data.data ?? []);
-        setEmpTotal(data.total ?? 0);
-      }
-    } catch { /* network error */ } finally {
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setEmployees(data.data ?? []);
+      setEmpTotal(data.total ?? 0);
+    } catch (err) {
+      setEmpFetchError(err as Error);
+    } finally {
       setEmpLoading(false);
     }
   }, [empPage, empSearch, empDeptFilter, empStatusFilter]);
@@ -361,8 +366,13 @@ export default function HRPage() {
   }
 
   async function deleteShift(id: string) {
-    if (!window.confirm(t.common.confirmDelete)) return;
-    await fetch(`/api/shifts/${id}`, { method: "DELETE" });
+    setConfirmDeleteShiftId(id);
+  }
+
+  async function confirmDeleteShift() {
+    if (!confirmDeleteShiftId) return;
+    await fetch(`/api/shifts/${confirmDeleteShiftId}`, { method: "DELETE" });
+    setConfirmDeleteShiftId(null);
     fetchShifts();
   }
 
@@ -464,6 +474,7 @@ export default function HRPage() {
       {/* ── Tab: Employees ── */}
       {activeTab === "employees" && (
         <div className="space-y-4">
+          {empFetchError && <ErrorBanner error={empFetchError} onRetry={fetchEmployees} />}
           {/* Filters */}
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4">
             <div className="flex flex-col sm:flex-row gap-3">
@@ -1056,6 +1067,23 @@ export default function HRPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Shift Confirmation ── */}
+      {confirmDeleteShiftId && (
+        <div role="dialog" aria-modal="true" aria-labelledby="del-shift-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-[#ffdad6] flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[28px] text-[#ba1a1a]">delete</span>
+            </div>
+            <h2 id="del-shift-title" className="text-base font-bold text-[#1a1c1e] mb-2">{t.common.delete}</h2>
+            <p className="text-sm text-[#74777f] mb-6">{t.common.confirmDelete}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDeleteShiftId(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
+              <button onClick={confirmDeleteShift} className="flex-1 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.common.delete}</button>
             </div>
           </div>
         </div>

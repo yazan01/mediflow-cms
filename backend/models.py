@@ -579,6 +579,11 @@ class ClinicSetting(Base):
     sessionTimeout = Column(Integer, default=480)
     passwordMinLength = Column(Integer, default=8)
     require2FA = Column(Boolean, default=False)
+    notifApptReminders = Column(Boolean, default=True)
+    notifLabCritical = Column(Boolean, default=True)
+    notifLowStock = Column(Boolean, default=True)
+    notifOverdueInvoice = Column(Boolean, default=True)
+    notifLeave = Column(Boolean, default=True)
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 

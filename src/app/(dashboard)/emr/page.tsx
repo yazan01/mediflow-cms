@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatDate, calculateAge } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 interface Patient {
   id: string;
@@ -25,6 +26,7 @@ export default function EMRIndexPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
@@ -32,19 +34,20 @@ export default function EMRIndexPage() {
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
         ...(debouncedSearch && { search: debouncedSearch }),
       });
       const res = await fetch(`/api/patients?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPatients(data.data ?? []);
-        setTotal(data.total ?? 0);
-      }
-    } catch { /* network */ }
-    finally { setLoading(false); }
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setPatients(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      setFetchError(err as Error);
+    } finally { setLoading(false); }
   }, [page, debouncedSearch]);
 
   useEffect(() => { fetchPatients(); }, [fetchPatients]);
@@ -61,6 +64,8 @@ export default function EMRIndexPage() {
         <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.emr.title}</h1>
         <p className="text-sm text-[#74777f] mt-0.5">{t.emr.subtitle}</p>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchPatients} />}
 
       {/* Search bar */}
       <div className="bg-white rounded-xl border border-[#e3e2e6] p-4">

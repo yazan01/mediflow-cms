@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Appointment } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 interface Doctor { id: string; user: { name: string }; specialization: string }
 
@@ -35,6 +36,7 @@ export default function AppointmentsPage() {
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterDoctor, setFilterDoctor] = useState("ALL");
+  const [fetchError, setFetchError] = useState<Error | null>(null);
 
   // Fetch doctors for filter dropdown
   useEffect(() => {
@@ -43,14 +45,17 @@ export default function AppointmentsPage() {
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({ pageSize: "200" });
       if (filterStatus !== "ALL") params.set("status", filterStatus);
       if (filterDoctor !== "ALL") params.set("doctorId", filterDoctor);
       const res = await fetch(`/api/appointments?${params}`);
-      if (res.ok) setAppointments((await res.json()).data ?? []);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      setAppointments((await res.json()).data ?? []);
+    } catch (err) {
+      setFetchError(err as Error);
+    } finally { setLoading(false); }
   }, [filterStatus, filterDoctor]);
 
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
@@ -173,6 +178,8 @@ export default function AppointmentsPage() {
             </Link>
           </div>
         </div>
+
+        {fetchError && <div className="mb-2"><ErrorBanner error={fetchError} onRetry={fetchAppointments} /></div>}
 
         {/* Stats + navigation */}
         <div className="flex items-center gap-6">
@@ -342,8 +349,8 @@ export default function AppointmentsPage() {
                             <div
                               key={apt.id}
                               onClick={() => setSelectedAppt(apt)}
-                              style={{ top: topPx, height: heightPx }}
-                              className={`absolute left-0.5 right-0.5 rounded-lg px-1.5 py-1 cursor-pointer hover:shadow-md transition-all z-20 border-s-4 overflow-hidden ${st.bg} border-s-[${st.bar.replace("bg-","#")}]`}
+                              style={{ top: topPx, height: heightPx, borderInlineStartColor: st.bar.replace("bg-[", "").replace("]", "") }}
+                              className={`absolute left-0.5 right-0.5 rounded-lg px-1.5 py-1 cursor-pointer hover:shadow-md transition-all z-20 border-s-4 overflow-hidden ${st.bg}`}
                               title={`${apt.patientName} — ${startDate.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}`}
                             >
                               <p className={`text-[11px] font-bold truncate leading-tight ${st.text}`}>

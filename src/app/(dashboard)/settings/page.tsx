@@ -20,6 +20,11 @@ type Settings = {
   sessionTimeout: number;
   passwordMinLength: number;
   require2FA: boolean;
+  notifApptReminders: boolean;
+  notifLabCritical: boolean;
+  notifLowStock: boolean;
+  notifOverdueInvoice: boolean;
+  notifLeave: boolean;
 };
 
 type Branch = {
@@ -39,6 +44,8 @@ const DEFAULT: Settings = {
   taxId: "", currency: "USD", timezone: "Asia/Amman", taxRate: 7,
   invoicePrefix: "INV", paymentTerms: 30, sessionTimeout: 480,
   passwordMinLength: 8, require2FA: false,
+  notifApptReminders: true, notifLabCritical: true, notifLowStock: true,
+  notifOverdueInvoice: true, notifLeave: true,
 };
 
 const BRANCH_DEFAULT = { name: "", code: "", address: "", phone: "", email: "", timezone: "Asia/Amman" };
@@ -283,11 +290,11 @@ export default function SettingsPage() {
                     </div>
                     <div className="pt-2 space-y-4">
                       <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">{s.notifTriggers}</h3>
-                      <Toggle label={s.apptReminders} desc={s.apptRemindersDesc} defaultChecked />
-                      <Toggle label={s.labCritical} desc={s.labCriticalDesc} defaultChecked />
-                      <Toggle label={s.lowStockAlert} desc={s.lowStockAlertDesc} defaultChecked />
-                      <Toggle label={s.overdueInvoice} desc={s.overdueInvoiceDesc} defaultChecked />
-                      <Toggle label={s.leaveNotif} desc={s.leaveNotifDesc} defaultChecked />
+                      <Toggle label={s.apptReminders} desc={s.apptRemindersDesc} checked={form.notifApptReminders} onChange={(v) => set("notifApptReminders", v)} />
+                      <Toggle label={s.labCritical} desc={s.labCriticalDesc} checked={form.notifLabCritical} onChange={(v) => set("notifLabCritical", v)} />
+                      <Toggle label={s.lowStockAlert} desc={s.lowStockAlertDesc} checked={form.notifLowStock} onChange={(v) => set("notifLowStock", v)} />
+                      <Toggle label={s.overdueInvoice} desc={s.overdueInvoiceDesc} checked={form.notifOverdueInvoice} onChange={(v) => set("notifOverdueInvoice", v)} />
+                      <Toggle label={s.leaveNotif} desc={s.leaveNotifDesc} checked={form.notifLeave} onChange={(v) => set("notifLeave", v)} />
                     </div>
                   </div>
                 </SettingsCard>

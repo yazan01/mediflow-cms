@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from auth import get_current_user
@@ -16,10 +16,18 @@ def get_doctors(
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    query = db.query(models.Doctor).filter(models.Doctor.isAvailable == True)
+    query = (
+        db.query(models.Doctor)
+        .options(
+            joinedload(models.Doctor.user),
+            joinedload(models.Doctor.department),
+        )
+        .join(models.User, models.Doctor.userId == models.User.id)
+        .filter(models.Doctor.isAvailable == True, models.User.isActive == True)
+    )
 
     if search:
-        query = query.join(models.User).filter(models.User.name.contains(search))
+        query = query.filter(models.User.name.contains(search))
 
     if specialization and specialization != "ALL":
         query = query.filter(models.Doctor.specialization == specialization)

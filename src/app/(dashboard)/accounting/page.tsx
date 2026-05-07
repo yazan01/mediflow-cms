@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { PurchaseOrder, Vendor, Asset } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ export default function AccountingPage() {
   // Overview
   const [overview, setOverview] = useState<AccountingOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
 
   // Purchase Orders
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
@@ -151,10 +153,15 @@ export default function AccountingPage() {
 
   const fetchOverview = useCallback(async () => {
     setOverviewLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch("/api/accounting/overview");
-      if (res.ok) { const d = await res.json(); setOverview(d ?? null); }
-    } catch { /* ignore */ } finally { setOverviewLoading(false); }
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const d = await res.json();
+      setOverview(d ?? null);
+    } catch (err) {
+      setFetchError(err as Error);
+    } finally { setOverviewLoading(false); }
   }, []);
 
   const fetchPos = useCallback(async () => {
@@ -257,6 +264,8 @@ export default function AccountingPage() {
           </Link>
         </div>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchOverview} />}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#e3e2e6]">

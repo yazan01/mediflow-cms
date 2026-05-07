@@ -4,7 +4,19 @@ import { useState, useEffect, useCallback } from "react";
 import { getInitials, formatDateTime } from "@/lib/utils";
 import type { User, UserRole } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, [onClose]);
+  return (
+    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>
+      <span className="material-symbols-outlined text-[18px]">{type === "success" ? "check_circle" : "error"}</span>
+      {message}
+      <button onClick={onClose} className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+  );
+}
 
 const ROLE_COLORS: Record<UserRole, string> = {
   SUPER_ADMIN:    "bg-[#002045] text-white",
@@ -70,11 +82,14 @@ export default function UsersPage() {
   const [showAddUser, setShowAddUser] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState<{ id: string; name: string; isActive: boolean } | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
 
   const pageSize = 10;
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -83,13 +98,13 @@ export default function UsersPage() {
         ...(roleFilter !== "ALL" && { role: roleFilter }),
       });
       const res = await fetch(`/api/users?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.data ?? []);
-        setTotal(data.total ?? 0);
-      }
-    } catch { /* network */ }
-    finally { setLoading(false); }
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setUsers(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      setFetchError(err as Error);
+    } finally { setLoading(false); }
   }, [page, debouncedSearch, roleFilter]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
@@ -122,8 +137,10 @@ export default function UsersPage() {
 
   async function resetPassword(id: string) {
     const res = await fetch(`/api/users/${id}/reset-password`, { method: "POST" });
-    if (res.ok) alert("Password reset email sent.");
-    else alert("Failed to reset password.");
+    setToast(res.ok
+      ? { message: t.users.passwordResetSent, type: "success" }
+      : { message: t.users.passwordResetFailed, type: "error" }
+    );
   }
 
   const totalPages = Math.ceil(total / pageSize);
@@ -144,6 +161,8 @@ export default function UsersPage() {
           {t.users.addUser}
         </button>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchUsers} />}
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-[#f4f3f7] rounded-xl w-fit">
@@ -411,6 +430,8 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

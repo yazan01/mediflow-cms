@@ -51,6 +51,7 @@ export default function ReportsPage() {
   const [dateRange, setDateRange] = useState<DateRange>("this_month");
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -78,9 +79,10 @@ export default function ReportsPage() {
   ] as const;
 
   async function handleExport(reportId: string, format: "pdf" | "excel" | "csv", range: DateRange) {
+    setExportError(null);
     try {
       const res = await fetch(`/api/reports/export?id=${reportId}&format=${format}&range=${range}`);
-      if (!res.ok) { alert(t.reports.exportFailed); return; }
+      if (!res.ok) { setExportError(t.reports.exportFailed); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -89,7 +91,7 @@ export default function ReportsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert(t.reports.exportRequires);
+      setExportError(t.reports.exportRequires);
     }
   }
 
@@ -118,6 +120,14 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
+
+      {exportError && (
+        <div className="flex items-center gap-3 p-3 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-sm font-semibold">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          {exportError}
+          <button onClick={() => setExportError(null)} className="ms-auto opacity-70 hover:opacity-100 p-1"><span className="material-symbols-outlined text-[16px]">close</span></button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-[#f4f3f7] rounded-xl w-fit">

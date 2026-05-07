@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,7 +13,17 @@ from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors
 from routers import laboratory, radiology, branches, shifts, notifications
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
-app = FastAPI(title="MediFlow API", version="1.0.0")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from database import engine, Base
+    import models  # noqa: F401
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title="MediFlow API", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 
 
@@ -58,14 +69,6 @@ app.include_router(radiology.router)
 app.include_router(branches.router)
 app.include_router(shifts.router)
 app.include_router(notifications.router)
-
-
-@app.on_event("startup")
-def create_new_tables():
-    """Create any tables added after the initial setup (e.g. token_blocklist)."""
-    from database import engine, Base
-    import models  # noqa: F401
-    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/api/health")

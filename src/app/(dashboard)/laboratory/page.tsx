@@ -1,10 +1,34 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { formatDateTime } from "@/lib/utils";
 import type { LabOrder } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
+
+interface LabResultInput {
+  testName: string;
+  value: string;
+  unit: string;
+  referenceRange: string;
+  isAbnormal: boolean;
+  isCritical: boolean;
+}
+
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3500);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>
+      <span className="material-symbols-outlined text-[18px]">{type === "success" ? "check_circle" : "error"}</span>
+      {message}
+      <button onClick={onClose} className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+  );
+}
 
 export default function LaboratoryPage() {
   const { t } = useLanguage();
@@ -26,6 +50,7 @@ export default function LaboratoryPage() {
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -33,8 +58,20 @@ export default function LaboratoryPage() {
   const [page, setPage] = useState(1);
   const pageSize = 15;
 
+  // Action state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [resultsModal, setResultsModal] = useState<LabOrder | null>(null);
+  const [resultRows, setResultRows] = useState<LabResultInput[]>([{ testName: "", value: "", unit: "", referenceRange: "", isAbnormal: false, isCritical: false }]);
+  const [saving, setSaving] = useState(false);
+
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchOrders = useCallback(async () => {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
@@ -42,13 +79,72 @@ export default function LaboratoryPage() {
         ...(statusFilter !== "ALL" && { status: statusFilter }),
         ...(priorityFilter !== "ALL" && { priority: priorityFilter }),
       });
-      const res = await fetch(`/api/laboratory?${params}`);
-      if (res.ok) { const data = await res.json(); setOrders(data.data ?? []); setTotal(data.total ?? 0); }
-    } catch { /* network */ }
-    finally { setLoading(false); }
+      const res = await fetch(`/api/laboratory?${params}`, { signal: abortRef.current.signal });
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setOrders(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") setFetchError(err as Error);
+    } finally {
+      setLoading(false);
+    }
   }, [page, debouncedSearch, statusFilter, priorityFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  async function handleStatusUpdate(orderId: string, status: string) {
+    try {
+      const res = await fetch(`/api/laboratory/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      setToast({ message: t.laboratory.statusUpdated, type: "success" });
+      fetchOrders();
+    } catch {
+      setToast({ message: t.common.error, type: "error" });
+    }
+  }
+
+  async function handleCancelOrder() {
+    if (!confirmCancel) return;
+    await handleStatusUpdate(confirmCancel, "CANCELLED");
+    setConfirmCancel(null);
+  }
+
+  function openResultsModal(order: LabOrder) {
+    const existing = (order.results ?? []) as LabResultInput[];
+    setResultRows(
+      existing.length > 0
+        ? existing
+        : [{ testName: "", value: "", unit: "", referenceRange: "", isAbnormal: false, isCritical: false }]
+    );
+    setResultsModal(order);
+  }
+
+  async function saveResults() {
+    if (!resultsModal) return;
+    const valid = resultRows.filter((r) => r.testName.trim() && r.value.trim());
+    if (valid.length === 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/laboratory/${resultsModal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ results: valid, status: "RESULTS_READY" }),
+      });
+      if (!res.ok) throw new Error();
+      setToast({ message: t.laboratory.resultsEntered, type: "success" });
+      setResultsModal(null);
+      fetchOrders();
+    } catch {
+      setToast({ message: t.common.error, type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const stats = {
     total: total,
@@ -71,6 +167,8 @@ export default function LaboratoryPage() {
           {t.laboratory.newOrder}
         </button>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchOrders} />}
 
       {/* Stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -140,6 +238,7 @@ export default function LaboratoryPage() {
                 orders.map((order) => {
                   const st = STATUS_STYLES[order.status as keyof typeof STATUS_STYLES] ?? STATUS_STYLES.PENDING_COLLECTION;
                   const pr = PRIORITY_STYLES[order.priority as keyof typeof PRIORITY_STYLES] ?? PRIORITY_STYLES.ROUTINE;
+                  const isCancelled = order.status === "CANCELLED";
                   return (
                     <tr key={order.id} className="hover:bg-[#f4f3f7] transition-colors group">
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">
@@ -170,9 +269,34 @@ export default function LaboratoryPage() {
                       </td>
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">
                         <div className="flex items-center gap-1">
-                          <button title={t.laboratory.enterResults} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">edit_note</span></button>
-                          <button title={t.laboratory.printOrder} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">print</span></button>
-                          <button title={t.laboratory.cancel} className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"><span className="material-symbols-outlined text-[18px]">cancel</span></button>
+                          {!isCancelled && order.status !== "RESULTS_RELEASED" && (
+                            <button
+                              aria-label={t.laboratory.enterResults}
+                              title={t.laboratory.enterResults}
+                              onClick={() => openResultsModal(order)}
+                              className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">edit_note</span>
+                            </button>
+                          )}
+                          <button
+                            aria-label={t.laboratory.printOrder}
+                            title={t.laboratory.printOrder}
+                            onClick={() => window.print()}
+                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">print</span>
+                          </button>
+                          {!isCancelled && (
+                            <button
+                              aria-label={t.laboratory.cancel}
+                              title={t.laboratory.cancel}
+                              onClick={() => setConfirmCancel(order.id)}
+                              className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">cancel</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -192,6 +316,70 @@ export default function LaboratoryPage() {
           </div>
         )}
       </div>
+
+      {/* Cancel confirmation modal */}
+      {confirmCancel && (
+        <div role="dialog" aria-modal="true" aria-labelledby="cancel-lab-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-[#ffdad6] flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[28px] text-[#ba1a1a]">cancel</span>
+            </div>
+            <h2 id="cancel-lab-title" className="text-base font-bold text-[#1a1c1e] mb-2">{t.laboratory.cancel}</h2>
+            <p className="text-sm text-[#74777f] mb-6">{t.laboratory.confirmCancelOrder}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmCancel(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
+              <button onClick={handleCancelOrder} className="flex-1 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.laboratory.cancel}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enter Results modal */}
+      {resultsModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="results-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
+              <h2 id="results-title" className="text-base font-bold text-[#1a1c1e]">{t.laboratory.enterResultsTitle}</h2>
+              <button aria-label={t.common.close} onClick={() => setResultsModal(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-[#74777f]">{resultsModal.patientName} · {resultsModal.tests.join(", ")}</p>
+              {resultRows.map((row, i) => (
+                <div key={i} className="grid grid-cols-2 gap-3 p-4 bg-[#f4f3f7] rounded-xl">
+                  <input className="input-field col-span-2 sm:col-span-1" placeholder={t.laboratory.testName} value={row.testName} onChange={(e) => setResultRows((r) => r.map((x, j) => j === i ? { ...x, testName: e.target.value } : x))} />
+                  <input className="input-field col-span-2 sm:col-span-1" placeholder={t.laboratory.value} value={row.value} onChange={(e) => setResultRows((r) => r.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+                  <input className="input-field" placeholder={t.laboratory.unit} value={row.unit} onChange={(e) => setResultRows((r) => r.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))} />
+                  <input className="input-field" placeholder={t.laboratory.referenceRange} value={row.referenceRange} onChange={(e) => setResultRows((r) => r.map((x, j) => j === i ? { ...x, referenceRange: e.target.value } : x))} />
+                  <label className="flex items-center gap-2 text-sm text-[#43474e] cursor-pointer">
+                    <input type="checkbox" checked={row.isAbnormal} onChange={(e) => setResultRows((r) => r.map((x, j) => j === i ? { ...x, isAbnormal: e.target.checked } : x))} className="rounded" />
+                    {t.laboratory.isAbnormal}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-[#ba1a1a] cursor-pointer">
+                    <input type="checkbox" checked={row.isCritical} onChange={(e) => setResultRows((r) => r.map((x, j) => j === i ? { ...x, isCritical: e.target.checked } : x))} className="rounded" />
+                    {t.laboratory.isCritical}
+                  </label>
+                  {resultRows.length > 1 && (
+                    <button onClick={() => setResultRows((r) => r.filter((_, j) => j !== i))} className="col-span-2 text-xs text-[#ba1a1a] hover:underline text-start">{t.laboratory.removeResult}</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => setResultRows((r) => [...r, { testName: "", value: "", unit: "", referenceRange: "", isAbnormal: false, isCritical: false }])} className="text-sm text-[#1960a3] font-semibold hover:underline">
+                + {t.laboratory.addResult}
+              </button>
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <button onClick={() => setResultsModal(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
+              <button onClick={saveResults} disabled={saving} className="btn-primary flex-1">
+                {saving ? t.common.saving : t.laboratory.saveResults}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

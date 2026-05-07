@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_roles
 import models
 
 router = APIRouter(prefix="/api/emr", tags=["emr"])
+
+CLINICAL_READER_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "AUDITOR")
 
 
 def vitals_dict(v) -> dict:
@@ -26,8 +28,11 @@ def vitals_dict(v) -> dict:
 
 
 @router.get("/{patient_id}")
-def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*CLINICAL_READER_ROLES))):
+    patient = db.query(models.Patient).filter(
+        models.Patient.id == patient_id,
+        models.Patient.deletedAt == None,  # noqa: E711
+    ).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -175,8 +180,11 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_cu
 
 
 @router.get("/{patient_id}/consultations")
-def get_patient_consultations(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+def get_patient_consultations(patient_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*CLINICAL_READER_ROLES))):
+    patient = db.query(models.Patient).filter(
+        models.Patient.id == patient_id,
+        models.Patient.deletedAt == None,  # noqa: E711
+    ).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 

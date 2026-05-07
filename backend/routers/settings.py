@@ -25,6 +25,11 @@ class SettingsUpdate(BaseModel):
     sessionTimeout: Optional[int] = None
     passwordMinLength: Optional[int] = None
     require2FA: Optional[bool] = None
+    notifApptReminders: Optional[bool] = None
+    notifLabCritical: Optional[bool] = None
+    notifLowStock: Optional[bool] = None
+    notifOverdueInvoice: Optional[bool] = None
+    notifLeave: Optional[bool] = None
 
 
 def settings_to_dict(s: models.ClinicSetting) -> dict:
@@ -43,6 +48,11 @@ def settings_to_dict(s: models.ClinicSetting) -> dict:
         "sessionTimeout": s.sessionTimeout or 480,
         "passwordMinLength": s.passwordMinLength or 8,
         "require2FA": bool(s.require2FA),
+        "notifApptReminders": bool(s.notifApptReminders) if s.notifApptReminders is not None else True,
+        "notifLabCritical": bool(s.notifLabCritical) if s.notifLabCritical is not None else True,
+        "notifLowStock": bool(s.notifLowStock) if s.notifLowStock is not None else True,
+        "notifOverdueInvoice": bool(s.notifOverdueInvoice) if s.notifOverdueInvoice is not None else True,
+        "notifLeave": bool(s.notifLeave) if s.notifLeave is not None else True,
     }
 
 

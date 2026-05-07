@@ -6,6 +6,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Invoice, InvoiceStatus } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 type BillingStats = {
   totalRevenue: number;
@@ -35,6 +36,7 @@ export default function BillingPage() {
   const [total, setTotal]             = useState(0);
   const [loading, setLoading]         = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [fetchError, setFetchError]   = useState<Error | null>(null);
   const [search, setSearch]           = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -60,6 +62,7 @@ export default function BillingPage() {
   /* ── fetch invoices ── */
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -70,13 +73,12 @@ export default function BillingPage() {
         ...(dateTo && { dateTo }),
       });
       const res = await fetch(`/api/billing?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setInvoices(data.data ?? []);
-        setTotal(data.total ?? 0);
-      }
-    } catch {
-      // network error
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setInvoices(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      setFetchError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -126,6 +128,8 @@ export default function BillingPage() {
           </Link>
         </div>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchInvoices} />}
 
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

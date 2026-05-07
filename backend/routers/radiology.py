@@ -1,10 +1,12 @@
+from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from database import get_db
-from auth import get_current_user, require_roles
+from auth import get_current_user, require_roles, log_audit
 
 RADIOLOGY_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RADIOLOGIST")
 import models
@@ -73,3 +75,52 @@ def get_radiology_orders(
         "pageSize": pageSize,
         "totalPages": -(-total // pageSize),
     }
+
+
+VALID_RADIOLOGY_STATUSES = {"PENDING", "SCHEDULED", "IN_PROGRESS", "IMAGES_ACQUIRED", "REPORT_READY", "CANCELLED"}
+
+
+class RadiologyOrderUpdate(BaseModel):
+    status: Optional[str] = None
+    scheduledAt: Optional[str] = Field(None, max_length=40)
+    report: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+@router.patch("/{order_id}")
+def update_radiology_order(
+    order_id: str,
+    body: RadiologyOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(*RADIOLOGY_ROLES)),
+):
+    order = db.query(models.RadiologyOrder).filter(models.RadiologyOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Radiology order not found")
+
+    if body.status is not None:
+        if body.status not in VALID_RADIOLOGY_STATUSES:
+            raise HTTPException(status_code=422, detail=f"Invalid status: {body.status!r}")
+        order.status = body.status
+        if body.status == "IN_PROGRESS" and not order.performedAt:
+            order.performedAt = datetime.utcnow()
+
+    if body.scheduledAt is not None:
+        try:
+            order.scheduledAt = datetime.fromisoformat(body.scheduledAt)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail=f"Invalid scheduledAt: {body.scheduledAt!r}")
+
+    if body.report is not None:
+        order.report = body.report
+        order.reportedById = current_user.id
+        if order.status not in ("REPORT_READY", "CANCELLED"):
+            order.status = "REPORT_READY"
+
+    if body.notes is not None:
+        order.notes = body.notes
+
+    db.commit()
+    db.refresh(order)
+    log_audit(db, current_user.id, "UPDATE", "RADIOLOGY", entity_id=order_id, entity_type="RadiologyOrder")
+    return order_to_dict(order)

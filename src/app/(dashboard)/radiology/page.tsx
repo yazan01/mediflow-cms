@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { formatDateTime } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
   XRAY:  { bg: "bg-[#f4f3f7]",   text: "text-[#43474e]" },
@@ -28,6 +29,21 @@ interface RadiologyOrder {
   status: string;
   radiologist: string | null;
   date: string;
+  report?: string | null;
+}
+
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3500);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>
+      <span className="material-symbols-outlined text-[18px]">{type === "success" ? "check_circle" : "error"}</span>
+      {message}
+      <button onClick={onClose} className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+  );
 }
 
 export default function RadiologyPage() {
@@ -45,6 +61,7 @@ export default function RadiologyPage() {
   const [orders, setOrders] = useState<RadiologyOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -52,8 +69,21 @@ export default function RadiologyPage() {
   const [page, setPage] = useState(1);
   const pageSize = 15;
 
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [reportModal, setReportModal] = useState<RadiologyOrder | null>(null);
+  const [reportText, setReportText] = useState("");
+  const [scheduleModal, setScheduleModal] = useState<RadiologyOrder | null>(null);
+  const [scheduleDateTime, setScheduleDateTime] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchOrders = useCallback(async () => {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
@@ -61,13 +91,71 @@ export default function RadiologyPage() {
         ...(statusFilter !== "ALL" && { status: statusFilter }),
         ...(modalityFilter !== "ALL" && { modality: modalityFilter }),
       });
-      const res = await fetch(`/api/radiology?${params}`);
-      if (res.ok) { const data = await res.json(); setOrders(data.data ?? []); setTotal(data.total ?? 0); }
-    } catch { /* network */ }
-    finally { setLoading(false); }
+      const res = await fetch(`/api/radiology?${params}`, { signal: abortRef.current.signal });
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      setOrders(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") setFetchError(err as Error);
+    } finally {
+      setLoading(false);
+    }
   }, [page, debouncedSearch, statusFilter, modalityFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  async function patchOrder(id: string, body: Record<string, unknown>) {
+    const res = await fetch(`/api/radiology/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error();
+  }
+
+  async function handleCancelOrder() {
+    if (!confirmCancel) return;
+    try {
+      await patchOrder(confirmCancel, { status: "CANCELLED" });
+      setToast({ message: t.radiology.orderCancelled, type: "success" });
+      fetchOrders();
+    } catch {
+      setToast({ message: t.common.error, type: "error" });
+    } finally {
+      setConfirmCancel(null);
+    }
+  }
+
+  async function handleSaveReport() {
+    if (!reportModal || !reportText.trim()) return;
+    setSaving(true);
+    try {
+      await patchOrder(reportModal.id, { report: reportText });
+      setToast({ message: t.radiology.reportSaved, type: "success" });
+      setReportModal(null);
+      fetchOrders();
+    } catch {
+      setToast({ message: t.common.error, type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveSchedule() {
+    if (!scheduleModal || !scheduleDateTime) return;
+    setSaving(true);
+    try {
+      await patchOrder(scheduleModal.id, { scheduledAt: scheduleDateTime, status: "SCHEDULED" });
+      setToast({ message: t.radiology.statusUpdated, type: "success" });
+      setScheduleModal(null);
+      fetchOrders();
+    } catch {
+      setToast({ message: t.common.error, type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const stats = {
     total,
@@ -90,6 +178,8 @@ export default function RadiologyPage() {
           {t.radiology.newOrder}
         </button>
       </div>
+
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchOrders} />}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -164,6 +254,7 @@ export default function RadiologyPage() {
                 orders.map((order) => {
                   const st = STATUS_STYLES[order.status] ?? STATUS_STYLES.PENDING;
                   const mod = MODALITY_STYLES[order.modality] ?? { bg: "bg-[#f4f3f7]", text: "text-[#43474e]" };
+                  const isCancelled = order.status === "CANCELLED";
                   return (
                     <tr key={order.id} className="hover:bg-[#f4f3f7] transition-colors">
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">
@@ -198,10 +289,44 @@ export default function RadiologyPage() {
                       </td>
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">
                         <div className="flex items-center gap-1">
-                          <button title={t.radiology.viewReport} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">description</span></button>
-                          <button title={t.radiology.schedule} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">calendar_month</span></button>
-                          <button title={t.radiology.printAction} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"><span className="material-symbols-outlined text-[18px]">print</span></button>
-                          <button title={t.radiology.cancelAction} className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"><span className="material-symbols-outlined text-[18px]">cancel</span></button>
+                          {!isCancelled && (
+                            <button
+                              aria-label={t.radiology.enterReport}
+                              title={t.radiology.enterReport}
+                              onClick={() => { setReportText(order.report ?? ""); setReportModal(order); }}
+                              className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">description</span>
+                            </button>
+                          )}
+                          {!isCancelled && order.status === "PENDING" && (
+                            <button
+                              aria-label={t.radiology.schedule}
+                              title={t.radiology.schedule}
+                              onClick={() => { setScheduleDateTime(order.scheduledAt ?? ""); setScheduleModal(order); }}
+                              className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                            </button>
+                          )}
+                          <button
+                            aria-label={t.radiology.printAction}
+                            title={t.radiology.printAction}
+                            onClick={() => window.print()}
+                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">print</span>
+                          </button>
+                          {!isCancelled && (
+                            <button
+                              aria-label={t.radiology.cancelAction}
+                              title={t.radiology.cancelAction}
+                              onClick={() => setConfirmCancel(order.id)}
+                              className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">cancel</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -221,6 +346,84 @@ export default function RadiologyPage() {
           </div>
         )}
       </div>
+
+      {/* Cancel confirmation modal */}
+      {confirmCancel && (
+        <div role="dialog" aria-modal="true" aria-labelledby="cancel-rad-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-[#ffdad6] flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[28px] text-[#ba1a1a]">cancel</span>
+            </div>
+            <h2 id="cancel-rad-title" className="text-base font-bold text-[#1a1c1e] mb-2">{t.radiology.cancelAction}</h2>
+            <p className="text-sm text-[#74777f] mb-6">{t.radiology.confirmCancelOrder}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmCancel(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
+              <button onClick={handleCancelOrder} className="flex-1 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.radiology.cancelAction}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enter Report modal */}
+      {reportModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="report-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
+              <h2 id="report-title" className="text-base font-bold text-[#1a1c1e]">{t.radiology.reportTitle}</h2>
+              <button aria-label={t.common.close} onClick={() => setReportModal(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-[#74777f] mb-3">{reportModal.patientName} · {reportModal.modality} — {reportModal.study}</p>
+              <textarea
+                className="input-field w-full min-h-[160px] resize-y"
+                placeholder={t.radiology.reportPlaceholder}
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <button onClick={() => setReportModal(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
+              <button onClick={handleSaveReport} disabled={saving || !reportText.trim()} className="btn-primary flex-1">
+                {saving ? t.common.saving : t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule modal */}
+      {scheduleModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="schedule-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
+              <h2 id="schedule-title" className="text-base font-bold text-[#1a1c1e]">{t.radiology.scheduleTitle}</h2>
+              <button aria-label={t.common.close} onClick={() => setScheduleModal(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-[#74777f] mb-3">{scheduleModal.patientName} · {scheduleModal.modality}</p>
+              <label className="block text-xs font-semibold text-[#43474e] mb-1">{t.radiology.scheduleDateTime}</label>
+              <input
+                type="datetime-local"
+                className="input-field w-full"
+                value={scheduleDateTime}
+                onChange={(e) => setScheduleDateTime(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <button onClick={() => setScheduleModal(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
+              <button onClick={handleSaveSchedule} disabled={saving || !scheduleDateTime} className="btn-primary flex-1">
+                {saving ? t.common.saving : t.radiology.schedule}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

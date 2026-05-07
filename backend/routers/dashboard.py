@@ -6,14 +6,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_roles
 import models
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
+DASHBOARD_ROLES = (
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE",
+    "RECEPTIONIST", "ACCOUNTANT", "HR_OFFICER", "AUDITOR",
+)
+
 
 @router.get("/stats")
-def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(require_roles(*DASHBOARD_ROLES))):
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     yesterday = today - timedelta(days=1)
@@ -100,39 +105,56 @@ def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(get_current
 
 
 @router.get("/revenue")
-def get_revenue_chart(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_revenue_chart(db: Session = Depends(get_db), _user=Depends(require_roles(*DASHBOARD_ROLES))):
     today = datetime.now()
+    # Compute start of the 6-month window
+    yr, mo = today.year, today.month - 5
+    while mo <= 0:
+        mo += 12
+        yr -= 1
+    period_start = datetime(yr, mo, 1)
+
+    # 2 aggregate queries instead of 12
+    revenue_rows = (
+        db.query(
+            func.year(models.Payment.paidAt).label("yr"),
+            func.month(models.Payment.paidAt).label("mo"),
+            func.sum(models.Payment.amount).label("total"),
+        )
+        .filter(models.Payment.paidAt >= period_start, models.Payment.paidAt <= today)
+        .group_by(func.year(models.Payment.paidAt), func.month(models.Payment.paidAt))
+        .all()
+    )
+    revenue_map = {(int(r.yr), int(r.mo)): float(r.total) for r in revenue_rows}
+
+    expense_rows = (
+        db.query(
+            func.year(models.Expense.date).label("yr"),
+            func.month(models.Expense.date).label("mo"),
+            func.sum(models.Expense.amount).label("total"),
+        )
+        .filter(models.Expense.date >= period_start, models.Expense.date <= today)
+        .group_by(func.year(models.Expense.date), func.month(models.Expense.date))
+        .all()
+    )
+    expense_map = {(int(r.yr), int(r.mo)): float(r.total) for r in expense_rows}
+
     result = []
     for i in range(5, -1, -1):
-        year = today.year
-        month = today.month - i
-        while month <= 0:
-            month += 12
-            year -= 1
-        month_start = datetime(year, month, 1)
-        last_day = calendar.monthrange(year, month)[1]
-        month_end = datetime(year, month, last_day, 23, 59, 59)
-
-        revenue = float(
-            db.query(func.sum(models.Payment.amount))
-            .filter(models.Payment.paidAt >= month_start, models.Payment.paidAt <= month_end)
-            .scalar() or 0
-        )
-        expenses = float(
-            db.query(func.sum(models.Expense.amount))
-            .filter(models.Expense.date >= month_start, models.Expense.date <= month_end)
-            .scalar() or 0
-        )
+        y, m = today.year, today.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
         result.append({
-            "month": month_start.strftime("%b"),
-            "revenue": round(revenue, 2),
-            "expenses": round(expenses, 2),
+            "month": datetime(y, m, 1).strftime("%b"),
+            "revenue": round(revenue_map.get((y, m), 0.0), 2),
+            "expenses": round(expense_map.get((y, m), 0.0), 2),
         })
     return result
 
 
 @router.get("/departments")
-def get_department_load(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_department_load(db: Session = Depends(get_db), _user=Depends(require_roles(*DASHBOARD_ROLES))):
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
 

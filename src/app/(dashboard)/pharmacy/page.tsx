@@ -6,6 +6,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Medication, StockStatus } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 type PharmacyStats = {
   totalSKUs: number;
@@ -51,6 +52,7 @@ export default function PharmacyPage() {
   const [statusFilter, setStatusFilter]     = useState<StockFilter>("ALL");
   const [page, setPage]               = useState(1);
   const [expiryAlert, setExpiryAlert] = useState<Medication[]>([]);
+  const [fetchError, setFetchError]   = useState<Error | null>(null);
   const [adjustId, setAdjustId]       = useState<string | null>(null);
   const [adjustQty, setAdjustQty]     = useState("");
   const [adjustNote, setAdjustNote]   = useState("");
@@ -73,6 +75,7 @@ export default function PharmacyPage() {
   /* ── medications ── */
   const fetchMedications = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -82,25 +85,24 @@ export default function PharmacyPage() {
         ...(statusFilter !== "ALL" && { status: statusFilter }),
       });
       const res = await fetch(`/api/pharmacy/medications?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        const list: Medication[] = data.data ?? data ?? [];
-        setMedications(list);
-        setTotal(data.total ?? list.length);
+      if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
+      const data = await res.json();
+      const list: Medication[] = data.data ?? data ?? [];
+      setMedications(list);
+      setTotal(data.total ?? list.length);
 
-        // Compute expiry alert (within 90 days)
-        const today = new Date();
-        const cutoff = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
-        setExpiryAlert(
-          list.filter((m) => {
-            if (!m.expiryDate) return false;
-            const exp = new Date(m.expiryDate);
-            return exp <= cutoff && exp >= today;
-          })
-        );
-      }
-    } catch {
-      // network error
+      // Compute expiry alert (within 90 days)
+      const today = new Date();
+      const cutoff = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+      setExpiryAlert(
+        list.filter((m) => {
+          if (!m.expiryDate) return false;
+          const exp = new Date(m.expiryDate);
+          return exp <= cutoff && exp >= today;
+        })
+      );
+    } catch (err) {
+      setFetchError(err as Error);
     } finally {
       setLoading(false);
     }
@@ -134,6 +136,8 @@ export default function PharmacyPage() {
 
   return (
     <div className="space-y-6">
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchMedications} />}
+
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
