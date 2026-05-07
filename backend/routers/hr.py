@@ -162,13 +162,9 @@ def get_employees(
     if status and status != "ALL":
         query = query.filter(models.Employee.status == status)
 
-    if department and department != "ALL":
-        # Filter by department name (frontend sends display names, not IDs)
-        query = (
-            query
-            .join(models.Department, models.Employee.departmentId == models.Department.id)
-            .filter(models.Department.name.contains(department))
-        )
+    if department and department not in ("ALL", ""):
+        # department param is a departmentId (UUID) sent from the frontend
+        query = query.filter(models.Employee.departmentId == department)
 
     total = query.count()
     employees = (

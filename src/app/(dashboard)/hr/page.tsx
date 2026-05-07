@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { Employee, LeaveRequest } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { PayslipModal } from "@/components/PayslipModal";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ interface ShiftAssignment {
 }
 
 interface Branch { id: string; name: string; }
+interface Department { id: string; name: string; }
 
 interface AttendanceRecord {
   employeeId: string;
@@ -73,6 +75,9 @@ const ATT_MARKER: Record<string, { sym: string; cls: string }> = {
   LEAVE:   { sym: "event_busy",   cls: "text-[#1960a3]" },
   HOLIDAY: { sym: "celebration",  cls: "text-[#74777f]" },
 };
+
+const ATT_STATUSES = ["PRESENT", "ABSENT", "LATE", "LEAVE", "HOLIDAY"] as const;
+type AttStatus = typeof ATT_STATUSES[number];
 
 // ─── Helper sub-components ────────────────────────────────────────────────────
 
@@ -195,6 +200,7 @@ export default function HRPage() {
   const [empStatusFilter, setEmpStatusFilter] = useState("ALL");
   const [empPage, setEmpPage] = useState(1);
   const [empTotal, setEmpTotal] = useState(0);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
   // Attendance
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -204,11 +210,22 @@ export default function HRPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
+  // Attendance marking modal
+  const [attMarkModal, setAttMarkModal] = useState<{ employeeId: string; employeeName: string; date: string } | null>(null);
+  const [attMarkStatus, setAttMarkStatus] = useState<AttStatus>("PRESENT");
+  const [attMarkSaving, setAttMarkSaving] = useState(false);
+  const [attMarkError, setAttMarkError] = useState("");
 
   // Leave Requests
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState("ALL");
+  // Leave creation modal
+  const [leaveModal, setLeaveModal] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "" });
+  const [leaveSaving, setLeaveSaving] = useState(false);
+  const [leaveError, setLeaveError] = useState("");
+  const [leaveSuccess, setLeaveSuccess] = useState("");
 
   // Payroll
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
@@ -217,6 +234,8 @@ export default function HRPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
+  const [payslipPayrollId, setPayslipPayrollId] = useState<string | null>(null);
+  const [processAllLoading, setProcessAllLoading] = useState(false);
 
   // Stats
   const [stats, setStats] = useState<HRStats | null>(null);
@@ -264,6 +283,16 @@ export default function HRPage() {
       setEmpLoading(false);
     }
   }, [empPage, empSearch, empDeptFilter, empStatusFilter]);
+
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/hr/departments");
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data ?? []);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -345,6 +374,7 @@ export default function HRPage() {
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
   useEffect(() => { if (activeTab === "attendance") fetchAttendance(); }, [activeTab, fetchAttendance]);
   useEffect(() => { if (activeTab === "leaveRequests") fetchLeaves(); }, [activeTab, fetchLeaves]);
   useEffect(() => { if (activeTab === "payroll") fetchPayroll(); }, [activeTab, fetchPayroll]);
@@ -364,6 +394,117 @@ export default function HRPage() {
         fetchStats();
       }
     } catch { /* ignore */ }
+  }
+
+  async function handleCreateLeave() {
+    setLeaveError("");
+    if (!leaveForm.employeeId || !leaveForm.startDate || !leaveForm.endDate || !leaveForm.days) {
+      setLeaveError(t.hr.assignRequired);
+      return;
+    }
+    setLeaveSaving(true);
+    try {
+      const res = await fetch("/api/hr/leaves", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: leaveForm.employeeId,
+          type: leaveForm.type,
+          startDate: leaveForm.startDate,
+          endDate: leaveForm.endDate,
+          days: Number(leaveForm.days),
+          reason: leaveForm.reason || null,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        setLeaveError(e.detail || t.hr.leaveCreateFailed);
+        return;
+      }
+      setLeaveModal(false);
+      setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "" });
+      setLeaveSuccess(t.hr.leaveCreated);
+      setTimeout(() => setLeaveSuccess(""), 3000);
+      fetchLeaves();
+      fetchStats();
+    } catch { setLeaveError(t.hr.networkError); } finally { setLeaveSaving(false); }
+  }
+
+  async function handleMarkAttendance() {
+    if (!attMarkModal) return;
+    setAttMarkSaving(true);
+    setAttMarkError("");
+    try {
+      const res = await fetch("/api/hr/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: attMarkModal.employeeId,
+          date: attMarkModal.date,
+          status: attMarkStatus,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        setAttMarkError(e.detail || t.hr.attSaveFailed);
+        return;
+      }
+      setAttMarkModal(null);
+      fetchAttendance();
+    } catch { setAttMarkError(t.hr.networkError); } finally { setAttMarkSaving(false); }
+  }
+
+  async function handleProcessPayroll(employeeId: string) {
+    try {
+      const res = await fetch(`/api/hr/payroll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId, month: payrollMonth }),
+      });
+      if (res.ok) fetchPayroll();
+    } catch { /* ignore */ }
+  }
+
+  async function handleProcessAllPayroll() {
+    const pending = payroll.filter((p) => p.status === "PENDING");
+    if (pending.length === 0) return;
+    if (!confirm(t.hr.processAllConfirm)) return;
+    setProcessAllLoading(true);
+    try {
+      for (const pr of pending) {
+        await fetch("/api/hr/payroll", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeId: pr.employeeId, month: payrollMonth }),
+        });
+      }
+      fetchPayroll();
+    } catch { /* ignore */ } finally { setProcessAllLoading(false); }
+  }
+
+  function handleExportCsv() {
+    if (employees.length === 0) return;
+    const headers = ["Name", "Email", "Code", "Department", "Job Title", "Type", "Status", "Basic Salary", "Hire Date", "Annual Leave Balance"];
+    const rows = employees.map((e) => [
+      e.user.name,
+      e.user.email,
+      e.empCode,
+      e.department.name,
+      e.jobTitle,
+      e.employmentType,
+      e.status,
+      e.basicSalary,
+      e.hireDate?.slice(0, 10) ?? "",
+      e.annualLeaveBalance,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `employees-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function openAddShift() {
@@ -392,10 +533,6 @@ export default function HRPage() {
       setShiftModal(null);
       fetchShifts();
     } catch { setShiftError(t.hr.networkError); } finally { setShiftSaving(false); }
-  }
-
-  async function deleteShift(id: string) {
-    setConfirmDeleteShiftId(id);
   }
 
   async function confirmDeleteShift() {
@@ -435,18 +572,6 @@ export default function HRPage() {
     fetchShifts();
   }
 
-  async function handleProcessPayroll(employeeId: string) {
-    try {
-      const res = await fetch(`/api/hr/payroll`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // allowances auto-calculated from employee record in backend
-        body: JSON.stringify({ employeeId, month: payrollMonth }),
-      });
-      if (res.ok) fetchPayroll();
-    } catch { /* ignore */ }
-  }
-
   // ── Attendance calendar days ───────────────────────────────────────────────
 
   const attDaysInMonth = (() => {
@@ -456,6 +581,7 @@ export default function HRPage() {
   })();
 
   const empTotalPages = Math.ceil(empTotal / PAGE_SIZE);
+  const pendingPayrollCount = payroll.filter((p) => p.status === "PENDING").length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -483,6 +609,14 @@ export default function HRPage() {
         <StatCard icon="event_busy" iconBg="bg-[#fff7ed]" iconColor="text-[#d97706]" label={t.hr.onLeave} value={stats?.onLeave ?? "—"} />
         <StatCard icon="pending_actions" iconBg="bg-[#ffddba]" iconColor="text-[#633f0f]" label={t.hr.pendingLeave} value={stats?.pendingLeaveRequests ?? "—"} />
       </div>
+
+      {/* Global success toast */}
+      {leaveSuccess && (
+        <div className="flex items-center gap-3 bg-[#ccfbf1] text-[#0d9488] px-4 py-3 rounded-xl text-sm font-semibold">
+          <span className="material-symbols-outlined text-[18px]">check_circle</span>
+          {leaveSuccess}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#e3e2e6]">
@@ -534,15 +668,16 @@ export default function HRPage() {
                 onChange={(e) => { setEmpDeptFilter(e.target.value); setEmpPage(1); }}
               >
                 <option value="ALL">{t.hr.allDepts}</option>
-                <option value="Medical">{t.hr.medical}</option>
-                <option value="Nursing">{t.hr.nursing}</option>
-                <option value="Admin">{t.hr.administration}</option>
-                <option value="Finance">{t.hr.finance}</option>
-                <option value="HR">{t.hr.humanResources}</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
               </select>
-              <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
+              <button
+                onClick={handleExportCsv}
+                className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors"
+              >
                 <span className="material-symbols-outlined text-[18px]">download</span>
-                {t.hr.export}
+                {t.hr.exportCsv}
               </button>
             </div>
           </div>
@@ -553,16 +688,16 @@ export default function HRPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
-                    {[t.hr.employee, t.hr.code, t.hr.deptTitle, t.hr.type, t.hr.status, t.hr.salary, t.hr.hireDate, t.hr.attPct, t.hr.leaveBal, t.hr.actions].map((h) => (
+                    {[t.hr.employee, t.hr.code, t.hr.deptTitle, t.hr.type, t.hr.status, t.hr.salary, t.hr.hireDate, t.hr.leaveBal, t.common.actions].map((h) => (
                       <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {empLoading ? (
-                    <tr><td colSpan={10}><Spinner label={t.hr.loading} /></td></tr>
+                    <tr><td colSpan={9}><Spinner label={t.hr.loading} /></td></tr>
                   ) : employees.length === 0 ? (
-                    <EmptyRow cols={10} icon="badge" label={t.hr.noEmployees} sub={empSearch ? t.hr.searchPlaceholder : t.hr.addFirst} />
+                    <EmptyRow cols={9} icon="badge" label={t.hr.noEmployees} sub={empSearch ? t.hr.searchPlaceholder : t.hr.addFirst} />
                   ) : employees.map((emp) => {
                     const statusCfg = EMP_STATUS[emp.status] ?? EMP_STATUS.INACTIVE;
                     const typeCfg = EMP_TYPE[emp.employmentType] ?? EMP_TYPE.FULL_TIME;
@@ -598,22 +733,16 @@ export default function HRPage() {
                         <td className="px-5 py-4 border-b border-[#e3e2e6] text-sm text-[#43474e] whitespace-nowrap">
                           {formatDate(emp.hireDate)}
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                          <span className="text-xs text-[#74777f]">—</span>
-                        </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6] text-sm text-[#43474e]">
                           {emp.annualLeaveBalance != null ? `${emp.annualLeaveBalance} ${t.hr.daysUnit}` : "—"}
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
-                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Profile">
+                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label="View Profile">
                               <span className="material-symbols-outlined text-[18px]">visibility</span>
                             </Link>
-                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="Edit">
+                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label="Edit">
                               <span className="material-symbols-outlined text-[18px]">edit</span>
-                            </Link>
-                            <Link href={`/hr/${emp.id}/payslips`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Payslips">
-                              <span className="material-symbols-outlined text-[18px]">receipt_long</span>
                             </Link>
                           </div>
                         </td>
@@ -653,7 +782,7 @@ export default function HRPage() {
       {/* ── Tab: Attendance ── */}
       {activeTab === "attendance" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-col sm:flex-row gap-3">
+          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-col sm:flex-row gap-3 flex-wrap">
             <div className="relative flex-1">
               <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
               <input
@@ -669,7 +798,7 @@ export default function HRPage() {
               value={attMonth}
               onChange={(e) => setAttMonth(e.target.value)}
             />
-            <div className="flex items-center gap-4 text-xs text-[#43474e]">
+            <div className="flex items-center gap-4 text-xs text-[#43474e] flex-wrap">
               {Object.entries(ATT_MARKER).map(([k, v]) => (
                 <span key={k} className="flex items-center gap-1">
                   <span className={`material-symbols-outlined text-[14px] ${v.cls}`}>{v.sym}</span>
@@ -677,6 +806,7 @@ export default function HRPage() {
                 </span>
               ))}
             </div>
+            <p className="text-xs text-[#74777f] self-center">{t.hr.markAttendance}</p>
           </div>
 
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -684,7 +814,7 @@ export default function HRPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
-                    <th className="sticky left-0 bg-[#f4f3f7] text-left font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3 whitespace-nowrap z-10">{t.hr.employee}</th>
+                    <th className="sticky start-0 bg-[#f4f3f7] text-left font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3 whitespace-nowrap z-10">{t.hr.employee}</th>
                     {attDaysInMonth.map((d) => (
                       <th key={d} className="text-center font-semibold text-[#43474e] px-2 py-3 w-8">{d}</th>
                     ))}
@@ -702,13 +832,22 @@ export default function HRPage() {
                     </td></tr>
                   ) : attendance.map((rec) => (
                     <tr key={rec.employeeId} className="hover:bg-[#f4f3f7] transition-colors border-b border-[#e3e2e6]">
-                      <td className="sticky left-0 bg-white hover:bg-[#f4f3f7] px-5 py-3 font-semibold text-[#1a1c1e] whitespace-nowrap z-10">{rec.employeeName}</td>
+                      <td className="sticky start-0 bg-white hover:bg-[#f4f3f7] px-5 py-3 font-semibold text-[#1a1c1e] whitespace-nowrap z-10">{rec.employeeName}</td>
                       {attDaysInMonth.map((d) => {
                         const key = `${attMonth}-${String(d).padStart(2, "0")}`;
                         const marker = rec.days[key];
                         const cfg = marker ? ATT_MARKER[marker] : null;
                         return (
-                          <td key={d} className="text-center px-1 py-3">
+                          <td
+                            key={d}
+                            className="text-center px-1 py-3 cursor-pointer hover:bg-[#d3e4ff]/40 rounded transition-colors"
+                            title={t.hr.markAttendance}
+                            onClick={() => {
+                              setAttMarkModal({ employeeId: rec.employeeId, employeeName: rec.employeeName, date: key });
+                              setAttMarkStatus(marker ?? "PRESENT");
+                              setAttMarkError("");
+                            }}
+                          >
                             {cfg ? (
                               <span className={`material-symbols-outlined text-[14px] ${cfg.cls}`}>{cfg.sym}</span>
                             ) : (
@@ -729,7 +868,7 @@ export default function HRPage() {
       {/* ── Tab: Leave Requests ── */}
       {activeTab === "leaveRequests" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex gap-3">
+          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex gap-3 flex-wrap items-center">
             <select
               className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
               value={leaveStatusFilter}
@@ -740,6 +879,14 @@ export default function HRPage() {
               <option value="APPROVED">{t.common.approved}</option>
               <option value="REJECTED">{t.common.rejected}</option>
             </select>
+            <div className="flex-1" />
+            <button
+              onClick={() => { setLeaveModal(true); setLeaveError(""); setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "" }); }}
+              className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              {t.hr.newLeaveRequest}
+            </button>
           </div>
 
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -812,7 +959,7 @@ export default function HRPage() {
       {/* ── Tab: Payroll ── */}
       {activeTab === "payroll" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex items-center gap-4">
+          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-wrap items-center gap-4">
             <label className="text-sm font-semibold text-[#43474e]">{t.hr.payrollMonth}</label>
             <input
               type="month"
@@ -820,6 +967,21 @@ export default function HRPage() {
               value={payrollMonth}
               onChange={(e) => setPayrollMonth(e.target.value)}
             />
+            <div className="flex-1" />
+            {pendingPayrollCount > 0 && (
+              <button
+                onClick={handleProcessAllPayroll}
+                disabled={processAllLoading}
+                className="flex items-center gap-2 bg-[#0d9488] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-60"
+              >
+                {processAllLoading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <span className="material-symbols-outlined text-[18px]">payments</span>
+                )}
+                {t.hr.processAll} ({pendingPayrollCount})
+              </button>
+            )}
             <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
               <span className="material-symbols-outlined text-[18px]">download</span>
               {t.hr.exportPayroll}
@@ -872,7 +1034,7 @@ export default function HRPage() {
                           </button>
                         ) : pr.id ? (
                           <button
-                            onClick={() => {/* payslip modal – handled elsewhere */}}
+                            onClick={() => setPayslipPayrollId(pr.id)}
                             className="flex items-center gap-1 px-3 py-1.5 border border-[#c4c6cf] text-[#43474e] text-xs font-semibold rounded-lg hover:bg-[#f4f3f7] transition-colors"
                           >
                             <span className="material-symbols-outlined text-[14px]">receipt_long</span>
@@ -958,10 +1120,10 @@ export default function HRPage() {
                       {s.assignmentCount} {t.hr.assignments}
                     </button>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEditShift(s)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                      <button onClick={() => openEditShift(s)} aria-label="Edit" className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
                         <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
                       </button>
-                      <button onClick={() => deleteShift(s.id)} className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
+                      <button onClick={() => setConfirmDeleteShiftId(s.id)} aria-label="Delete" className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
                         <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">delete</span>
                       </button>
                     </div>
@@ -973,13 +1135,118 @@ export default function HRPage() {
         </div>
       )}
 
+      {/* ── Payslip Modal ── */}
+      {payslipPayrollId && (
+        <PayslipModal payrollId={payslipPayrollId} onClose={() => setPayslipPayrollId(null)} />
+      )}
+
+      {/* ── Leave Creation Modal ── */}
+      {leaveModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="leave-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setLeaveModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="leave-modal-title" className="text-lg font-bold text-[#1a1c1e]">{t.hr.newLeaveRequest}</h2>
+              <button onClick={() => setLeaveModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {leaveError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{leaveError}</div>}
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.employee} *</label>
+                <select className="input-field" value={leaveForm.employeeId} onChange={(e) => setLeaveForm(f => ({ ...f, employeeId: e.target.value }))}>
+                  <option value="">{t.hr.searchPlaceholder}</option>
+                  {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.user.name} ({emp.empCode})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveType} *</label>
+                <select className="input-field" value={leaveForm.type} onChange={(e) => setLeaveForm(f => ({ ...f, type: e.target.value }))}>
+                  <option value="ANNUAL">{t.hr.leaveTypeAnnual}</option>
+                  <option value="SICK">{t.hr.leaveTypeSick}</option>
+                  <option value="EMERGENCY">{t.hr.leaveTypeEmergency}</option>
+                  <option value="MATERNITY">{t.hr.leaveTypeMaternity}</option>
+                  <option value="PATERNITY">{t.hr.leaveTypePaternity}</option>
+                  <option value="UNPAID">{t.hr.leaveTypeUnpaid}</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.startDate} *</label>
+                  <input type="date" className="input-field" value={leaveForm.startDate} onChange={(e) => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.endDate} *</label>
+                  <input type="date" className="input-field" value={leaveForm.endDate} onChange={(e) => setLeaveForm(f => ({ ...f, endDate: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveDaysLabel} *</label>
+                <input type="number" min="1" className="input-field" value={leaveForm.days} onChange={(e) => setLeaveForm(f => ({ ...f, days: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveReason}</label>
+                <textarea rows={3} className="input-field resize-none" placeholder={t.hr.leaveReasonPlaceholder} value={leaveForm.reason} onChange={(e) => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setLeaveModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+              <button onClick={handleCreateLeave} disabled={leaveSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                {leaveSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Attendance Mark Modal ── */}
+      {attMarkModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="att-mark-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setAttMarkModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <div>
+                <h2 id="att-mark-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.markAttendance}</h2>
+                <p className="text-xs text-[#74777f] mt-0.5">{attMarkModal.employeeName} · {attMarkModal.date}</p>
+              </div>
+              <button onClick={() => setAttMarkModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {attMarkError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{attMarkError}</div>}
+              <div className="grid grid-cols-1 gap-2">
+                {ATT_STATUSES.map((s) => {
+                  const cfg = ATT_MARKER[s];
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setAttMarkStatus(s)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-colors ${attMarkStatus === s ? "border-[#002045] bg-[#f0f4ff]" : "border-[#e3e2e6] hover:bg-[#f4f3f7]"}`}
+                    >
+                      <span className={`material-symbols-outlined text-[18px] ${cfg.cls}`}>{cfg.sym}</span>
+                      {ATT_LABEL[s] ?? s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setAttMarkModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+              <button onClick={handleMarkAttendance} disabled={attMarkSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                {attMarkSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Shift Add/Edit Modal ── */}
       {shiftModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShiftModal(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
               <h2 className="text-lg font-bold text-[#1a1c1e]">{shiftModal === "add" ? t.hr.addShift : t.hr.editShift}</h2>
-              <button onClick={() => setShiftModal(null)} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+              <button onClick={() => setShiftModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
                 <span className="material-symbols-outlined text-[#74777f]">close</span>
               </button>
             </div>
@@ -1048,7 +1315,7 @@ export default function HRPage() {
                 <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.assignments}</h2>
                 <p className="text-xs text-[#74777f]">{assignModal.name} · {assignModal.startTime}–{assignModal.endTime}</p>
               </div>
-              <button onClick={() => setAssignModal(null)} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+              <button onClick={() => setAssignModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
                 <span className="material-symbols-outlined text-[#74777f]">close</span>
               </button>
             </div>
@@ -1089,7 +1356,7 @@ export default function HRPage() {
                           <p className="text-sm font-semibold text-[#1a1c1e]">{a.employeeName}</p>
                           <p className="text-xs text-[#74777f]">{a.jobTitle} · {t.hr.assignedFrom} {a.startDate?.slice(0, 10)}</p>
                         </div>
-                        <button onClick={() => removeAssignment(a.id)} className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
+                        <button onClick={() => removeAssignment(a.id)} aria-label="Remove" className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
                           <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">remove_circle</span>
                         </button>
                       </div>

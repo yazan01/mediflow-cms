@@ -24,9 +24,16 @@ export default function EmployeeProfilePage() {
   const router = useRouter();
   const { t } = useLanguage();
 
+  interface LeaveRecord {
+    id: string; type: string; startDate: string; endDate: string;
+    days: number; status: string; reason?: string; approverName?: string;
+  }
+
   const [emp, setEmp] = useState<Employee | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [leaveHistory, setLeaveHistory] = useState<LeaveRecord[]>([]);
+  const [leaveHistoryLoading, setLeaveHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -40,6 +47,12 @@ export default function EmployeeProfilePage() {
     if (deptRes.ok) setDepartments(await deptRes.json());
     if (branchRes.ok) setBranches(await branchRes.json());
     setLoading(false);
+    // fetch leave history after employee loads
+    setLeaveHistoryLoading(true);
+    try {
+      const lr = await fetch(`/api/hr/leaves?employeeId=${id}`);
+      if (lr.ok) { const d = await lr.json(); setLeaveHistory(d.data ?? []); }
+    } catch { /* ignore */ } finally { setLeaveHistoryLoading(false); }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -64,11 +77,30 @@ export default function EmployeeProfilePage() {
   const totalComp = [emp.basicSalary, emp.housingAllowance, emp.transportAllowance, emp.medicalAllowance]
     .reduce((sum: number, v) => sum + (Number(v) || 0), 0);
 
-  const STATUS_COLORS: Record<string, string> = {
-    ACTIVE: "bg-[#ccfbf1] text-[#0d9488]",
-    ON_LEAVE: "bg-[#fffbeb] text-[#d97706]",
-    INACTIVE: "bg-[#f4f3f7] text-[#74777f]",
-    TERMINATED: "bg-[#ffdad6] text-[#ba1a1a]",
+  const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
+    ACTIVE:     { label: t.hr.activeStatus,   cls: "bg-[#ccfbf1] text-[#0d9488]" },
+    ON_LEAVE:   { label: t.hr.onLeaveStatus,  cls: "bg-[#fff7ed] text-[#d97706]" },
+    INACTIVE:   { label: t.hr.inactiveStatus, cls: "bg-[#f4f3f7] text-[#74777f]" },
+    TERMINATED: { label: t.hr.terminated,     cls: "bg-[#ffdad6] text-[#ba1a1a]" },
+  };
+
+  const TYPE_LABELS: Record<string, string> = {
+    FULL_TIME: t.hr.fullTime,
+    PART_TIME: t.hr.partTime,
+    CONTRACT:  t.hr.contract,
+  };
+
+  const LEAVE_STATUS_STYLES: Record<string, { label: string; cls: string }> = {
+    PENDING:  { label: t.common.pending,   cls: "bg-[#fff7ed] text-[#d97706]" },
+    APPROVED: { label: t.common.approved,  cls: "bg-[#ccfbf1] text-[#0d9488]" },
+    REJECTED: { label: t.common.rejected,  cls: "bg-[#ffdad6] text-[#ba1a1a]" },
+    CANCELLED:{ label: t.common.cancel,    cls: "bg-[#e3e2e6] text-[#74777f]" },
+  };
+
+  const LEAVE_TYPE_LABELS: Record<string, string> = {
+    ANNUAL: t.hr.leaveTypeAnnual, SICK: t.hr.leaveTypeSick,
+    EMERGENCY: t.hr.leaveTypeEmergency, MATERNITY: t.hr.leaveTypeMaternity,
+    PATERNITY: t.hr.leaveTypePaternity, UNPAID: t.hr.leaveTypeUnpaid,
   };
 
   return (
@@ -100,11 +132,11 @@ export default function EmployeeProfilePage() {
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4">
             <InfoItem label={t.hr.empCode} value={emp.empCode as string} />
             <InfoItem label={t.hr.hireDate2} value={emp.hireDate ? formatDate(emp.hireDate as string) : "—"} />
-            <InfoItem label={t.hr.type} value={emp.employmentType as string} />
+            <InfoItem label={t.hr.type} value={TYPE_LABELS[emp.employmentType as string] ?? (emp.employmentType as string)} />
             <InfoItem label={t.hr.status}>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[emp.status as string] ?? "bg-[#f4f3f7] text-[#74777f]"}`}>
-                {emp.status as string}
-              </span>
+              {(() => { const s = STATUS_STYLES[emp.status as string] ?? STATUS_STYLES.INACTIVE; return (
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${s.cls}`}>{s.label}</span>
+              ); })()}
             </InfoItem>
             <InfoItem label={t.hr.phone} value={(user.phone as string) ?? "—"} />
             <InfoItem label={t.hr.email} value={(user.email as string) ?? "—"} />
@@ -143,6 +175,65 @@ export default function EmployeeProfilePage() {
             <LeaveCard label={t.hr.sickLeave} value={emp.sickLeaveBalance as number} color="bg-[#ccfbf1] text-[#0d9488]" />
           </div>
         </div>
+      </div>
+
+      {/* Bank info */}
+      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+        <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#1960a3] text-[18px]">account_balance</span>
+          {t.hr.bankInfo}
+        </h3>
+        {emp.bankName || emp.bankAccount ? (
+          <div className="grid grid-cols-2 gap-4">
+            <InfoItem label={t.hr.bankName} value={(emp.bankName as string) || "—"} />
+            <InfoItem label={t.hr.bankAccount} value={(emp.bankAccount as string) || "—"} />
+          </div>
+        ) : (
+          <p className="text-sm text-[#74777f]">{t.hr.noBankInfo}</p>
+        )}
+      </div>
+
+      {/* Leave History */}
+      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+        <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#d97706] text-[18px]">event_busy</span>
+          {t.hr.leaveHistory}
+        </h3>
+        {leaveHistoryLoading ? (
+          <div className="flex justify-center py-6">
+            <div className="w-6 h-6 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
+          </div>
+        ) : leaveHistory.length === 0 ? (
+          <p className="text-sm text-[#74777f]">{t.hr.noLeaveHistory}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#e3e2e6]">
+                  {[t.hr.leaveType, t.hr.startDate, t.hr.endDate, t.hr.days, t.common.status].map(h => (
+                    <th key={h} className="text-left text-xs font-semibold text-[#74777f] uppercase tracking-wider pb-2 pe-4 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {leaveHistory.map(lr => {
+                  const sc = LEAVE_STATUS_STYLES[lr.status] ?? LEAVE_STATUS_STYLES.PENDING;
+                  return (
+                    <tr key={lr.id} className="border-b border-[#f4f3f7]">
+                      <td className="py-2.5 pe-4 text-[#1a1c1e]">{LEAVE_TYPE_LABELS[lr.type] ?? lr.type}</td>
+                      <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{formatDate(lr.startDate)}</td>
+                      <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{formatDate(lr.endDate)}</td>
+                      <td className="py-2.5 pe-4 text-[#43474e]">{lr.days}</td>
+                      <td className="py-2.5">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${sc.cls}`}>{sc.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Roles */}

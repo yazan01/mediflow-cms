@@ -21,6 +21,7 @@ export default function NewEmployeePage() {
     userId: "", departmentId: "", jobTitle: "", employmentType: "FULL_TIME",
     basicSalary: "", housingAllowance: "", transportAllowance: "", medicalAllowance: "",
     hireDate: "", annualLeaveBalance: "21", sickLeaveBalance: "14", branchId: "",
+    bankName: "", bankAccount: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -60,6 +61,8 @@ export default function NewEmployeePage() {
           annualLeaveBalance: Number(form.annualLeaveBalance) || 21,
           sickLeaveBalance: Number(form.sickLeaveBalance) || 14,
           branchId: form.branchId || undefined,
+          bankName: form.bankName || undefined,
+          bankAccount: form.bankAccount || undefined,
         }),
       });
       if (!res.ok) {
@@ -132,8 +135,18 @@ export default function NewEmployeePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.allowances}</label>
-            <input type="number" className="input-field" value={form.housingAllowance} onChange={e => set("housingAllowance", e.target.value)} min="0" step="0.01" placeholder="Housing allowance" />
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.housingAllowance}</label>
+            <input type="number" className="input-field" value={form.housingAllowance} onChange={e => set("housingAllowance", e.target.value)} min="0" step="0.01" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.transportAllowance}</label>
+            <input type="number" className="input-field" value={form.transportAllowance} onChange={e => set("transportAllowance", e.target.value)} min="0" step="0.01" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.medicalAllowance}</label>
+            <input type="number" className="input-field" value={form.medicalAllowance} onChange={e => set("medicalAllowance", e.target.value)} min="0" step="0.01" />
           </div>
 
           <div>
@@ -147,6 +160,16 @@ export default function NewEmployeePage() {
               <option value="">{t.hr.allBranches}</option>
               {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.bankInfo}</label>
+            <input className="input-field" value={form.bankName} onChange={e => set("bankName", e.target.value)} placeholder="Bank name" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.bankAccount}</label>
+            <input className="input-field" value={form.bankAccount} onChange={e => set("bankAccount", e.target.value)} placeholder="Account number / IBAN" />
           </div>
         </div>
 
