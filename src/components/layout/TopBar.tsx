@@ -8,6 +8,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface TopBarProps {
   user?: { name: string; role: string; photo?: string };
+  onMenuClick?: () => void;
 }
 
 type ApiNotif = {
@@ -43,7 +44,7 @@ function timeAgo(isoStr: string, t: { justNow: string; minutesAgo: string; hours
   return interpolate(t.daysAgo, { n: Math.floor(diff / 86400) });
 }
 
-export default function TopBar({ user }: TopBarProps) {
+export default function TopBar({ user, onMenuClick }: TopBarProps) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -111,6 +112,15 @@ export default function TopBar({ user }: TopBarProps) {
   return (
     <header className="flex justify-between items-center w-full h-16 px-6 sticky top-0 z-40 bg-[#faf9fd] border-b border-[#e3e2e6]">
       <div className="flex items-center gap-4 flex-1">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors"
+            aria-label={t.topbar.openMenu}
+          >
+            <span className="material-symbols-outlined text-[#43474e]" aria-hidden="true">menu</span>
+          </button>
+        )}
         <div className="relative w-full max-w-md">
           <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
           <input
@@ -206,6 +216,8 @@ export default function TopBar({ user }: TopBarProps) {
           <button
             onClick={() => { setUserMenuOpen((v) => !v); setNotifOpen(false); }}
             className="flex items-center gap-2 hover:bg-[#f4f3f7] rounded-lg px-2 py-1.5 transition-colors"
+            aria-label={t.topbar.openUserMenu}
+            aria-expanded={userMenuOpen}
           >
             <div className="text-end hidden sm:block">
               <p className="text-xs font-semibold text-[#1a1c1e]">{displayName}</p>

@@ -591,9 +591,14 @@ export default function HRPage() {
                   <button onClick={() => setEmpPage((p) => Math.max(1, p - 1))} disabled={empPage === 1} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                   </button>
-                  {Array.from({ length: Math.min(5, empTotalPages) }, (_, i) => i + 1).map((p) => (
-                    <button key={p} onClick={() => setEmpPage(p)} className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${empPage === p ? "bg-[#002045] text-white" : "hover:bg-[#f4f3f7] text-[#43474e]"}`}>{p}</button>
-                  ))}
+                  {(() => {
+                    const delta = 2;
+                    const start = Math.max(1, Math.min(empPage - delta, empTotalPages - delta * 2));
+                    const end = Math.min(empTotalPages, start + delta * 2);
+                    return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
+                      <button key={p} onClick={() => setEmpPage(p)} className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${empPage === p ? "bg-[#002045] text-white" : "hover:bg-[#f4f3f7] text-[#43474e]"}`}>{p}</button>
+                    ));
+                  })()}
                   <button onClick={() => setEmpPage((p) => Math.min(empTotalPages, p + 1))} disabled={empPage === empTotalPages} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                   </button>

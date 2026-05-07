@@ -7,11 +7,13 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface SidebarProps {
   user?: { name: string; role: string; photo?: string };
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ user }: SidebarProps) {
+export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
   const displayName = user?.name ?? "User";
   const displayRole = user?.role ?? "Staff";
 
@@ -30,8 +32,29 @@ export default function Sidebar({ user }: SidebarProps) {
     { label: t.nav.users,        href: "/users",       icon: "manage_accounts" },
   ];
 
+  const closedTranslate = dir === "rtl" ? "translate-x-full" : "-translate-x-full";
+
   return (
-    <aside className="flex flex-col h-screen w-64 border-e border-[#e3e2e6] bg-[#faf9fd] py-4 px-4 sticky top-0 flex-shrink-0">
+    <aside
+      className={cn(
+        "flex flex-col h-screen w-64 border-e border-[#e3e2e6] bg-[#faf9fd] py-4 px-4 flex-shrink-0",
+        "fixed top-0 start-0 z-50 transition-transform duration-300 ease-in-out",
+        "md:sticky md:translate-x-0",
+        isOpen ? "translate-x-0" : closedTranslate,
+      )}
+      aria-label={t.nav.navigation}
+    >
+      {/* Mobile close button */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="md:hidden absolute top-3 end-3 p-1.5 rounded-lg hover:bg-[#f4f3f7] text-[#74777f] transition-colors"
+          aria-label={t.nav.closeMenu}
+        >
+          <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+        </button>
+      )}
+
       {/* Brand */}
       <div className="mb-6 px-2 pt-2">
         <div className="flex items-center gap-2 mb-1">

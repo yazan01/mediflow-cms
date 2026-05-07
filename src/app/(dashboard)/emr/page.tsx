@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate, calculateAge } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 interface Patient {
   id: string;
@@ -25,6 +26,7 @@ export default function EMRIndexPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
@@ -33,7 +35,7 @@ export default function EMRIndexPage() {
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
       });
       const res = await fetch(`/api/patients?${params}`);
       if (res.ok) {
@@ -43,7 +45,7 @@ export default function EMRIndexPage() {
       }
     } catch { /* network */ }
     finally { setLoading(false); }
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { fetchPatients(); }, [fetchPatients]);
 

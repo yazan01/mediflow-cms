@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/lib/utils";
 import type { LabOrder } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 export default function LaboratoryPage() {
   const { t } = useLanguage();
@@ -26,6 +27,7 @@ export default function LaboratoryPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -36,7 +38,7 @@ export default function LaboratoryPage() {
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== "ALL" && { status: statusFilter }),
         ...(priorityFilter !== "ALL" && { priority: priorityFilter }),
       });
@@ -44,7 +46,7 @@ export default function LaboratoryPage() {
       if (res.ok) { const data = await res.json(); setOrders(data.data ?? []); setTotal(data.total ?? 0); }
     } catch { /* network */ }
     finally { setLoading(false); }
-  }, [page, search, statusFilter, priorityFilter]);
+  }, [page, debouncedSearch, statusFilter, priorityFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
@@ -14,13 +14,16 @@ import models
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
+VALID_PAYMENT_METHODS = {"CASH", "CARD", "CHECK", "TRANSFER", "INSURANCE"}
+
+
 class InvoiceItemIn(BaseModel):
-    description: str
-    category: Optional[str] = None
-    quantity: int = 1
-    unitPrice: float
-    discount: Optional[float] = 0
-    serviceCode: Optional[str] = None
+    description: str = Field(..., min_length=1, max_length=500)
+    category: Optional[str] = Field(None, max_length=100)
+    quantity: int = Field(1, gt=0, le=10000)
+    unitPrice: float = Field(..., gt=0)
+    discount: Optional[float] = Field(0, ge=0, le=100)
+    serviceCode: Optional[str] = Field(None, max_length=50)
 
 
 class InvoiceCreate(BaseModel):
@@ -37,10 +40,10 @@ class InvoiceCreate(BaseModel):
 
 
 class PaymentIn(BaseModel):
-    amount: float
-    method: Optional[str] = "CASH"
-    referenceNo: Optional[str] = None
-    notes: Optional[str] = None
+    amount: float = Field(..., gt=0)
+    method: Optional[str] = Field("CASH", max_length=20)
+    referenceNo: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = Field(None, max_length=1000)
 
 
 def invoice_to_dict(inv: models.Invoice) -> dict:
@@ -96,7 +99,7 @@ def invoice_to_dict(inv: models.Invoice) -> dict:
 
 
 @router.get("/stats")
-def get_billing_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_billing_stats(db: Session = Depends(get_db), _user=Depends(require_roles(*BILLING_ROLES))):
     from datetime import date
     first_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -181,7 +184,7 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Dep
 
     invoice = models.Invoice(
         id=generate_id(),
-        invoiceNo=generate_invoice_no(),
+        invoiceNo=generate_invoice_no(db),
         patientId=body.patientId,
         appointmentId=body.appointmentId,
         subtotal=subtotal,
@@ -255,9 +258,20 @@ def add_payment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    inv = (
+        db.query(models.Invoice)
+        .with_for_update()
+        .filter(models.Invoice.id == invoice_id)
+        .first()
+    )
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if body.method and body.method.upper() not in VALID_PAYMENT_METHODS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid payment method. Allowed: {', '.join(sorted(VALID_PAYMENT_METHODS))}",
+        )
 
     if body.amount <= 0:
         raise HTTPException(status_code=422, detail="Payment amount must be greater than zero")

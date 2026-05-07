@@ -11,7 +11,8 @@ export type UserRole =
   | "PHARMACIST"
   | "LAB_TECHNICIAN"
   | "RADIOLOGIST"
-  | "AUDITOR";
+  | "AUDITOR"
+  | "STAFF";
 
 export type Gender = "MALE" | "FEMALE";
 

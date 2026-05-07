@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Medication, StockStatus } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 type PharmacyStats = {
   totalSKUs: number;
@@ -45,6 +46,7 @@ export default function PharmacyPage() {
   const [loading, setLoading]         = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const [search, setSearch]           = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [statusFilter, setStatusFilter]     = useState<StockFilter>("ALL");
   const [page, setPage]               = useState(1);
@@ -75,7 +77,7 @@ export default function PharmacyPage() {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(categoryFilter !== "ALL" && { category: categoryFilter }),
         ...(statusFilter !== "ALL" && { status: statusFilter }),
       });
@@ -102,7 +104,7 @@ export default function PharmacyPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, categoryFilter, statusFilter]);
+  }, [page, debouncedSearch, categoryFilter, statusFilter]);
 
   useEffect(() => { fetchMedications(); }, [fetchMedications]);
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getInitials, formatDateTime } from "@/lib/utils";
 import type { User, UserRole } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 const ROLE_COLORS: Record<UserRole, string> = {
   SUPER_ADMIN:    "bg-[#002045] text-white",
@@ -17,11 +18,12 @@ const ROLE_COLORS: Record<UserRole, string> = {
   LAB_TECHNICIAN: "bg-[#f0fdf4] text-[#16a34a]",
   RADIOLOGIST:    "bg-[#fdf4ff] text-[#9333ea]",
   AUDITOR:        "bg-[#f4f3f7] text-[#74777f]",
+  STAFF:          "bg-[#f1f0f4] text-[#43474e]",
 };
 
 const SYSTEM_ROLE_KEYS: UserRole[] = [
   "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "RECEPTIONIST", "NURSE",
-  "ACCOUNTANT", "HR_OFFICER", "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "AUDITOR",
+  "ACCOUNTANT", "HR_OFFICER", "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "AUDITOR", "STAFF",
 ];
 
 type RolePermissionMatrix = Record<string, Record<string, boolean>>;
@@ -41,6 +43,7 @@ export default function UsersPage() {
     LAB_TECHNICIAN: t.users.labTech,
     RADIOLOGIST:    t.users.radiologist,
     AUDITOR:        t.users.auditor,
+    STAFF:          t.users.staff,
   };
 
   const MODULES = [
@@ -59,11 +62,14 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [permissions, setPermissions] = useState<RolePermissionMatrix>({});
   const [showAddUser, setShowAddUser] = useState(false);
+  const [confirmToggle, setConfirmToggle] = useState<{ id: string; name: string; isActive: boolean } | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const pageSize = 10;
 
@@ -73,7 +79,7 @@ export default function UsersPage() {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(roleFilter !== "ALL" && { role: roleFilter }),
       });
       const res = await fetch(`/api/users?${params}`);
@@ -84,7 +90,7 @@ export default function UsersPage() {
       }
     } catch { /* network */ }
     finally { setLoading(false); }
-  }, [page, search, roleFilter]);
+  }, [page, debouncedSearch, roleFilter]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -98,9 +104,20 @@ export default function UsersPage() {
     }));
   }
 
-  async function toggleUserStatus(id: string, isActive: boolean) {
-    await fetch(`/api/users/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !isActive }) });
-    fetchUsers();
+  async function confirmAndToggle() {
+    if (!confirmToggle) return;
+    setTogglingId(confirmToggle.id);
+    setConfirmToggle(null);
+    try {
+      await fetch(`/api/users/${confirmToggle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !confirmToggle.isActive }),
+      });
+      fetchUsers();
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   async function resetPassword(id: string) {
@@ -237,8 +254,15 @@ export default function UsersPage() {
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => toggleUserStatus(user.id, user.isActive)} title={user.isActive ? t.users.deactivate : t.users.activate} className={`p-1.5 rounded-lg transition-colors ${user.isActive ? "hover:bg-[#ffdad6] text-[#74777f] hover:text-[#ba1a1a]" : "hover:bg-[#ccfbf1] text-[#74777f] hover:text-[#0d9488]"}`}>
-                              <span className="material-symbols-outlined text-[18px]">{user.isActive ? "person_off" : "person_check"}</span>
+                            <button
+                              onClick={() => setConfirmToggle({ id: user.id, name: user.name, isActive: user.isActive })}
+                              disabled={togglingId === user.id}
+                              title={user.isActive ? t.users.deactivate : t.users.activate}
+                              className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${user.isActive ? "hover:bg-[#ffdad6] text-[#74777f] hover:text-[#ba1a1a]" : "hover:bg-[#ccfbf1] text-[#74777f] hover:text-[#0d9488]"}`}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">
+                                {togglingId === user.id ? "hourglass_empty" : user.isActive ? "person_off" : "person_check"}
+                              </span>
                             </button>
                             <button onClick={() => resetPassword(user.id)} title={t.users.resetPassword} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]">
                               <span className="material-symbols-outlined text-[18px]">lock_reset</span>
@@ -352,6 +376,41 @@ export default function UsersPage() {
 
       {/* Add User Modal */}
       {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onSaved={() => { setShowAddUser(false); fetchUsers(); }} />}
+
+      {/* Confirm Toggle Status Modal */}
+      {confirmToggle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className={`material-symbols-outlined text-3xl ${confirmToggle.isActive ? "text-[#ba1a1a]" : "text-[#0d9488]"}`}>
+                {confirmToggle.isActive ? "person_off" : "person_check"}
+              </span>
+              <div>
+                <p className="font-semibold text-[#1a1c1e]">
+                  {confirmToggle.isActive ? t.users.deactivate : t.users.activate} {t.users.usersLabel}?
+                </p>
+                <p className="text-sm text-[#74777f]">{confirmToggle.name}</p>
+              </div>
+            </div>
+            <p className="text-sm text-[#74777f]">
+              {confirmToggle.isActive
+                ? "This user will lose all access immediately. You can reactivate them later."
+                : "This user will regain access to the system."}
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setConfirmToggle(null)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">
+                Cancel
+              </button>
+              <button
+                onClick={confirmAndToggle}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white ${confirmToggle.isActive ? "bg-[#ba1a1a] hover:opacity-90" : "bg-[#0d9488] hover:opacity-90"}`}
+              >
+                {confirmToggle.isActive ? "Deactivate" : "Activate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -371,11 +430,12 @@ function AddUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
     LAB_TECHNICIAN: t.users.labTech,
     RADIOLOGIST:    t.users.radiologist,
     AUDITOR:        t.users.auditor,
+    STAFF:          t.users.staff,
   };
 
   const SYSTEM_ROLE_KEYS: UserRole[] = [
     "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "RECEPTIONIST", "NURSE",
-    "ACCOUNTANT", "HR_OFFICER", "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "AUDITOR",
+    "ACCOUNTANT", "HR_OFFICER", "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "AUDITOR", "STAFF",
   ];
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", roles: [] as UserRole[], password: "" });

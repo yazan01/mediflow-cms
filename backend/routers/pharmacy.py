@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -90,7 +90,7 @@ def get_pharmacy_stats(db: Session = Depends(get_db), _user=Depends(get_current_
 @router.get("/medications")
 def get_medications(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(20, ge=1, le=200),
+    pageSize: int = Query(20, ge=1, le=100),
     search: str = Query(""),
     category: Optional[str] = None,
     status: Optional[str] = None,
@@ -199,19 +199,35 @@ def get_stock_movements(
     }
 
 
+class StockAdjustIn(BaseModel):
+    quantity: int = Field(..., ge=-10000, le=10000)
+    note: Optional[str] = Field(None, max_length=500)
+
+    class Config:
+        extra = "forbid"
+
+
 @router.post("/medications/{med_id}/adjust", status_code=200)
 def adjust_medication_stock(
     med_id: str,
-    body: dict,
+    body: StockAdjustIn,
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(*PHARM_ROLES)),
 ):
-    med = db.query(models.Medication).filter(models.Medication.id == med_id).first()
+    if body.quantity == 0:
+        raise HTTPException(status_code=422, detail="Quantity cannot be zero")
+
+    med = (
+        db.query(models.Medication)
+        .with_for_update()
+        .filter(models.Medication.id == med_id)
+        .first()
+    )
     if not med:
         raise HTTPException(status_code=404, detail="Medication not found")
 
-    qty = int(body.get("quantity", 0))
-    note = body.get("note", "")
+    qty = body.quantity
+    note = body.note or ""
     previous_qty = med.stockQuantity
     new_qty = previous_qty + qty
     if new_qty < 0:

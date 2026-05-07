@@ -5,6 +5,9 @@ import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
 import type { Patient } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import type { FetchError } from "@/lib/hooks/useDataFetch";
 
 const BLOOD_LABELS: Record<string, string> = {
   A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−",
@@ -16,7 +19,9 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<FetchError | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -26,11 +31,12 @@ export default function PatientsPage() {
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== "ALL" && { status: statusFilter }),
       });
       const res = await fetch(`/api/patients?${params}`);
@@ -38,13 +44,16 @@ export default function PatientsPage() {
         const data = await res.json();
         setPatients(data.data ?? []);
         setTotal(data.total ?? 0);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setFetchError({ type: "api", status: res.status, message: body.detail ?? `Error ${res.status}` });
       }
     } catch {
-      // network error
+      setFetchError({ type: "network", message: "Unable to connect. Check your network connection." });
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchPatients();
@@ -68,6 +77,7 @@ export default function PatientsPage() {
 
   return (
     <div className="space-y-6">
+      {fetchError && <ErrorBanner error={fetchError} onRetry={fetchPatients} />}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

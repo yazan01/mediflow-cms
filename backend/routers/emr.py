@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from database import get_db
 from auth import get_current_user
@@ -33,6 +33,13 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_cu
 
     consultations = (
         db.query(models.Consultation)
+        .options(
+            joinedload(models.Consultation.doctor).joinedload(models.Doctor.user),
+            joinedload(models.Consultation.appointment),
+            joinedload(models.Consultation.vitals),
+            selectinload(models.Consultation.diagnoses),
+            selectinload(models.Consultation.prescriptions),
+        )
         .filter(models.Consultation.patientId == patient_id)
         .order_by(models.Consultation.createdAt.desc())
         .limit(20)
@@ -41,6 +48,7 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_cu
 
     lab_orders = (
         db.query(models.LabOrder)
+        .options(selectinload(models.LabOrder.results))
         .filter(models.LabOrder.patientId == patient_id)
         .order_by(models.LabOrder.createdAt.desc())
         .limit(20)
@@ -174,6 +182,13 @@ def get_patient_consultations(patient_id: str, db: Session = Depends(get_db), _u
 
     consultations = (
         db.query(models.Consultation)
+        .options(
+            joinedload(models.Consultation.doctor).joinedload(models.Doctor.user),
+            joinedload(models.Consultation.appointment),
+            joinedload(models.Consultation.vitals),
+            selectinload(models.Consultation.diagnoses),
+            selectinload(models.Consultation.prescriptions),
+        )
         .filter(models.Consultation.patientId == patient_id)
         .order_by(models.Consultation.createdAt.desc())
         .all()

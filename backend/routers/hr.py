@@ -311,6 +311,16 @@ def create_leave(body: LeaveCreate, db: Session = Depends(get_db), _user=Depends
     except (ValueError, TypeError):
         raise HTTPException(422, "Invalid date format for startDate or endDate")
 
+    if end < start:
+        raise HTTPException(422, "endDate must be on or after startDate")
+
+    calculated_days = (end.date() - start.date()).days + 1
+    if body.days != calculated_days:
+        raise HTTPException(
+            422,
+            f"days field ({body.days}) does not match date range ({calculated_days} days)",
+        )
+
     leave = models.LeaveRequest(
         id=generate_id(),
         employeeId=body.employeeId,

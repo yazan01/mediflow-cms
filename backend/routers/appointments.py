@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
 
 from database import get_db
@@ -66,7 +66,7 @@ def appt_to_dict(a: models.Appointment) -> dict:
 @router.get("")
 def get_appointments(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(50, ge=1, le=200),
+    pageSize: int = Query(50, ge=1, le=100),
     status: Optional[str] = None,
     doctorId: Optional[str] = None,
     date: Optional[str] = None,
@@ -74,7 +74,10 @@ def get_appointments(
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    query = db.query(models.Appointment)
+    query = db.query(models.Appointment).options(
+        joinedload(models.Appointment.patient),
+        joinedload(models.Appointment.doctor).joinedload(models.Doctor.user),
+    )
 
     if status and status != "ALL":
         query = query.filter(models.Appointment.status == status)

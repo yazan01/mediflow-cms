@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
   XRAY:  { bg: "bg-[#f4f3f7]",   text: "text-[#43474e]" },
@@ -45,6 +46,7 @@ export default function RadiologyPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [modalityFilter, setModalityFilter] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -55,7 +57,7 @@ export default function RadiologyPage() {
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== "ALL" && { status: statusFilter }),
         ...(modalityFilter !== "ALL" && { modality: modalityFilter }),
       });
@@ -63,7 +65,7 @@ export default function RadiologyPage() {
       if (res.ok) { const data = await res.json(); setOrders(data.data ?? []); setTotal(data.total ?? 0); }
     } catch { /* network */ }
     finally { setLoading(false); }
-  }, [page, search, statusFilter, modalityFilter]);
+  }, [page, debouncedSearch, statusFilter, modalityFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 

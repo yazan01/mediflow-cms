@@ -97,6 +97,7 @@ class Patient(Base):
     isActive = Column(Boolean, default=True)
     mergedIntoId = Column(String(36))
     lastVisit = Column(DateTime)
+    deletedAt = Column(DateTime, nullable=True)
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -178,6 +179,11 @@ class Appointment(Base):
 
 class Consultation(Base):
     __tablename__ = "consultations"
+    __table_args__ = (
+        Index("ix_consult_patient", "patientId"),
+        Index("ix_consult_doctor", "doctorId"),
+        Index("ix_consult_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     appointmentId = Column(String(36), ForeignKey("appointments.id"), unique=True, nullable=False)
     patientId = Column(String(36), ForeignKey("patients.id"), nullable=False)
@@ -261,6 +267,11 @@ class Prescription(Base):
 
 class LabOrder(Base):
     __tablename__ = "lab_orders"
+    __table_args__ = (
+        Index("ix_laborder_patient", "patientId"),
+        Index("ix_laborder_status", "status"),
+        Index("ix_laborder_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     patientId = Column(String(36), ForeignKey("patients.id"), nullable=False)
     consultationId = Column(String(36), ForeignKey("consultations.id"))
@@ -302,6 +313,11 @@ class LabResult(Base):
 
 class RadiologyOrder(Base):
     __tablename__ = "radiology_orders"
+    __table_args__ = (
+        Index("ix_radorder_patient", "patientId"),
+        Index("ix_radorder_status", "status"),
+        Index("ix_radorder_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     patientId = Column(String(36), ForeignKey("patients.id"), nullable=False)
     consultationId = Column(String(36), ForeignKey("consultations.id"))
@@ -380,6 +396,10 @@ class InvoiceItem(Base):
 
 class Payment(Base):
     __tablename__ = "payments"
+    __table_args__ = (
+        Index("ix_payment_invoice", "invoiceId"),
+        Index("ix_payment_paid_at", "paidAt"),
+    )
     id = Column(String(36), primary_key=True)
     invoiceId = Column(String(36), ForeignKey("invoices.id"), nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
@@ -437,6 +457,10 @@ class MedicationBatch(Base):
 
 class StockMovement(Base):
     __tablename__ = "stock_movements"
+    __table_args__ = (
+        Index("ix_stockmov_medication", "medicationId"),
+        Index("ix_stockmov_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     medicationId = Column(String(36), ForeignKey("medications.id"), nullable=False)
     type = Column(String(50), nullable=False)
@@ -603,6 +627,11 @@ class AssetMaintenance(Base):
 
 class Employee(Base):
     __tablename__ = "employees"
+    __table_args__ = (
+        Index("ix_employee_user", "userId"),
+        Index("ix_employee_dept", "departmentId"),
+        Index("ix_employee_status", "status"),
+    )
     id = Column(String(36), primary_key=True)
     empCode = Column(String(50), unique=True, nullable=False)
     userId = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
@@ -622,6 +651,7 @@ class Employee(Base):
     sickLeaveBalance = Column(Integer, default=14)
     notes = Column(Text)
     branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    deletedAt = Column(DateTime, nullable=True)
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -653,6 +683,10 @@ class Attendance(Base):
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
+    __table_args__ = (
+        Index("ix_leave_employee", "employeeId"),
+        Index("ix_leave_status", "status"),
+    )
     id = Column(String(36), primary_key=True)
     employeeId = Column(String(36), ForeignKey("employees.id"), nullable=False)
     type = Column(String(20), nullable=False)
@@ -697,6 +731,11 @@ class Payroll(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_user", "userId"),
+        Index("ix_audit_timestamp", "timestamp"),
+        Index("ix_audit_module", "module"),
+    )
     id = Column(String(36), primary_key=True)
     userId = Column(String(36), ForeignKey("users.id"), nullable=False)
     action = Column(String(100), nullable=False)
@@ -714,6 +753,10 @@ class AuditLog(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notif_user_read", "userId", "isRead"),
+        Index("ix_notif_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     userId = Column(String(36), ForeignKey("users.id"), nullable=False)
     title = Column(String(300), nullable=False)
@@ -782,3 +825,14 @@ class ShiftAssignment(Base):
 
     employee = relationship("Employee", back_populates="shiftAssignments")
     shift = relationship("Shift", back_populates="assignments")
+
+
+class TokenBlocklist(Base):
+    """Revoked JWT tokens — checked on every authenticated request."""
+    __tablename__ = "token_blocklist"
+    id = Column(String(36), primary_key=True)
+    # SHA-256 hex digest of the raw token — avoids storing the full token
+    tokenHash = Column(String(64), unique=True, nullable=False, index=True)
+    # Copy exp from the JWT so we can prune expired entries
+    expiresAt = Column(DateTime, nullable=False)
+    revokedAt = Column(DateTime, server_default=func.now())

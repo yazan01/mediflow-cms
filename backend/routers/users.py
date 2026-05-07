@@ -1,13 +1,20 @@
 import json
+import re
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from database import get_db
 from auth import get_current_user, require_roles, generate_id, hash_password, generate_emp_code
 
 ADMIN_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER")
+VALID_ROLES = {
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RECEPTIONIST",
+    "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "ACCOUNTANT", "HR_OFFICER", "AUDITOR", "STAFF",
+}
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 import models
 
 
@@ -25,20 +32,57 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 class UserCreate(BaseModel):
-    name: str
-    email: str
-    password: str
-    phone: Optional[str] = None
-    roles: List[str]
+    name: str = Field(..., min_length=2, max_length=150)
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+    phone: Optional[str] = Field(None, max_length=30)
+    roles: List[str] = Field(..., min_length=1)
     departmentId: Optional[str] = None
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Invalid email address")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        return v
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: List[str]) -> List[str]:
+        invalid = [r for r in v if r not in VALID_ROLES]
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}")
+        return v
 
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    phone: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=2, max_length=150)
+    phone: Optional[str] = Field(None, max_length=30)
     roles: Optional[List[str]] = None
     departmentId: Optional[str] = None
     isActive: Optional[bool] = None
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        invalid = [r for r in v if r not in VALID_ROLES]
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}")
+        return v
 
 
 def user_to_dict(u: models.User) -> dict:
@@ -72,14 +116,19 @@ def get_users(
             models.User.name.contains(search) | models.User.email.contains(search)
         )
 
-    all_users = query.order_by(models.User.createdAt.desc()).all()
-
-    # Role filtering must be done in Python because roles is a JSON column
+    # Push JSON role filtering to MySQL using JSON_CONTAINS — avoids loading entire table
     if role and role != "ALL":
-        all_users = [u for u in all_users if role in parse_roles(u.roles)]
+        query = query.filter(
+            func.json_contains(models.User.roles, func.json_quote(role)) == 1
+        )
 
-    total = len(all_users)
-    page_data = all_users[(page - 1) * pageSize: page * pageSize]
+    total = query.count()
+    page_data = (
+        query.order_by(models.User.createdAt.desc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
 
     return {
         "data": [user_to_dict(u) for u in page_data],
@@ -143,7 +192,11 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    for field, value in body.model_dump(exclude_none=True).items():
+    updates = body.model_dump(exclude_none=True)
+    if "roles" in updates and user_id == _user.id:
+        raise HTTPException(status_code=403, detail="Cannot modify your own roles")
+
+    for field, value in updates.items():
         setattr(user, field, value)
 
     db.commit()

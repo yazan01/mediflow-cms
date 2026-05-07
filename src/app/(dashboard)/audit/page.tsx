@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/lib/utils";
 import type { AuditLog } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 const MODULE_COLORS: Record<string, string> = {
   AUTH: "bg-[#d3e4ff] text-[#00477f]",
@@ -25,6 +26,7 @@ export default function AuditPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [moduleFilter, setModuleFilter] = useState("ALL");
   const [actionFilter, setActionFilter] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -35,7 +37,7 @@ export default function AuditPage() {
     try {
       const params = new URLSearchParams({
         page: String(page), pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(moduleFilter !== "ALL" && { module: moduleFilter }),
         ...(actionFilter !== "ALL" && { action: actionFilter }),
       });
@@ -43,7 +45,7 @@ export default function AuditPage() {
       if (res.ok) { const data = await res.json(); setLogs(data.data ?? []); setTotal(data.total ?? 0); }
     } catch { /* network */ }
     finally { setLoading(false); }
-  }, [page, search, moduleFilter, actionFilter]);
+  }, [page, debouncedSearch, moduleFilter, actionFilter]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 

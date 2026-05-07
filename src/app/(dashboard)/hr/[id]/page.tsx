@@ -13,7 +13,7 @@ type Branch = { id: string; name: string };
 const ALL_ROLES = [
   "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "RECEPTIONIST",
   "NURSE", "ACCOUNTANT", "HR_OFFICER", "PHARMACIST",
-  "LAB_TECHNICIAN", "RADIOLOGIST", "AUDITOR",
+  "LAB_TECHNICIAN", "RADIOLOGIST", "AUDITOR", "STAFF",
 ] as const;
 
 const EMP_TYPES = ["FULL_TIME", "PART_TIME", "CONTRACT"] as const;

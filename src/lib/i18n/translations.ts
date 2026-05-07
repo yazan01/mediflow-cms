@@ -38,6 +38,8 @@ const en = {
     audit: "Audit Logs",
     brandName: "MediFlow CMS",
     brandTagline: "Clinical Management Portal",
+    navigation: "Main navigation",
+    closeMenu: "Close menu",
   },
 
   auth: {
@@ -803,6 +805,7 @@ const en = {
     labTech: "Lab Technician",
     radiologist: "Radiologist",
     auditor: "Auditor",
+    staff: "Staff",
     systemRoles: "System Roles",
     systemRole: "System role",
     selectRole: "Select a role to view permissions",
@@ -988,6 +991,11 @@ const en = {
     minutesAgo: "{n} min ago",
     hoursAgo: "{n}h ago",
     daysAgo: "{n}d ago",
+    openMenu: "Open navigation menu",
+    openUserMenu: "Open user menu",
+    sessionExpiring: "Session Expiring Soon",
+    sessionExpiringDesc: "You have been inactive. Your session will expire in:",
+    stayLoggedIn: "Stay Logged In",
   },
 };
 
@@ -1033,6 +1041,8 @@ export const ar: T = {
     audit: "سجل المراجعة",
     brandName: "MediFlow CMS",
     brandTagline: "نظام الإدارة الطبية",
+    navigation: "التنقل الرئيسي",
+    closeMenu: "إغلاق القائمة",
   },
 
   auth: {
@@ -1798,6 +1808,7 @@ export const ar: T = {
     labTech: "فني مختبر",
     radiologist: "أخصائي أشعة",
     auditor: "مدقق",
+    staff: "موظف",
     systemRoles: "أدوار النظام",
     systemRole: "دور النظام",
     selectRole: "اختر دوراً لعرض الصلاحيات",
@@ -1983,6 +1994,11 @@ export const ar: T = {
     minutesAgo: "منذ {n} دقيقة",
     hoursAgo: "منذ {n} ساعة",
     daysAgo: "منذ {n} يوم",
+    openMenu: "فتح قائمة التنقل",
+    openUserMenu: "فتح قائمة المستخدم",
+    sessionExpiring: "ستنتهي الجلسة قريباً",
+    sessionExpiringDesc: "كنت غير نشط. ستنتهي جلستك خلال:",
+    stayLoggedIn: "البقاء مسجلاً",
   },
 };
 

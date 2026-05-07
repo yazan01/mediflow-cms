@@ -1,18 +1,41 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from routers import auth, patients, appointments, emr, consultations, billing
 from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors, audit, settings
 from routers import laboratory, radiology, branches, shifts, notifications
 
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app = FastAPI(title="MediFlow API", version="1.0.0")
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests. Please slow down."},
+        headers={"Retry-After": "60"},
+    )
+
+
+app.add_middleware(SlowAPIMiddleware)
+
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 app.include_router(auth.router)
@@ -35,6 +58,14 @@ app.include_router(radiology.router)
 app.include_router(branches.router)
 app.include_router(shifts.router)
 app.include_router(notifications.router)
+
+
+@app.on_event("startup")
+def create_new_tables():
+    """Create any tables added after the initial setup (e.g. token_blocklist)."""
+    from database import engine, Base
+    import models  # noqa: F401
+    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/api/health")

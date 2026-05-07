@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from database import get_db
-from auth import get_current_user, generate_id, generate_mrn, sanitize_string
+from auth import get_current_user, generate_id, generate_mrn, sanitize_string, log_audit
 import models
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
@@ -106,7 +106,8 @@ def get_patients(
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    query = db.query(models.Patient)
+    # Never return soft-deleted records
+    query = db.query(models.Patient).filter(models.Patient.deletedAt == None)  # noqa: E711
 
     if search:
         query = query.filter(
@@ -154,7 +155,7 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
     try:
         patient = models.Patient(
             id=generate_id(),
-            mrn=generate_mrn(),
+            mrn=generate_mrn(db),
             firstName=sanitize_string(body.firstName),
             lastName=sanitize_string(body.lastName),
             dateOfBirth=dob,
@@ -292,9 +293,14 @@ def update_patient(
 
 @router.delete("/{patient_id}")
 def delete_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    patient = db.query(models.Patient).filter(
+        models.Patient.id == patient_id,
+        models.Patient.deletedAt == None,  # noqa: E711
+    ).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     patient.isActive = False
+    patient.deletedAt = datetime.utcnow()
     db.commit()
+    log_audit(db, _user.id, "DELETE", "PATIENTS", entity_id=patient_id, entity_type="Patient")
     return {"success": True}

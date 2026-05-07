@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Invoice, InvoiceStatus } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 type BillingStats = {
   totalRevenue: number;
@@ -35,6 +36,7 @@ export default function BillingPage() {
   const [loading, setLoading]         = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const [search, setSearch]           = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [dateFrom, setDateFrom]       = useState("");
   const [dateTo, setDateTo]           = useState("");
@@ -62,7 +64,7 @@ export default function BillingPage() {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== "ALL" && { status: statusFilter }),
         ...(dateFrom && { dateFrom }),
         ...(dateTo && { dateTo }),
@@ -78,7 +80,7 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, dateFrom, dateTo]);
+  }, [page, debouncedSearch, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
