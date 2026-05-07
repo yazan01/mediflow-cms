@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, getInitials } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import EditLog from "@/components/layout/EditLog";
 
 type Employee = Record<string, unknown>;
 type Department = { id: string; name: string };
@@ -160,6 +161,9 @@ export default function EmployeeProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Edit Log */}
+      <EditLog entityId={id as string} />
 
       {/* Edit modal */}
       {editOpen && (

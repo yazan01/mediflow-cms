@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, formatDateTime, calculateAge } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import EditLog from "@/components/layout/EditLog";
 
 const BLOOD_LABELS: Record<string, string> = {
   A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−",
@@ -192,6 +193,9 @@ export default function AppointmentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Log */}
+      <EditLog entityId={id} />
     </div>
   );
 }

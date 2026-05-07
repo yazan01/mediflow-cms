@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDate, formatDateTime, calculateAge, getInitials } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import EditLog from "@/components/layout/EditLog";
 
 const BLOOD_LABELS: Record<string, string> = { A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−", AB_POS: "AB+", AB_NEG: "AB−", O_POS: "O+", O_NEG: "O−" };
 const BLOOD_TYPES = ["A_POS","A_NEG","B_POS","B_NEG","AB_POS","AB_NEG","O_POS","O_NEG"];
@@ -221,6 +222,9 @@ export default function PatientDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Log */}
+      <EditLog entityId={id} />
 
       {/* Edit Modal */}
       {editOpen && (

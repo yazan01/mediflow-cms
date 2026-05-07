@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
+import EditLog from "@/components/layout/EditLog";
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
   DRAFT:     { label: "Draft",     bg: "bg-[#e9e7eb]",   text: "text-[#43474e]" },
@@ -235,6 +236,9 @@ export default function InvoiceDetailPage() {
           </table>
         </div>
       )}
+
+      {/* Edit Log */}
+      <EditLog entityId={id} />
     </div>
   );
 }

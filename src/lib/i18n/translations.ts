@@ -954,6 +954,10 @@ const en = {
     noLogsDesc: "System activity will be logged here",
     loading: "Loading...",
     showing: "Showing",
+    editLog: "Edit History",
+    editLogDesc: "All changes recorded for this record",
+    noEditHistory: "No changes recorded yet",
+    by: "by",
   },
 
   topbar: {
@@ -1939,6 +1943,10 @@ export const ar: T = {
     noLogsDesc: "نشاطات النظام ستُسجّل هنا",
     loading: "جاري التحميل...",
     showing: "عرض",
+    editLog: "سجل التعديلات",
+    editLogDesc: "جميع التغييرات المسجّلة لهذا السجل",
+    noEditHistory: "لا توجد تغييرات مسجّلة بعد",
+    by: "بواسطة",
   },
 
   topbar: {
