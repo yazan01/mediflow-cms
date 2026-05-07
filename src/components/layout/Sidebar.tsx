@@ -27,6 +27,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
     { label: t.nav.laboratory,   href: "/laboratory",  icon: "biotech" },
     { label: t.nav.radiology,    href: "/radiology",   icon: "image_search" },
     { label: t.nav.hr,           href: "/hr",          icon: "badge" },
+    { label: t.nav.myHr,         href: "/my-hr",       icon: "person_pin" },
     { label: t.nav.accounting,   href: "/accounting",  icon: "account_balance" },
     { label: t.nav.reports,      href: "/reports",     icon: "bar_chart" },
     { label: t.nav.users,        href: "/users",       icon: "manage_accounts" },

@@ -665,12 +665,14 @@ class Employee(Base):
     medicalAllowance = Column(Numeric(12, 2), default=0)
     hireDate = Column(DateTime, nullable=False)
     endDate = Column(DateTime)
+    probationEndDate = Column(DateTime)
     bankName = Column(String(200))
     bankAccount = Column(String(100))
     annualLeaveBalance = Column(Integer, default=21)
     sickLeaveBalance = Column(Integer, default=14)
     notes = Column(Text)
     branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    reportsToId = Column(String(36), ForeignKey("employees.id"), nullable=True)
     deletedAt = Column(DateTime, nullable=True)
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -681,6 +683,8 @@ class Employee(Base):
     leaveRequests = relationship("LeaveRequest", back_populates="employee")
     payrollRecords = relationship("Payroll", back_populates="employee")
     shiftAssignments = relationship("ShiftAssignment", back_populates="employee")
+    salaryHistory = relationship("SalaryHistory", back_populates="employee")
+    reportsTo = relationship("Employee", remote_side="Employee.id", foreign_keys="Employee.reportsToId")
 
 
 class Attendance(Base):
@@ -747,6 +751,26 @@ class Payroll(Base):
 
     __table_args__ = (UniqueConstraint("employeeId", "month", "year"),)
     employee = relationship("Employee", back_populates="payrollRecords")
+
+
+class SalaryHistory(Base):
+    __tablename__ = "salary_history"
+    __table_args__ = (
+        Index("ix_salary_history_employee", "employeeId"),
+    )
+    id = Column(String(36), primary_key=True)
+    employeeId = Column(String(36), ForeignKey("employees.id"), nullable=False)
+    changedById = Column(String(36), ForeignKey("users.id"), nullable=False)
+    basicSalary = Column(Numeric(12, 2), nullable=False)
+    housingAllowance = Column(Numeric(12, 2), default=0)
+    transportAllowance = Column(Numeric(12, 2), default=0)
+    medicalAllowance = Column(Numeric(12, 2), default=0)
+    effectiveDate = Column(DateTime, nullable=False)
+    reason = Column(String(500))
+    createdAt = Column(DateTime, server_default=func.now())
+
+    employee = relationship("Employee", back_populates="salaryHistory")
+    changedBy = relationship("User")
 
 
 class AuditLog(Base):
