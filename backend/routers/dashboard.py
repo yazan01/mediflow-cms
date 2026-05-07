@@ -1,4 +1,5 @@
 import calendar
+import os
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -77,6 +78,10 @@ def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(get_current
             return 0
         return round(((curr - prev) / prev) * 100)
 
+    wa_configured = bool(
+        os.getenv("TWILIO_SID") and os.getenv("TWILIO_TOKEN") and os.getenv("TWILIO_WA_FROM")
+    )
+
     return {
         "dailyRevenue": daily_revenue,
         "dailyRevenueChange": pct_change(daily_revenue, prev_revenue),
@@ -90,6 +95,7 @@ def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(get_current
         "criticalAlerts": out_of_stock,
         "lowStockItems": low_stock,
         "waitingPatients": waiting,
+        "whatsappConfigured": wa_configured,
     }
 
 

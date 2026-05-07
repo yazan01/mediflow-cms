@@ -79,7 +79,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
     { label: d.dbLabel,   status: dbOnline ? d.dbConnected    : d.dbPending,       ok: dbOnline },
     { label: d.authLabel, status: d.authConfigured,                                  ok: true     },
     { label: d.apiLabel,  status: d.apiRunning,                                      ok: true     },
-    { label: d.smsLabel,  status: d.smsNotConfigured,                                ok: false    },
+    { label: d.smsLabel,  status: stats?.whatsappConfigured ? d.waConfigured : d.smsNotConfigured, ok: !!stats?.whatsappConfigured },
   ];
 
   const dateStr = new Date().toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US", {

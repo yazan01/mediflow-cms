@@ -417,6 +417,7 @@ export interface DashboardStats {
   criticalAlerts: number;
   lowStockItems: number;
   waitingPatients: number;
+  whatsappConfigured?: boolean;
 }
 
 export interface PaginatedResponse<T> {
