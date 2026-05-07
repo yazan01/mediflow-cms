@@ -80,7 +80,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
     { label: d.dailyRevenue,       value: stats ? formatCurrency(stats.dailyRevenue)         : "—", change: stats?.dailyRevenueChange,  icon: "payments",       iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
     { label: d.todayAppointments,  value: liveAppointments != null ? String(liveAppointments) : "—", change: stats?.appointmentsChange, icon: "calendar_today", iconBg: "bg-[#d6e3ff]", iconColor: "text-[#002045]" },
     { label: d.newPatients,        value: stats ? String(stats.newPatients)                   : "—", change: stats?.newPatientsChange,   icon: "person_add",     iconBg: "bg-[#ffddba]", iconColor: "text-[#633f0f]" },
-    { label: d.bedOccupancy,       value: liveLowStock != null ? String(liveLowStock)         : "—", change: null,                       icon: "medication",     iconBg: "bg-[#ffdad6]", iconColor: "text-[#ba1a1a]" },
+    { label: d.lowStockItems,      value: liveLowStock != null ? String(liveLowStock)         : "—", change: null,                       icon: "medication",     iconBg: "bg-[#ffdad6]", iconColor: "text-[#ba1a1a]" },
   ];
 
   const quickLinks = [
@@ -210,7 +210,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                   />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
                   <Bar dataKey="revenue" name={d.dailyRevenue} fill="#1960a3" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name={d.lowStock} fill="#adc7f7" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name={d.expenses} fill="#adc7f7" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
