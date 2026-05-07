@@ -18,6 +18,7 @@ const en = {
     male: "Male", female: "Female", other: "Other",
     clear: "Clear", yrs: "yrs", today: "Today",
     noResults: "No results found",
+    confirmDelete: "Are you sure you want to delete this? This action cannot be undone.",
   },
 
   nav: {
@@ -974,6 +975,7 @@ export const ar: T = {
     male: "ذكر", female: "أنثى", other: "آخر",
     clear: "مسح", yrs: "سنة", today: "اليوم",
     noResults: "لا توجد نتائج",
+    confirmDelete: "هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.",
   },
 
   nav: {

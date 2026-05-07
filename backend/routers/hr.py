@@ -12,6 +12,35 @@ import models
 router = APIRouter(prefix="/api/hr", tags=["hr"])
 
 
+class EmployeeCreate(BaseModel):
+    userId: str
+    departmentId: str
+    jobTitle: str
+    employmentType: str = "FULL_TIME"
+    basicSalary: float = 0
+    housingAllowance: Optional[float] = 0
+    transportAllowance: Optional[float] = 0
+    medicalAllowance: Optional[float] = 0
+    hireDate: Optional[str] = None
+    annualLeaveBalance: Optional[int] = 21
+    sickLeaveBalance: Optional[int] = 14
+    branchId: Optional[str] = None
+
+
+class EmployeeUpdate(BaseModel):
+    jobTitle: Optional[str] = None
+    employmentType: Optional[str] = None
+    status: Optional[str] = None
+    basicSalary: Optional[float] = None
+    housingAllowance: Optional[float] = None
+    transportAllowance: Optional[float] = None
+    medicalAllowance: Optional[float] = None
+    departmentId: Optional[str] = None
+    annualLeaveBalance: Optional[int] = None
+    sickLeaveBalance: Optional[int] = None
+    branchId: Optional[str] = None
+
+
 class LeaveCreate(BaseModel):
     employeeId: str
     type: str
@@ -124,6 +153,66 @@ def get_employees(
         "page": page,
         "pageSize": pageSize,
     }
+
+
+@router.post("/employees", status_code=201)
+def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not body.userId or not body.departmentId or not body.jobTitle:
+        raise HTTPException(400, "userId, departmentId, and jobTitle are required")
+    existing = db.query(models.Employee).filter(models.Employee.userId == body.userId).first()
+    if existing:
+        raise HTTPException(400, "An employee record already exists for this user")
+    from auth import generate_emp_code, log_audit
+    emp = models.Employee(
+        id=generate_id(),
+        userId=body.userId,
+        departmentId=body.departmentId,
+        jobTitle=body.jobTitle,
+        empCode=generate_emp_code(),
+        employmentType=body.employmentType,
+        basicSalary=body.basicSalary,
+        housingAllowance=body.housingAllowance or 0,
+        transportAllowance=body.transportAllowance or 0,
+        medicalAllowance=body.medicalAllowance or 0,
+        hireDate=datetime.fromisoformat(body.hireDate) if body.hireDate else datetime.now(),
+        annualLeaveBalance=body.annualLeaveBalance,
+        sickLeaveBalance=body.sickLeaveBalance,
+        branchId=body.branchId,
+        status="ACTIVE",
+    )
+    db.add(emp)
+    db.commit()
+    db.refresh(emp)
+    log_audit(db, user.id, "CREATE", "Employee", emp.id, {"jobTitle": emp.jobTitle})
+    return employee_to_dict(emp)
+
+
+@router.get("/employees/{employee_id}")
+def get_employee(employee_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    return employee_to_dict(emp)
+
+
+@router.patch("/employees/{employee_id}")
+def update_employee(employee_id: str, body: EmployeeUpdate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    from auth import log_audit
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    for field, val in body.model_dump(exclude_none=True).items():
+        setattr(emp, field, val)
+    db.commit()
+    db.refresh(emp)
+    log_audit(db, user.id, "UPDATE", "Employee", emp.id, {})
+    return employee_to_dict(emp)
+
+
+@router.get("/departments")
+def get_departments(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    depts = db.query(models.Department).order_by(models.Department.name).all()
+    return [{"id": d.id, "name": d.name, "code": d.code} for d in depts]
 
 
 # ── Leaves ─────────────────────────────────────────────────────────────────────

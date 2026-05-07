@@ -341,7 +341,7 @@ export default function NewInvoicePage() {
             <div ref={searchRef} className="relative">
               <label className={LABEL}>Search Patient *</label>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px] pointer-events-none">
+                <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px] pointer-events-none">
                   search
                 </span>
                 <input
@@ -563,7 +563,7 @@ export default function NewInvoicePage() {
                       Unit Price
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
+                      <span className="absolute start-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
                         $
                       </span>
                       <input
@@ -762,7 +762,7 @@ export default function NewInvoicePage() {
                 <label className={LABEL}>Invoice Discount</label>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
+                    <span className="absolute start-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
                       $
                     </span>
                     <input
