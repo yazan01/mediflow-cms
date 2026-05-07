@@ -21,63 +21,83 @@ Full-stack clinic ERP system built with Next.js 16 and FastAPI.
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router) + TypeScript |
+| Frontend | Next.js 16 (App Router, webpack) + TypeScript |
 | Backend | FastAPI (Python 3.11+) |
 | Database | MySQL 8.4 |
 | ORM | SQLAlchemy 2.0 |
 | Auth | JWT + bcrypt (HttpOnly cookie) |
 | UI | Tailwind CSS v4, Material Symbols, Recharts |
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
-- Node.js 20+
 - Python 3.11+
+- Node.js 18+
 - MySQL 8.4
 
-### 1. Backend
+## Installation
+
+### 1. Run the installer
+
+Double-click `install.bat` or run in cmd:
 
 ```cmd
-cd backend
-pip install -r requirements.txt
+install.bat
 ```
 
-Create `backend/.env`:
-```
-DATABASE_URL=mysql+pymysql://root:password@localhost:3306/mediflow
-JWT_SECRET=your-secret-key
-```
+The installer will:
+- Check Python and Node.js versions
+- Create a Python virtual environment in `backend/.venv`
+- Install all Python and Node.js dependencies
+- Prompt for your MySQL credentials
+- Create the `mediflow` database
+- Create all tables and seed the default admin user
+- Generate `backend/.env` automatically
 
-Start MySQL, then run:
-```cmd
-python seed.py
-uvicorn main:app --reload --port 8000
-```
-
-### 2. Frontend
+### 2. Start the application
 
 ```cmd
-npm install
-npm run dev
+start.bat
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Opens `http://localhost:3000` automatically.
 
-### Default Login
+### 3. Stop the application
+
+```cmd
+stop.bat
+```
+
+## Default Login
 
 ```
 Email:    admin@mediflow.com
 Password: Admin@1234
 ```
 
+## Scripts
+
+| File | Purpose |
+|---|---|
+| `install.bat` | One-time setup — install deps, configure DB, seed |
+| `start.bat` | Start MySQL + Backend + Frontend |
+| `stop.bat` | Stop all services |
+| `backend/reset_db.py` | Wipe and rebuild the database (all data deleted) |
+
 ## Project Structure
 
 ```
 mediflow-cms/
+├── install.bat           # One-click installer
+├── start.bat             # Start all services
+├── stop.bat              # Stop all services
+├── setup.py              # Installer logic
 ├── backend/              # FastAPI backend (port 8000)
 │   ├── main.py
 │   ├── models.py
 │   ├── auth.py
+│   ├── seed.py
+│   ├── reset_db.py
+│   ├── .venv/            # Python virtual environment
 │   └── routers/          # One file per module
 ├── src/
 │   ├── app/
@@ -102,5 +122,5 @@ All API calls go through Next.js rewrites — there are no Next.js API routes.
 
 ## Notes
 
-- Run frontend with `npm run dev` (uses `--webpack`; Turbopack has a CSS resolution bug with spaces in the project path)
-- On Windows, use `cmd` not PowerShell for running npm scripts
+- Frontend runs with `--webpack` flag — Turbopack has a CSS resolution bug when the project path contains spaces
+- On Windows, use `cmd` not PowerShell for running batch scripts
