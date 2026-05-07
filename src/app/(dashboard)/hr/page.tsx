@@ -8,6 +8,34 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
+interface Shift {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  daysOfWeek: number[];
+  dayNames: string[];
+  branchId: string | null;
+  branchName: string | null;
+  color: string;
+  isActive: boolean;
+  assignmentCount: number;
+}
+
+interface ShiftAssignment {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  jobTitle: string;
+  shiftId: string;
+  shiftName: string;
+  startDate: string;
+  endDate: string | null;
+  notes: string;
+}
+
+interface Branch { id: string; name: string; }
+
 interface AttendanceRecord {
   employeeId: string;
   employeeName: string;
@@ -69,6 +97,16 @@ function EmptyRow({ cols, icon, label, sub }: { cols: number; icon: string; labe
   );
 }
 
+function calcDuration(start: string, end: string): string {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins < 0) mins += 24 * 60;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 function StatCard({ icon, iconBg, iconColor, label, value }: {
   icon: string; iconBg: string; iconColor: string; label: string; value: string | number;
 }) {
@@ -110,12 +148,13 @@ export default function HRPage() {
     CANCELLED:{ label: t.common.cancel,    cls: "bg-[#e3e2e6] text-[#74777f]" },
   };
 
-  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll";
+  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts";
   const TABS: { key: Tab; label: string }[] = [
     { key: "employees",     label: t.hr.employees },
     { key: "attendance",    label: t.hr.attendance },
     { key: "leaveRequests", label: t.hr.leaveRequests },
     { key: "payroll",       label: t.hr.payroll },
+    { key: "shifts",        label: t.hr.shifts },
   ];
 
   const [activeTab, setActiveTab] = useState<Tab>("employees");
@@ -153,6 +192,22 @@ export default function HRPage() {
 
   // Stats
   const [stats, setStats] = useState<HRStats | null>(null);
+
+  // Shifts
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
+  const [branchFilter, setBranchFilter] = useState("");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [shiftModal, setShiftModal] = useState<"add" | "edit" | null>(null);
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [shiftForm, setShiftForm] = useState({ name: "", startTime: "08:00", endTime: "17:00", daysOfWeek: [0, 1, 2, 3, 4] as number[], branchId: "", color: "#1960a3" });
+  const [shiftSaving, setShiftSaving] = useState(false);
+  const [shiftError, setShiftError] = useState("");
+  const [assignModal, setAssignModal] = useState<Shift | null>(null);
+  const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
+  const [assignForm, setAssignForm] = useState({ employeeId: "", startDate: "", endDate: "", notes: "" });
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignError, setAssignError] = useState("");
 
   const PAGE_SIZE = 10;
 
@@ -230,6 +285,31 @@ export default function HRPage() {
     }
   }, [payrollMonth]);
 
+  const fetchShifts = useCallback(async () => {
+    setShiftsLoading(true);
+    try {
+      const p = branchFilter ? `?branch_id=${branchFilter}` : "";
+      const res = await fetch(`/api/shifts${p}`);
+      if (res.ok) setShifts(await res.json());
+    } catch { /* ignore */ } finally {
+      setShiftsLoading(false);
+    }
+  }, [branchFilter]);
+
+  const fetchBranches = useCallback(async () => {
+    try {
+      const res = await fetch("/api/branches");
+      if (res.ok) setBranches(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchAssignments = useCallback(async (shiftId: string) => {
+    try {
+      const res = await fetch(`/api/shifts/${shiftId}/assignments`);
+      if (res.ok) setAssignments(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+
   // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
@@ -237,6 +317,7 @@ export default function HRPage() {
   useEffect(() => { if (activeTab === "attendance") fetchAttendance(); }, [activeTab, fetchAttendance]);
   useEffect(() => { if (activeTab === "leaveRequests") fetchLeaves(); }, [activeTab, fetchLeaves]);
   useEffect(() => { if (activeTab === "payroll") fetchPayroll(); }, [activeTab, fetchPayroll]);
+  useEffect(() => { if (activeTab === "shifts") { fetchShifts(); fetchBranches(); } }, [activeTab, fetchShifts, fetchBranches]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -249,6 +330,69 @@ export default function HRPage() {
       });
       if (res.ok) fetchLeaves();
     } catch { /* ignore */ }
+  }
+
+  function openAddShift() {
+    setShiftForm({ name: "", startTime: "08:00", endTime: "17:00", daysOfWeek: [0, 1, 2, 3, 4], branchId: "", color: "#1960a3" });
+    setEditingShift(null);
+    setShiftError("");
+    setShiftModal("add");
+  }
+
+  function openEditShift(s: Shift) {
+    setShiftForm({ name: s.name, startTime: s.startTime, endTime: s.endTime, daysOfWeek: s.daysOfWeek, branchId: s.branchId ?? "", color: s.color });
+    setEditingShift(s);
+    setShiftError("");
+    setShiftModal("edit");
+  }
+
+  async function saveShift() {
+    if (!shiftForm.name.trim()) { setShiftError("Shift name is required."); return; }
+    setShiftSaving(true);
+    setShiftError("");
+    try {
+      const url = shiftModal === "edit" && editingShift ? `/api/shifts/${editingShift.id}` : "/api/shifts";
+      const method = shiftModal === "edit" ? "PATCH" : "POST";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...shiftForm, branchId: shiftForm.branchId || null }) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); setShiftError(e.detail || "Failed to save."); return; }
+      setShiftModal(null);
+      fetchShifts();
+    } catch { setShiftError("Network error."); } finally { setShiftSaving(false); }
+  }
+
+  async function deleteShift(id: string) {
+    await fetch(`/api/shifts/${id}`, { method: "DELETE" });
+    fetchShifts();
+  }
+
+  function openAssignModal(s: Shift) {
+    setAssignModal(s);
+    setAssignForm({ employeeId: "", startDate: "", endDate: "", notes: "" });
+    setAssignError("");
+    fetchAssignments(s.id);
+  }
+
+  async function saveAssignment() {
+    if (!assignModal || !assignForm.employeeId || !assignForm.startDate) { setAssignError("Employee and start date are required."); return; }
+    setAssignSaving(true);
+    setAssignError("");
+    try {
+      const res = await fetch("/api/shifts/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: assignForm.employeeId, shiftId: assignModal.id, startDate: assignForm.startDate, endDate: assignForm.endDate || null, notes: assignForm.notes }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); setAssignError(e.detail || "Failed to assign."); return; }
+      setAssignForm({ employeeId: "", startDate: "", endDate: "", notes: "" });
+      fetchAssignments(assignModal.id);
+      fetchShifts();
+    } catch { setAssignError("Network error."); } finally { setAssignSaving(false); }
+  }
+
+  async function removeAssignment(id: string) {
+    await fetch(`/api/shifts/assignments/${id}`, { method: "DELETE" });
+    if (assignModal) fetchAssignments(assignModal.id);
+    fetchShifts();
   }
 
   async function handleProcessPayroll(employeeId: string) {
@@ -693,6 +837,219 @@ export default function HRPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab: Shifts ── */}
+      {activeTab === "shifts" && (
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-wrap items-center gap-3">
+            <select
+              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+            >
+              <option value="">{t.hr.allBranches}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <div className="flex-1" />
+            <button
+              onClick={openAddShift}
+              className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              {t.hr.addShift}
+            </button>
+          </div>
+
+          {/* Shifts grid */}
+          {shiftsLoading ? (
+            <Spinner label={t.hr.loading} />
+          ) : shifts.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#e3e2e6] p-16 flex flex-col items-center gap-3">
+              <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">schedule</span>
+              <p className="text-sm font-semibold text-[#43474e]">{t.hr.noShifts}</p>
+              <p className="text-xs text-[#74777f]">{t.hr.noShiftsDesc}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {shifts.map((s) => (
+                <div key={s.id} className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                      <div>
+                        <p className="text-sm font-semibold text-[#1a1c1e]">{s.name}</p>
+                        {s.branchName && <p className="text-xs text-[#74777f]">{s.branchName}</p>}
+                      </div>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e3e2e6] text-[#74777f]"}`}>
+                      {s.isActive ? t.hr.shiftActive : t.hr.shiftInactive}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-3 text-sm text-[#43474e]">
+                    <span className="material-symbols-outlined text-[#74777f] text-[16px]">schedule</span>
+                    {s.startTime} – {s.endTime}
+                    <span className="text-xs text-[#74777f] bg-[#f4f3f7] px-2 py-0.5 rounded-full ms-1">
+                      {calcDuration(s.startTime, s.endTime)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day, i) => (
+                      <span key={day} className={`text-xs px-2 py-0.5 rounded font-medium ${s.daysOfWeek.includes(i) ? "bg-[#d3e4ff] text-[#1960a3]" : "bg-[#f4f3f7] text-[#c4c6cf]"}`}>{day}</span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-[#e3e2e6] pt-3">
+                    <button
+                      onClick={() => openAssignModal(s)}
+                      className="flex items-center gap-1 text-xs font-semibold text-[#1960a3] hover:underline"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">groups</span>
+                      {s.assignmentCount} {t.hr.assignments}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => openEditShift(s)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
+                      </button>
+                      <button onClick={() => deleteShift(s.id)} className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Shift Add/Edit Modal ── */}
+      {shiftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShiftModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 className="text-lg font-bold text-[#1a1c1e]">{shiftModal === "add" ? t.hr.addShift : t.hr.editShift}</h2>
+              <button onClick={() => setShiftModal(null)} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {shiftError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{shiftError}</div>}
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.shiftName} *</label>
+                <input className="input-field" placeholder="Morning Shift" value={shiftForm.name} onChange={(e) => setShiftForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.startTime}</label>
+                  <input type="time" className="input-field" value={shiftForm.startTime} onChange={(e) => setShiftForm(f => ({ ...f, startTime: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.endTime}</label>
+                  <input type="time" className="input-field" value={shiftForm.endTime} onChange={(e) => setShiftForm(f => ({ ...f, endTime: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.daysOfWeek}</label>
+                <div className="flex gap-2 flex-wrap">
+                  {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day, i) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setShiftForm(f => ({ ...f, daysOfWeek: f.daysOfWeek.includes(i) ? f.daysOfWeek.filter(d => d !== i) : [...f.daysOfWeek, i].sort() }))}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-semibold border transition-colors ${shiftForm.daysOfWeek.includes(i) ? "bg-[#002045] text-white border-[#002045]" : "bg-white text-[#43474e] border-[#c4c6cf] hover:bg-[#f4f3f7]"}`}
+                    >{day}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.branch}</label>
+                  <select className="input-field" value={shiftForm.branchId} onChange={(e) => setShiftForm(f => ({ ...f, branchId: e.target.value }))}>
+                    <option value="">{t.hr.allBranches}</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.color}</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" className="w-10 h-9 rounded-lg border border-[#c4c6cf] cursor-pointer" value={shiftForm.color} onChange={(e) => setShiftForm(f => ({ ...f, color: e.target.value }))} />
+                    <span className="text-xs text-[#74777f] font-mono">{shiftForm.color}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setShiftModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+              <button onClick={saveShift} disabled={shiftSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                {shiftSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Assignments Modal ── */}
+      {assignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setAssignModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <div>
+                <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.assignments}</h2>
+                <p className="text-xs text-[#74777f]">{assignModal.name} · {assignModal.startTime}–{assignModal.endTime}</p>
+              </div>
+              <button onClick={() => setAssignModal(null)} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Add assignment form */}
+              <div className="bg-[#f8f7fb] rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">{t.hr.assignEmployee}</p>
+                {assignError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-xs px-3 py-2 rounded-lg">{assignError}</div>}
+                <select className="input-field text-sm" value={assignForm.employeeId} onChange={(e) => setAssignForm(f => ({ ...f, employeeId: e.target.value }))}>
+                  <option value="">{t.hr.searchPlaceholder}</option>
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.user.name}</option>)}
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-[#74777f] mb-1 block">{t.hr.startDate}</label>
+                    <input type="date" className="input-field text-sm" value={assignForm.startDate} onChange={(e) => setAssignForm(f => ({ ...f, startDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[#74777f] mb-1 block">{t.hr.endDate}</label>
+                    <input type="date" className="input-field text-sm" value={assignForm.endDate} onChange={(e) => setAssignForm(f => ({ ...f, endDate: e.target.value }))} />
+                  </div>
+                </div>
+                <button onClick={saveAssignment} disabled={assignSaving} className="w-full btn-primary py-2 text-sm disabled:opacity-60">
+                  {assignSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.hr.assignEmployee}
+                </button>
+              </div>
+
+              {/* Current assignments list */}
+              <div>
+                <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{t.hr.assignments} ({assignments.length})</p>
+                {assignments.length === 0 ? (
+                  <p className="text-sm text-[#74777f] text-center py-4">{t.hr.noShifts}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {assignments.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between bg-white border border-[#e3e2e6] rounded-xl px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[#1a1c1e]">{a.employeeName}</p>
+                          <p className="text-xs text-[#74777f]">{a.jobTitle} · from {a.startDate?.slice(0, 10)}</p>
+                        </div>
+                        <button onClick={() => removeAssignment(a.id)} className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
+                          <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">remove_circle</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

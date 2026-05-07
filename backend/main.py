@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers import auth, patients, appointments, emr, consultations, billing
 from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors, audit, settings
-from routers import laboratory, radiology
+from routers import laboratory, radiology, branches, shifts
 
 app = FastAPI(title="MediFlow API", version="1.0.0")
 
@@ -32,8 +32,20 @@ app.include_router(audit.router)
 app.include_router(settings.router)
 app.include_router(laboratory.router)
 app.include_router(radiology.router)
+app.include_router(branches.router)
+app.include_router(shifts.router)
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "MediFlow API"}
+    from sqlalchemy import text
+    from database import SessionLocal
+    db_status = "unavailable"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_status = "connected"
+    except Exception:
+        pass
+    return {"status": "ok", "service": "MediFlow API", "database": db_status}

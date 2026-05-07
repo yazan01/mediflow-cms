@@ -18,13 +18,19 @@ export default function TopBar({ user }: TopBarProps) {
   const router = useRouter();
   const { t, lang, setLang } = useLanguage();
 
+  const [readIds, setReadIds] = useState<Set<number>>(new Set());
+
   const notifications = [
-    { icon: "warning",   iconColor: "text-[#d97706]", title: t.topbar.lowStock,     msg: t.topbar.lowStockMsg,     time: "5 min ago",   unread: true },
-    { icon: "emergency", iconColor: "text-[#ba1a1a]", title: t.topbar.urgentAppt,   msg: t.topbar.urgentApptMsg,   time: "12 min ago",  unread: true },
-    { icon: "biotech",   iconColor: "text-[#1960a3]", title: t.topbar.labResults,   msg: t.topbar.labResultsMsg,   time: "1 hour ago",  unread: false },
-    { icon: "payments",  iconColor: "text-[#ba1a1a]", title: t.topbar.overdueInvoice, msg: t.topbar.overdueInvoiceMsg, time: "2 hours ago", unread: false },
+    { icon: "warning",   iconColor: "text-[#d97706]", title: t.topbar.lowStock,       msg: t.topbar.lowStockMsg,       time: t.topbar.time5m,  unread: true  },
+    { icon: "emergency", iconColor: "text-[#ba1a1a]", title: t.topbar.urgentAppt,     msg: t.topbar.urgentApptMsg,     time: t.topbar.time12m, unread: true  },
+    { icon: "biotech",   iconColor: "text-[#1960a3]", title: t.topbar.labResults,     msg: t.topbar.labResultsMsg,     time: t.topbar.time1h,  unread: false },
+    { icon: "payments",  iconColor: "text-[#ba1a1a]", title: t.topbar.overdueInvoice, msg: t.topbar.overdueInvoiceMsg, time: t.topbar.time2h,  unread: false },
   ];
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = notifications.filter((n, i) => n.unread && !readIds.has(i)).length;
+
+  function markAllRead() {
+    setReadIds(new Set(notifications.map((_, i) => i)));
+  }
 
   const displayName = user?.name ?? "User";
   const displayRole = user?.role ?? "Staff";
@@ -94,15 +100,20 @@ export default function TopBar({ user }: TopBarProps) {
             <div className="absolute end-0 top-full mt-2 w-80 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] z-50">
               <div className="p-4 border-b border-[#e3e2e6] flex items-center justify-between">
                 <h3 className="font-semibold text-sm text-[#1a1c1e]">{t.topbar.notifications}</h3>
-                <button className="text-xs text-[#1960a3] hover:underline">{t.topbar.markAllRead}</button>
+                <button onClick={markAllRead} className="text-xs text-[#1960a3] hover:underline">{t.topbar.markAllRead}</button>
               </div>
               <div className="max-h-72 overflow-y-auto divide-y divide-[#e3e2e6]">
                 {notifications.map((n, i) => (
-                  <NotifItem key={i} icon={n.icon} iconColor={n.iconColor} title={n.title} msg={n.msg} time={n.time} unread={n.unread} />
+                  <NotifItem key={i} icon={n.icon} iconColor={n.iconColor} title={n.title} msg={n.msg} time={n.time} unread={n.unread && !readIds.has(i)} onRead={() => setReadIds((s) => new Set(s).add(i))} />
                 ))}
               </div>
               <div className="p-3 text-center border-t border-[#e3e2e6]">
-                <button className="text-xs text-[#1960a3] hover:underline font-semibold">{t.topbar.viewAll}</button>
+                <button
+                  onClick={() => { setNotifOpen(false); router.push("/audit"); }}
+                  className="text-xs text-[#1960a3] hover:underline font-semibold"
+                >
+                  {t.topbar.viewAll}
+                </button>
               </div>
             </div>
           )}
@@ -168,11 +179,11 @@ export default function TopBar({ user }: TopBarProps) {
   );
 }
 
-function NotifItem({ icon, iconColor, title, msg, time, unread }: {
-  icon: string; iconColor: string; title: string; msg: string; time: string; unread: boolean;
+function NotifItem({ icon, iconColor, title, msg, time, unread, onRead }: {
+  icon: string; iconColor: string; title: string; msg: string; time: string; unread: boolean; onRead: () => void;
 }) {
   return (
-    <div className={`p-3 flex gap-3 hover:bg-[#f4f3f7] cursor-pointer ${unread ? "bg-[#d3e4ff]/10" : ""}`}>
+    <div onClick={onRead} className={`p-3 flex gap-3 hover:bg-[#f4f3f7] cursor-pointer ${unread ? "bg-[#d3e4ff]/10" : ""}`}>
       <span className={`material-symbols-outlined text-[20px] ${iconColor} mt-0.5 flex-shrink-0`}>{icon}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">

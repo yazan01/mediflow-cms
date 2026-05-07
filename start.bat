@@ -40,8 +40,14 @@ start "MediFlow - Backend" cmd /k "cd /d %BACKEND% && .venv\Scripts\activate && 
 echo  [OK] Backend starting on http://localhost:8000
 
 REM ── Frontend (Next.js) ────────────────────────────────────────────────────
-start "MediFlow - Frontend" cmd /k "cd /d %~dp0 && npm run dev"
-echo  [OK] Frontend starting on http://localhost:3000
+if exist ".next\BUILD_ID" (
+    start "MediFlow - Frontend" cmd /k "cd /d %~dp0 && npm start"
+    echo  [OK] Frontend starting in PRODUCTION mode on http://localhost:3000
+) else (
+    start "MediFlow - Frontend" cmd /k "cd /d %~dp0 && npm run dev"
+    echo  [OK] Frontend starting in DEV mode on http://localhost:3000
+    echo  [!!] Run build.bat once for faster production mode
+)
 
 REM ── Open browser after a short wait ───────────────────────────────────────
 timeout /t 5 /nobreak >nul

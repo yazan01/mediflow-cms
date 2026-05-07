@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { DashboardStats, Appointment } from "@/types";
 
 interface RevenuePoint { month: string; revenue: number; expenses: number }
@@ -18,20 +19,23 @@ interface Props {
   activities: unknown[];
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  SCHEDULED:        { label: "Scheduled",        className: "bg-[#e9e7eb] text-[#43474e]" },
-  CHECKED_IN:       { label: "Checked In",       className: "bg-[#d3e4ff] text-[#00477f]" },
-  IN_CONSULTATION:  { label: "In Consultation",  className: "bg-[#d3e4ff] text-[#1960a3]" },
-  COMPLETED:        { label: "Completed",        className: "bg-[#ccfbf1] text-[#0d9488]" },
-  URGENT:           { label: "Urgent",           className: "bg-[#ba1a1a] text-white" },
-  NO_SHOW:          { label: "No Show",          className: "bg-[#ffdad6] text-[#93000a]" },
-  CANCELLED:        { label: "Cancelled",        className: "bg-[#e3e2e6] text-[#74777f]" },
+const STATUS_CLASSES: Record<string, string> = {
+  SCHEDULED:        "bg-[#e9e7eb] text-[#43474e]",
+  CHECKED_IN:       "bg-[#d3e4ff] text-[#00477f]",
+  IN_CONSULTATION:  "bg-[#d3e4ff] text-[#1960a3]",
+  COMPLETED:        "bg-[#ccfbf1] text-[#0d9488]",
+  URGENT:           "bg-[#ba1a1a] text-white",
+  NO_SHOW:          "bg-[#ffdad6] text-[#93000a]",
+  CANCELLED:        "bg-[#e3e2e6] text-[#74777f]",
 };
 
 export default function DashboardClient({ stats, appointments }: Props) {
+  const { t, lang } = useLanguage();
+  const d = t.dashboard;
+
   const [revenue, setRevenue] = useState<RevenuePoint[]>([]);
   const [depts, setDepts]     = useState<DeptPoint[]>([]);
-  const dbOnline = stats !== null;
+  const [dbOnline, setDbOnline] = useState(stats !== null);
 
   useEffect(() => {
     fetch("/api/dashboard/revenue")
@@ -44,57 +48,51 @@ export default function DashboardClient({ stats, appointments }: Props) {
       .catch(() => {});
   }, []);
 
+  // Poll /api/health (no auth required) until DB is connected, then stop
+  useEffect(() => {
+    const check = () =>
+      fetch("/api/health")
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data?.database === "connected") setDbOnline(true); })
+        .catch(() => {});
+    check();
+    if (dbOnline) return;
+    const id = setInterval(check, 3000);
+    return () => clearInterval(id);
+  }, [dbOnline]);
+
   const kpiCards = [
-    {
-      label: "Daily Revenue",
-      value: stats ? formatCurrency(stats.dailyRevenue) : "—",
-      change: stats?.dailyRevenueChange,
-      icon: "payments",
-      iconBg: "bg-[#d3e4ff]",
-      iconColor: "text-[#1960a3]",
-    },
-    {
-      label: "Today's Appointments",
-      value: stats ? String(stats.totalAppointments) : "—",
-      change: stats?.appointmentsChange,
-      icon: "calendar_today",
-      iconBg: "bg-[#d6e3ff]",
-      iconColor: "text-[#002045]",
-    },
-    {
-      label: "New Patients",
-      value: stats ? String(stats.newPatients) : "—",
-      change: stats?.newPatientsChange,
-      icon: "person_add",
-      iconBg: "bg-[#ffddba]",
-      iconColor: "text-[#633f0f]",
-    },
-    {
-      label: "Bed Occupancy",
-      value: stats ? `${stats.bedOccupancy}%` : "—",
-      change: stats?.bedOccupancyChange,
-      icon: "king_bed",
-      iconBg: "bg-[#d3e4ff]",
-      iconColor: "text-[#1960a3]",
-    },
+    { label: d.dailyRevenue,       value: stats ? formatCurrency(stats.dailyRevenue)        : "—", change: stats?.dailyRevenueChange,    icon: "payments",      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
+    { label: d.todayAppointments,  value: stats ? String(stats.totalAppointments)            : "—", change: stats?.appointmentsChange,     icon: "calendar_today",iconBg: "bg-[#d6e3ff]", iconColor: "text-[#002045]" },
+    { label: d.newPatients,        value: stats ? String(stats.newPatients)                  : "—", change: stats?.newPatientsChange,      icon: "person_add",    iconBg: "bg-[#ffddba]", iconColor: "text-[#633f0f]" },
+    { label: d.bedOccupancy,       value: stats ? `${stats.bedOccupancy}%`                   : "—", change: stats?.bedOccupancyChange,     icon: "king_bed",      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
   ];
 
   const quickLinks = [
-    { href: "/patients/new",      icon: "person_add",   label: "Register Patient", color: "text-[#002045]" },
-    { href: "/appointments/new",  icon: "event",        label: "Book Appointment", color: "text-[#1960a3]" },
-    { href: "/billing/new",       icon: "receipt_long", label: "Create Invoice",   color: "text-[#319795]" },
-    { href: "/pharmacy",          icon: "medication",   label: "Dispense Meds",    color: "text-[#633f0f]" },
+    { href: "/patients/new",     icon: "person_add",   label: d.registerPatient,  color: "text-[#002045]" },
+    { href: "/appointments/new", icon: "event",        label: d.bookAppointment,  color: "text-[#1960a3]" },
+    { href: "/billing/new",      icon: "receipt_long", label: d.createInvoice,    color: "text-[#319795]" },
+    { href: "/pharmacy",         icon: "medication",   label: d.dispenseMeds,     color: "text-[#633f0f]" },
   ];
+
+  const systemItems = [
+    { label: d.dbLabel,   status: dbOnline ? d.dbConnected    : d.dbPending,       ok: dbOnline },
+    { label: d.authLabel, status: d.authConfigured,                                  ok: true     },
+    { label: d.apiLabel,  status: d.apiRunning,                                      ok: true     },
+    { label: d.smsLabel,  status: d.smsNotConfigured,                                ok: false    },
+  ];
+
+  const dateStr = new Date().toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
 
   return (
     <div className="space-y-8">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">Dashboard</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          </p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{d.title}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{dateStr}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -102,14 +100,14 @@ export default function DashboardClient({ stats, appointments }: Props) {
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">bar_chart</span>
-            Reports
+            {d.reports}
           </Link>
           <Link
             href="/appointments/new"
             className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            New Appointment
+            {d.newAppointment}
           </Link>
         </div>
       </div>
@@ -126,11 +124,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                 <span className={`material-symbols-outlined ${card.iconColor} text-[22px]`}>{card.icon}</span>
               </div>
               {card.change !== undefined && (
-                <div
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    card.change >= 0 ? "bg-[#ccfbf1]/50 text-[#0d9488]" : "bg-[#ffdad6] text-[#93000a]"
-                  }`}
-                >
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${card.change >= 0 ? "bg-[#ccfbf1]/50 text-[#0d9488]" : "bg-[#ffdad6] text-[#93000a]"}`}>
                   <span className="material-symbols-outlined text-[14px]">
                     {card.change >= 0 ? "trending_up" : "trending_down"}
                   </span>
@@ -150,19 +144,19 @@ export default function DashboardClient({ stats, appointments }: Props) {
           {stats.criticalAlerts > 0 && (
             <AlertBanner
               icon="emergency" color="text-[#ba1a1a]" bg="bg-[#ffdad6]" border="border-[#ba1a1a]/20"
-              label="Critical Alerts" value={stats.criticalAlerts} link="/reports" linkLabel="Review now"
+              label={d.criticalAlerts} value={stats.criticalAlerts} link="/reports" linkLabel={d.reviewNow}
             />
           )}
           {stats.lowStockItems > 0 && (
             <AlertBanner
               icon="inventory_2" color="text-[#d97706]" bg="bg-[#fff7ed]" border="border-[#d97706]/20"
-              label="Low Stock Items" value={stats.lowStockItems} link="/pharmacy" linkLabel="View pharmacy"
+              label={d.lowStock} value={stats.lowStockItems} link="/pharmacy" linkLabel={d.viewPharmacy}
             />
           )}
           {stats.pendingInvoices > 0 && (
             <AlertBanner
               icon="receipt_long" color="text-[#1960a3]" bg="bg-[#eff6ff]" border="border-[#1960a3]/20"
-              label="Pending Invoices" value={stats.pendingInvoices} link="/billing" linkLabel="View billing"
+              label={d.pendingInvoices} value={stats.pendingInvoices} link="/billing" linkLabel={d.viewBilling}
             />
           )}
         </section>
@@ -174,15 +168,14 @@ export default function DashboardClient({ stats, appointments }: Props) {
         <div className="lg:col-span-2 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-[#1a1c1e]">Revenue Trends</h3>
-              <p className="text-xs text-[#74777f]">Monthly revenue vs expenses (last 6 months)</p>
+              <h3 className="text-lg font-semibold text-[#1a1c1e]">{d.revenueTitle}</h3>
+              <p className="text-xs text-[#74777f]">{d.revenueSubtitle}</p>
             </div>
             <Link href="/reports" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
-              Full report
+              {d.fullReport}
               <span className="material-symbols-outlined text-[14px]">open_in_new</span>
             </Link>
           </div>
-
           <div className="flex-1 h-56">
             {revenue.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -196,14 +189,14 @@ export default function DashboardClient({ stats, appointments }: Props) {
                     formatter={(v) => formatCurrency(v as number)}
                   />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-                  <Bar dataKey="revenue" name="Revenue" fill="#1960a3" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name="Expenses" fill="#adc7f7" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" name={d.dailyRevenue} fill="#1960a3" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name={d.lowStock} fill="#adc7f7" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-2 border border-[#e3e2e6] rounded-lg bg-[#faf9fd]">
                 <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">bar_chart</span>
-                <p className="text-xs text-[#74777f] text-center">Loading revenue data…</p>
+                <p className="text-xs text-[#74777f] text-center">{d.loadingRevenue}</p>
               </div>
             )}
           </div>
@@ -212,23 +205,19 @@ export default function DashboardClient({ stats, appointments }: Props) {
         {/* Department Load */}
         <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-[#1a1c1e]">Department Load</h3>
-            <Link href="/reports" className="text-xs text-[#1960a3] hover:underline font-semibold">View all</Link>
+            <h3 className="text-lg font-semibold text-[#1a1c1e]">{d.deptLoad}</h3>
+            <Link href="/reports" className="text-xs text-[#1960a3] hover:underline font-semibold">{d.viewAll}</Link>
           </div>
-
           {depts.length > 0 ? (
             <div className="space-y-3">
-              {depts.map((d) => (
-                <div key={d.department}>
+              {depts.map((dept) => (
+                <div key={dept.department}>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-[#1a1c1e] truncate max-w-[140px]">{d.department}</span>
-                    <span className="text-[#74777f] font-semibold">{d.count} appts</span>
+                    <span className="font-medium text-[#1a1c1e] truncate max-w-[140px]">{dept.department}</span>
+                    <span className="text-[#74777f] font-semibold">{dept.count} {d.appts}</span>
                   </div>
                   <div className="w-full bg-[#e9e7eb] rounded-full h-2">
-                    <div
-                      className="bg-[#1960a3] h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${d.pct}%` }}
-                    />
+                    <div className="bg-[#1960a3] h-2 rounded-full transition-all duration-500" style={{ width: `${dept.pct}%` }} />
                   </div>
                 </div>
               ))}
@@ -237,7 +226,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
             <div className="flex flex-col items-center justify-center gap-2 py-12">
               <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">business</span>
               <p className="text-xs text-[#74777f] text-center">
-                {dbOnline ? "No appointments today" : "No data available"}
+                {dbOnline ? d.noAppointments : d.noDataAvailable}
               </p>
             </div>
           )}
@@ -250,15 +239,15 @@ export default function DashboardClient({ stats, appointments }: Props) {
         <div className="lg:col-span-2 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="p-5 border-b border-[#e3e2e6] flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-[#1a1c1e]">Today&apos;s Schedule</h3>
+              <h3 className="text-lg font-semibold text-[#1a1c1e]">{d.todaySchedule}</h3>
               {appointments.length > 0 && (
                 <span className="bg-[#d3e4ff]/40 text-[#1960a3] px-2.5 py-0.5 rounded-full text-xs font-bold">
-                  {appointments.length} appointments
+                  {appointments.length} {d.appointmentsCount}
                 </span>
               )}
             </div>
             <Link href="/appointments" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
-              View calendar
+              {d.viewCalendar}
               <span className="material-symbols-outlined text-[14px]">open_in_new</span>
             </Link>
           </div>
@@ -269,14 +258,15 @@ export default function DashboardClient({ stats, appointments }: Props) {
                 <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
                   <span className="material-symbols-outlined text-[#74777f] text-2xl">calendar_today</span>
                 </div>
-                <p className="text-sm text-[#74777f] font-medium">No appointments today</p>
+                <p className="text-sm text-[#74777f] font-medium">{d.noAppointments}</p>
                 <Link href="/appointments/new" className="text-xs text-[#1960a3] hover:underline font-semibold">
-                  + Book an appointment
+                  {d.bookAnAppointment}
                 </Link>
               </div>
             ) : (
               appointments.map((apt) => {
-                const statusCfg = STATUS_CONFIG[apt.status] ?? STATUS_CONFIG.SCHEDULED;
+                const statusClass = STATUS_CLASSES[apt.status] ?? STATUS_CLASSES.SCHEDULED;
+                const statusLabel = (d.statuses as Record<string, string>)[apt.status] ?? apt.status;
                 const isUrgent = apt.status === "URGENT";
                 return (
                   <Link
@@ -285,9 +275,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                     className={`flex items-center justify-between p-4 hover:bg-[#f4f3f7] transition-colors group ${isUrgent ? "bg-[#fff5f5]" : ""}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 flex flex-col items-center justify-center rounded-xl text-center ${
-                        isUrgent ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#f4f3f7] text-[#43474e]"
-                      }`}>
+                      <div className={`w-14 h-14 flex flex-col items-center justify-center rounded-xl text-center ${isUrgent ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#f4f3f7] text-[#43474e]"}`}>
                         <span className="text-xs font-bold leading-none">
                           {new Date(apt.scheduledAt).getHours().toString().padStart(2, "0")}
                         </span>
@@ -308,8 +296,8 @@ export default function DashboardClient({ stats, appointments }: Props) {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusCfg.className}`}>
-                        {statusCfg.label}
+                      <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusClass}`}>
+                        {statusLabel}
                       </span>
                       <span className="material-symbols-outlined text-[18px] text-[#74777f] group-hover:text-[#1960a3]">
                         chevron_right
@@ -325,7 +313,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
         {/* Quick Actions + System Status */}
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-            <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">Quick Actions</h3>
+            <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">{d.quickLinks}</h3>
             <div className="grid grid-cols-2 gap-3">
               {quickLinks.map((q) => (
                 <Link
@@ -343,14 +331,9 @@ export default function DashboardClient({ stats, appointments }: Props) {
           </div>
 
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-            <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">System Status</h3>
+            <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">{d.systemStatus}</h3>
             <div className="space-y-3">
-              {[
-                { label: "Database",        status: dbOnline ? "Connected"      : "Pending Setup",    ok: dbOnline },
-                { label: "Authentication",  status: "Configured",                                      ok: true },
-                { label: "API Server",      status: "Running",                                         ok: true },
-                { label: "SMS Gateway",     status: "Not configured",                                  ok: false },
-              ].map((item) => (
+              {systemItems.map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className="text-sm text-[#1a1c1e]">{item.label}</span>
                   <span className={`flex items-center gap-1 text-xs font-semibold ${item.ok ? "text-[#0d9488]" : "text-[#d97706]"}`}>

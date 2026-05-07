@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fontsource/cairo": "^5.2.7",
     "@fontsource/inter": "^5.2.8",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",

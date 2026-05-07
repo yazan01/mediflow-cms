@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import * as jwt from "jsonwebtoken";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
+import { TimezoneProvider } from "@/lib/TimezoneContext";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "mediflow-jwt-secret-change-in-production";
 
@@ -23,12 +24,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen bg-[#faf9fd] overflow-hidden">
-      <Sidebar user={user} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <TopBar user={user} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+    <TimezoneProvider>
+      <div className="flex h-screen bg-[#faf9fd] overflow-hidden">
+        <Sidebar user={user} />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <TopBar user={user} />
+          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </TimezoneProvider>
   );
 }

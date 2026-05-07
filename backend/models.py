@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import (
     Column, String, Boolean, Integer, DateTime, Text, JSON,
-    ForeignKey, Numeric, UniqueConstraint, Index
+    ForeignKey, ForeignKeyConstraint, Numeric, UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -161,6 +161,8 @@ class Appointment(Base):
     createdById = Column(String(36))
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
 
     patient = relationship("Patient", back_populates="appointments")
     doctor = relationship("Doctor", back_populates="appointments")
@@ -341,6 +343,8 @@ class Invoice(Base):
     createdById = Column(String(36))
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
 
     patient = relationship("Patient", back_populates="invoices")
     appointment = relationship("Appointment", back_populates="invoice")
@@ -606,6 +610,7 @@ class Employee(Base):
     annualLeaveBalance = Column(Integer, default=21)
     sickLeaveBalance = Column(Integer, default=14)
     notes = Column(Text)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -614,6 +619,7 @@ class Employee(Base):
     attendance = relationship("Attendance", back_populates="employee")
     leaveRequests = relationship("LeaveRequest", back_populates="employee")
     payrollRecords = relationship("Payroll", back_populates="employee")
+    shiftAssignments = relationship("ShiftAssignment", back_populates="employee")
 
 
 class Attendance(Base):
@@ -707,3 +713,61 @@ class Notification(Base):
     createdAt = Column(DateTime, server_default=func.now())
 
     user = relationship("User", back_populates="notifications")
+
+
+# ─── Multi-branch & Shifts ────────────────────────────────────────────────────
+
+class Branch(Base):
+    __tablename__ = "branches"
+    id = Column(String(25), primary_key=True)
+    name = Column(String(200), nullable=False)
+    code = Column(String(20), unique=True, nullable=False)
+    address = Column(Text)
+    phone = Column(String(50))
+    email = Column(String(200))
+    # managerId resolved via use_alter to break circular FK with employees
+    managerId = Column(String(25), nullable=True)
+    timezone = Column(String(50))          # overrides clinic timezone if set
+    isActive = Column(Boolean, default=True)
+    createdAt = Column(DateTime, server_default=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["managerId"], ["employees.id"],
+            use_alter=True, name="fk_branch_manager"
+        ),
+    )
+
+    shifts = relationship("Shift", back_populates="branch")
+
+
+class Shift(Base):
+    __tablename__ = "shifts"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    name = Column(String(100), nullable=False)
+    startTime = Column(String(5), nullable=False)   # "08:00"
+    endTime = Column(String(5), nullable=False)     # "16:00"
+    daysOfWeek = Column(JSON, default=lambda: [0, 1, 2, 3, 4])  # 0=Mon … 6=Sun
+    color = Column(String(20), default="#1960a3")
+    isActive = Column(Boolean, default=True)
+    createdAt = Column(DateTime, server_default=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    branch = relationship("Branch", back_populates="shifts")
+    assignments = relationship("ShiftAssignment", back_populates="shift", cascade="all, delete-orphan")
+
+
+class ShiftAssignment(Base):
+    __tablename__ = "shift_assignments"
+    id = Column(String(25), primary_key=True)
+    employeeId = Column(String(25), ForeignKey("employees.id"), nullable=False)
+    shiftId = Column(String(25), ForeignKey("shifts.id"), nullable=False)
+    startDate = Column(DateTime, nullable=False)
+    endDate = Column(DateTime)
+    notes = Column(Text)
+    createdAt = Column(DateTime, server_default=func.now())
+
+    employee = relationship("Employee", back_populates="shiftAssignments")
+    shift = relationship("Shift", back_populates="assignments")
