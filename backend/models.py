@@ -684,6 +684,7 @@ class Employee(Base):
     payrollRecords = relationship("Payroll", back_populates="employee")
     shiftAssignments = relationship("ShiftAssignment", back_populates="employee")
     salaryHistory = relationship("SalaryHistory", back_populates="employee")
+    contracts = relationship("EmployeeContract", back_populates="employee")
     reportsTo = relationship("Employee", remote_side="Employee.id", foreign_keys="Employee.reportsToId")
 
 
@@ -751,6 +752,38 @@ class Payroll(Base):
 
     __table_args__ = (UniqueConstraint("employeeId", "month", "year"),)
     employee = relationship("Employee", back_populates="payrollRecords")
+
+
+class EmployeeContract(Base):
+    __tablename__ = "employee_contracts"
+    __table_args__ = (
+        Index("ix_contract_employee", "employeeId"),
+        Index("ix_contract_end", "endDate"),
+    )
+    id = Column(String(36), primary_key=True)
+    employeeId = Column(String(36), ForeignKey("employees.id"), nullable=False)
+    contractType = Column(String(50), nullable=False)  # PERMANENT, FIXED_TERM, PART_TIME, PROBATION
+    startDate = Column(DateTime, nullable=False)
+    endDate = Column(DateTime)
+    renewalReminderDays = Column(Integer, default=30)
+    notes = Column(String(500))
+    createdAt = Column(DateTime, server_default=func.now())
+
+    employee = relationship("Employee", back_populates="contracts")
+
+
+class LeavePolicy(Base):
+    __tablename__ = "leave_policies"
+    id = Column(String(36), primary_key=True)
+    leaveType = Column(String(50), unique=True, nullable=False)
+    maxDaysPerYear = Column(Integer)
+    carryForwardMax = Column(Integer, default=0)
+    requiresMedicalCert = Column(Boolean, default=False)
+    probationAllowed = Column(Boolean, default=True)
+    minServiceDays = Column(Integer, default=0)
+    encashmentAllowed = Column(Boolean, default=False)
+    accrualMonthly = Column(Boolean, default=False)
+    createdAt = Column(DateTime, server_default=func.now())
 
 
 class SalaryHistory(Base):

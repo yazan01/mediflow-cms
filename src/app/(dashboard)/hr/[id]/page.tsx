@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { formatDate, getInitials } from "@/lib/utils";
+import { formatDate, formatCurrency, getInitials } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import EditLog from "@/components/layout/EditLog";
 
@@ -29,11 +29,23 @@ export default function EmployeeProfilePage() {
     days: number; status: string; reason?: string; approverName?: string;
   }
 
+  interface ContractRecord {
+    id: string; contractType: string; startDate: string; endDate?: string;
+    notes?: string; isExpiringSoon: boolean;
+  }
+  interface EosData {
+    yearsOfService: number; fractionYear: number;
+    resignationEos: number; terminationEos: number; monthlySalary: number;
+  }
+
   const [emp, setEmp] = useState<Employee | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [leaveHistory, setLeaveHistory] = useState<LeaveRecord[]>([]);
   const [leaveHistoryLoading, setLeaveHistoryLoading] = useState(false);
+  const [contracts, setContracts] = useState<ContractRecord[]>([]);
+  const [eos, setEos] = useState<EosData | null>(null);
+  const [contractsLoading, setContractsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -47,12 +59,21 @@ export default function EmployeeProfilePage() {
     if (deptRes.ok) setDepartments(await deptRes.json());
     if (branchRes.ok) setBranches(await branchRes.json());
     setLoading(false);
-    // fetch leave history after employee loads
     setLeaveHistoryLoading(true);
+    setContractsLoading(true);
     try {
-      const lr = await fetch(`/api/hr/leaves?employeeId=${id}`);
+      const [lr, cr, eosRes] = await Promise.all([
+        fetch(`/api/hr/leaves?employeeId=${id}`),
+        fetch(`/api/hr/employees/${id}/contracts`),
+        fetch(`/api/hr/employees/${id}/eos?reason=resigned`),
+      ]);
       if (lr.ok) { const d = await lr.json(); setLeaveHistory(d.data ?? []); }
-    } catch { /* ignore */ } finally { setLeaveHistoryLoading(false); }
+      if (cr.ok) setContracts(await cr.json());
+      if (eosRes.ok) setEos(await eosRes.json());
+    } catch { /* ignore */ } finally {
+      setLeaveHistoryLoading(false);
+      setContractsLoading(false);
+    }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -76,6 +97,9 @@ export default function EmployeeProfilePage() {
   const userRoles = (user.roles as string[]) ?? [];
   const totalComp = [emp.basicSalary, emp.housingAllowance, emp.transportAllowance, emp.medicalAllowance]
     .reduce((sum: number, v) => sum + (Number(v) || 0), 0);
+  const yearsOfService = emp.hireDate
+    ? Math.floor((Date.now() - new Date(emp.hireDate as string).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : null;
 
   const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
     ACTIVE:     { label: t.hr.activeStatus,   cls: "bg-[#ccfbf1] text-[#0d9488]" },
@@ -132,6 +156,7 @@ export default function EmployeeProfilePage() {
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4">
             <InfoItem label={t.hr.empCode} value={emp.empCode as string} />
             <InfoItem label={t.hr.hireDate2} value={emp.hireDate ? formatDate(emp.hireDate as string) : "—"} />
+            {yearsOfService !== null && <InfoItem label={t.hr.yearsOfService} value={`${yearsOfService} ${t.common.yrs}`} />}
             <InfoItem label={t.hr.type} value={TYPE_LABELS[emp.employmentType as string] ?? (emp.employmentType as string)} />
             <InfoItem label={t.hr.status}>
               {(() => { const s = STATUS_STYLES[emp.status as string] ?? STATUS_STYLES.INACTIVE; return (
@@ -192,6 +217,62 @@ export default function EmployeeProfilePage() {
           <p className="text-sm text-[#74777f]">{t.hr.noBankInfo}</p>
         )}
       </div>
+
+      {/* Contracts */}
+      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+        <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#1960a3] text-[18px]">description</span>
+          {t.hr.contractType}
+        </h3>
+        {contractsLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="w-5 h-5 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
+          </div>
+        ) : contracts.length === 0 ? (
+          <p className="text-sm text-[#74777f]">{t.hr.noContracts}</p>
+        ) : (
+          <div className="space-y-2">
+            {contracts.map((c) => (
+              <div key={c.id} className="flex items-center justify-between p-3 bg-[#f8f7fb] rounded-xl">
+                <div>
+                  <p className="text-sm font-semibold text-[#1a1c1e]">{c.contractType.replace(/_/g, " ")}</p>
+                  <p className="text-xs text-[#74777f]">{c.startDate?.slice(0, 10)}{c.endDate ? ` → ${c.endDate.slice(0, 10)}` : ""}</p>
+                </div>
+                {c.isExpiringSoon && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#fff7ed] text-[#d97706] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">warning</span>
+                    {t.hr.contractsExpiring}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* EOS Estimate */}
+      {eos && (
+        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+          <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#d97706] text-[18px]">calculate</span>
+            {t.hr.eosEstimate}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-[#f4f3f7] rounded-xl p-4">
+              <p className="text-xs text-[#74777f] mb-1">{t.hr.yearsOfService}</p>
+              <p className="text-xl font-bold text-[#1a1c1e]">{eos.yearsOfService} <span className="text-sm font-normal text-[#74777f]">{t.common.yrs}</span></p>
+            </div>
+            <div className="bg-[#fff7ed] rounded-xl p-4">
+              <p className="text-xs text-[#d97706] mb-1">{t.hr.eosResignation}</p>
+              <p className="text-xl font-bold text-[#1a1c1e]">{formatCurrency(eos.resignationEos)}</p>
+            </div>
+            <div className="bg-[#ffdad6] rounded-xl p-4">
+              <p className="text-xs text-[#ba1a1a] mb-1">{t.hr.eosTerminated}</p>
+              <p className="text-xl font-bold text-[#1a1c1e]">{formatCurrency(eos.terminationEos)}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Leave History */}
       <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">

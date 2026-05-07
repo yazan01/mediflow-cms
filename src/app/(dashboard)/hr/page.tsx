@@ -66,6 +66,17 @@ interface HRStats {
   pendingLeaveRequests: number;
 }
 
+interface AnalyticsData {
+  headcount: { total: number; active: number; onLeave: number };
+  attritionThisYear: number;
+  byDepartment: { name: string; count: number }[];
+  byType: Record<string, number>;
+  leaveStats: { pendingCount: number; approvedThisMonth: number; byType: Record<string, number> };
+  payrollSummary: { totalNetSalary: number; totalGrossSalary: number; processedCount: number };
+  contractsExpiring: { employeeName: string; contractType: string; endDate: string; daysUntilExpiry: number }[];
+  headcountTrend: { month: string; count: number }[];
+}
+
 // ─── Status configs ───────────────────────────────────────────────────────────
 
 const ATT_MARKER: Record<string, { sym: string; cls: string }> = {
@@ -180,13 +191,14 @@ export default function HRPage() {
     return LEAVE_TYPE_LABEL[type?.toUpperCase()] ?? type?.replace(/_/g, " ");
   }
 
-  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts";
+  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts" | "analytics";
   const TABS: { key: Tab; label: string }[] = [
     { key: "employees",     label: t.hr.employees },
     { key: "attendance",    label: t.hr.attendance },
     { key: "leaveRequests", label: t.hr.leaveRequests },
     { key: "payroll",       label: t.hr.payroll },
     { key: "shifts",        label: t.hr.shifts },
+    { key: "analytics",     label: t.hr.analytics },
   ];
 
   const [activeTab, setActiveTab] = useState<Tab>("employees");
@@ -239,6 +251,14 @@ export default function HRPage() {
 
   // Stats
   const [stats, setStats] = useState<HRStats | null>(null);
+
+  // Analytics
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // Reject leave modal
+  const [rejectModal, setRejectModal] = useState<{ leaveId: string; employeeName: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   // Shifts
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -370,6 +390,14 @@ export default function HRPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch("/api/hr/reports/analytics");
+      if (res.ok) setAnalytics(await res.json());
+    } catch { /* ignore */ } finally { setAnalyticsLoading(false); }
+  }, []);
+
   // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
@@ -379,21 +407,29 @@ export default function HRPage() {
   useEffect(() => { if (activeTab === "leaveRequests") fetchLeaves(); }, [activeTab, fetchLeaves]);
   useEffect(() => { if (activeTab === "payroll") fetchPayroll(); }, [activeTab, fetchPayroll]);
   useEffect(() => { if (activeTab === "shifts") { fetchShifts(); fetchBranches(); } }, [activeTab, fetchShifts, fetchBranches]);
+  useEffect(() => { if (activeTab === "analytics") fetchAnalytics(); }, [activeTab, fetchAnalytics]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  async function handleLeaveAction(id: string, action: "APPROVED" | "REJECTED") {
+  async function handleLeaveAction(id: string, action: "APPROVED" | "REJECTED", rejectionReason?: string) {
     try {
       const res = await fetch(`/api/hr/leaves/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action }),
+        body: JSON.stringify({ status: action, ...(rejectionReason && { rejectionReason }) }),
       });
       if (res.ok) {
         fetchLeaves();
         fetchStats();
       }
     } catch { /* ignore */ }
+  }
+
+  async function handleRejectWithReason() {
+    if (!rejectModal) return;
+    await handleLeaveAction(rejectModal.leaveId, "REJECTED", rejectReason || undefined);
+    setRejectModal(null);
+    setRejectReason("");
   }
 
   async function handleCreateLeave() {
@@ -935,7 +971,7 @@ export default function HRPage() {
                                 {t.hr.approve}
                               </button>
                               <button
-                                onClick={() => handleLeaveAction(lr.id, "REJECTED")}
+                                onClick={() => { setRejectReason(""); setRejectModal({ leaveId: lr.id, employeeName: lr.employeeName ?? lr.employee?.user?.name ?? "" }); }}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-[#ffdad6] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ba1a1a] hover:text-white transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[14px]">close</span>
@@ -965,6 +1001,7 @@ export default function HRPage() {
               type="month"
               className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
               value={payrollMonth}
+              max={new Date().toISOString().slice(0, 7)}
               onChange={(e) => setPayrollMonth(e.target.value)}
             />
             <div className="flex-1" />
@@ -1045,6 +1082,18 @@ export default function HRPage() {
                     </tr>
                   ))}
                 </tbody>
+                {payroll.length > 0 && !payrollLoading && (
+                  <tfoot>
+                    <tr className="bg-[#f4f3f7] border-t-2 border-[#e3e2e6]">
+                      <td className="px-5 py-3.5 text-sm font-bold text-[#1a1c1e]" colSpan={2}>{t.hr.payrollTotals}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[#43474e]">{formatCurrency(payroll.reduce((s, p) => s + (p.basicSalary ?? p.baseSalary), 0))}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[#0d9488]">+{formatCurrency(payroll.reduce((s, p) => s + p.allowances, 0))}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[#ba1a1a]">-{formatCurrency(payroll.reduce((s, p) => s + p.deductions, 0))}</td>
+                      <td className="px-5 py-3.5 text-sm font-bold text-[#1a1c1e]">{formatCurrency(payroll.reduce((s, p) => s + (p.netSalary ?? p.netPay), 0))}</td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -1135,9 +1184,176 @@ export default function HRPage() {
         </div>
       )}
 
+      {/* ── Tab: Analytics ── */}
+      {activeTab === "analytics" && (
+        <div className="space-y-6">
+          <div className="flex justify-end">
+            <button
+              onClick={async () => {
+                if (!confirm(t.hr.carryForwardConfirm)) return;
+                const res = await fetch("/api/hr/leaves/carry-forward", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+                if (res.ok) { alert(t.hr.carryForwardDone); fetchStats(); }
+                else alert(t.hr.carryForwardFailed);
+              }}
+              className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">event_repeat</span>
+              {t.hr.carryForward}
+            </button>
+          </div>
+
+          {analyticsLoading ? (
+            <Spinner label={t.hr.loading} />
+          ) : analytics ? (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard icon="groups" iconBg="bg-[#d3e4ff]" iconColor="text-[#1960a3]" label={t.hr.totalEmployees} value={analytics.headcount.total} />
+                <StatCard icon="check_circle" iconBg="bg-[#ccfbf1]" iconColor="text-[#0d9488]" label={t.hr.active} value={analytics.headcount.active} />
+                <StatCard icon="event_busy" iconBg="bg-[#fff7ed]" iconColor="text-[#d97706]" label={t.hr.onLeave} value={analytics.headcount.onLeave} />
+                <StatCard icon="trending_down" iconBg="bg-[#ffdad6]" iconColor="text-[#ba1a1a]" label={t.hr.attritionThisYear} value={analytics.attritionThisYear} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-4">{t.hr.headcountByDept}</h3>
+                  {analytics.byDepartment.length === 0 ? (
+                    <p className="text-sm text-[#74777f] py-4 text-center">{t.common.noData}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {analytics.byDepartment.map((d) => (
+                        <div key={d.name} className="flex items-center gap-3">
+                          <span className="text-sm text-[#43474e] flex-1 truncate">{d.name}</span>
+                          <div className="w-24 bg-[#e3e2e6] rounded-full h-2 flex-shrink-0">
+                            <div
+                              className="bg-[#1960a3] h-2 rounded-full"
+                              style={{ width: `${Math.min(100, (d.count / (analytics.headcount.total || 1)) * 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-semibold text-[#1a1c1e] w-6 text-end">{d.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-4">{t.hr.leaveTypeBreakdown}</h3>
+                  <div className="space-y-1 mb-4">
+                    {Object.entries(analytics.leaveStats.byType).map(([type, count]) => (
+                      <div key={type} className="flex justify-between items-center py-1.5 border-b border-[#f4f3f7]">
+                        <span className="text-sm text-[#43474e]">{LEAVE_TYPE_LABEL[type] ?? type.replace(/_/g, " ")}</span>
+                        <span className="text-sm font-semibold text-[#1a1c1e]">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between pt-2 text-xs text-[#74777f]">
+                    <span>{t.common.pending}: <strong className="text-[#d97706]">{analytics.leaveStats.pendingCount}</strong></span>
+                    <span>{t.common.approved}: <strong className="text-[#0d9488]">{analytics.leaveStats.approvedThisMonth}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                <h3 className="text-sm font-bold text-[#1a1c1e] mb-4">{t.hr.payrollOverview}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-[#f4f3f7] rounded-xl p-4">
+                    <p className="text-xs text-[#74777f] mb-1">{t.hr.totalNetPayroll}</p>
+                    <p className="text-xl font-bold text-[#1a1c1e]">{formatCurrency(analytics.payrollSummary.totalNetSalary)}</p>
+                  </div>
+                  <div className="bg-[#f4f3f7] rounded-xl p-4">
+                    <p className="text-xs text-[#74777f] mb-1">{t.hr.grossSalary}</p>
+                    <p className="text-xl font-bold text-[#1a1c1e]">{formatCurrency(analytics.payrollSummary.totalGrossSalary)}</p>
+                  </div>
+                  <div className="bg-[#f4f3f7] rounded-xl p-4">
+                    <p className="text-xs text-[#74777f] mb-1">{t.hr.processed}</p>
+                    <p className="text-xl font-bold text-[#1a1c1e]">{analytics.payrollSummary.processedCount}</p>
+                  </div>
+                </div>
+              </div>
+
+              {analytics.contractsExpiring.length > 0 && (
+                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#d97706] text-[18px]">warning</span>
+                    {t.hr.contractsExpiring}
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#e3e2e6]">
+                          {[t.hr.employee, t.hr.contractType, t.common.date, ""].map((h, i) => (
+                            <th key={i} className="text-left text-xs font-semibold text-[#74777f] uppercase tracking-wider pb-2 pe-4 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.contractsExpiring.map((c, i) => (
+                          <tr key={i} className="border-b border-[#f4f3f7]">
+                            <td className="py-2.5 pe-4 font-semibold text-[#1a1c1e]">{c.employeeName}</td>
+                            <td className="py-2.5 pe-4 text-[#43474e]">{c.contractType.replace(/_/g, " ")}</td>
+                            <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{c.endDate?.slice(0, 10) ?? "—"}</td>
+                            <td className="py-2.5">
+                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.daysUntilExpiry <= 0 ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#fff7ed] text-[#d97706]"}`}>
+                                {c.daysUntilExpiry <= 0 ? "Expired" : `${c.daysUntilExpiry}d`}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#e3e2e6] p-16 flex flex-col items-center gap-3">
+              <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">analytics</span>
+              <p className="text-sm text-[#74777f]">{t.common.noData}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Payslip Modal ── */}
       {payslipPayrollId && (
         <PayslipModal payrollId={payslipPayrollId} onClose={() => setPayslipPayrollId(null)} />
+      )}
+
+      {/* ── Rejection Reason Modal ── */}
+      {rejectModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="reject-leave-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setRejectModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <div>
+                <h2 id="reject-leave-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.rejectLeave}</h2>
+                <p className="text-xs text-[#74777f] mt-0.5">{rejectModal.employeeName}</p>
+              </div>
+              <button onClick={() => setRejectModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.rejectionReason}</label>
+              <textarea
+                rows={3}
+                className="input-field resize-none w-full"
+                placeholder={t.hr.rejectionReasonPlaceholder}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setRejectModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+              <button
+                onClick={handleRejectWithReason}
+                className="flex items-center gap-2 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+                {t.hr.reject}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Leave Creation Modal ── */}

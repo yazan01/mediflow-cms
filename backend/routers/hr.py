@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
@@ -1349,3 +1349,366 @@ def get_own_attendance(
             for a in records
         ]
     }
+
+
+# ── Phase 3 — Compliance & Regulatory ─────────────────────────────────────────
+
+# ── End-of-Service Gratuity Calculator ────────────────────────────────────────
+
+@router.get("/employees/{employee_id}/eos")
+def calculate_eos(
+    employee_id: str,
+    reason: str = Query("terminated", description="resigned or terminated"),
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*HR_ROLES)),
+):
+    """Jordan Labor Law Article 32 end-of-service gratuity calculation."""
+    emp = (
+        db.query(models.Employee)
+        .filter(models.Employee.id == employee_id, models.Employee.deletedAt == None)
+        .options(joinedload(models.Employee.user))
+        .first()
+    )
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    hire_date = emp.hireDate.date() if emp.hireDate else None
+    if not hire_date:
+        raise HTTPException(422, "Employee hire date is required for EOS calculation")
+
+    today = datetime.now().date()
+    years = (today - hire_date).days / 365.25
+    basic = float(emp.basicSalary)
+
+    if years < 1:
+        gratuity = 0.0
+    elif reason.lower() == "resigned":
+        # Jordan Labor Law — resignation brackets
+        if years < 3:
+            gratuity = basic * years * (1 / 3)
+        elif years < 5:
+            gratuity = basic * years * (2 / 3)
+        else:
+            gratuity = basic * years
+    else:
+        # Termination: 1 month/year for first 5, 1.5 months/year for 6-10, 2 months/year after 10
+        if years <= 5:
+            gratuity = basic * years
+        elif years <= 10:
+            gratuity = basic * 5 + basic * 1.5 * (years - 5)
+        else:
+            gratuity = basic * 5 + basic * 1.5 * 5 + basic * 2 * (years - 10)
+
+    return {
+        "employeeId": employee_id,
+        "employeeName": emp.user.name if emp.user else "",
+        "hireDate": hire_date.isoformat(),
+        "yearsOfService": round(years, 2),
+        "basicSalary": basic,
+        "reason": reason,
+        "gratuity": round(gratuity, 2),
+        "monthsEntitlement": round(gratuity / basic, 2) if basic > 0 else 0,
+    }
+
+
+# ── Leave Cancellation ─────────────────────────────────────────────────────────
+
+@router.delete("/leaves/{leave_id}")
+def cancel_leave(leave_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Cancel a pending leave request. Non-HR users can only cancel their own."""
+    leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == leave_id).first()
+    if not leave:
+        raise HTTPException(404, "Leave request not found")
+    if leave.status != "PENDING":
+        raise HTTPException(409, "Only pending leave requests can be cancelled")
+
+    if not _is_hr(user):
+        own_emp = db.query(models.Employee).filter(
+            models.Employee.userId == user.id, models.Employee.deletedAt == None
+        ).first()
+        if not own_emp or own_emp.id != leave.employeeId:
+            raise HTTPException(403, "You can only cancel your own leave requests")
+
+    leave.status = "CANCELLED"
+    db.commit()
+    log_audit(db, user.id, "CANCEL", "LeaveRequest", leave.id, {"employeeId": leave.employeeId})
+    return {"id": leave.id, "status": "CANCELLED"}
+
+
+# ── Year-End Leave Carry-Forward ───────────────────────────────────────────────
+
+class CarryForwardBody(BaseModel):
+    maxCarryDays: Optional[int] = 5
+    annualBaseReset: Optional[int] = 21
+    sickBaseReset: Optional[int] = 14
+
+
+@router.post("/leaves/carry-forward")
+def carry_forward_leaves(
+    body: CarryForwardBody,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*HR_ROLES)),
+):
+    """Year-end leave balance reset with carry-forward of unused days (up to maxCarryDays)."""
+    active_employees = db.query(models.Employee).filter(
+        models.Employee.deletedAt == None,
+        models.Employee.status.in_(["ACTIVE", "ON_LEAVE"]),
+    ).all()
+
+    updated = 0
+    max_carry = body.maxCarryDays if body.maxCarryDays is not None else 5
+    annual_base = body.annualBaseReset if body.annualBaseReset is not None else 21
+    sick_base = body.sickBaseReset if body.sickBaseReset is not None else 14
+
+    for emp in active_employees:
+        carry = min(emp.annualLeaveBalance or 0, max_carry)
+        emp.annualLeaveBalance = annual_base + carry
+        emp.sickLeaveBalance = sick_base
+        updated += 1
+
+    db.commit()
+    log_audit(
+        db, user.id, "CARRY_FORWARD", "Employee", None,
+        {"employeesUpdated": updated, "maxCarryDays": max_carry},
+    )
+    return {"updated": updated, "maxCarryDays": max_carry, "annualBaseReset": annual_base}
+
+
+# ── Contracts ─────────────────────────────────────────────────────────────────
+
+VALID_CONTRACT_TYPES = {"PERMANENT", "FIXED_TERM", "PART_TIME", "PROBATION", "INTERNSHIP"}
+
+
+class ContractCreate(BaseModel):
+    contractType: str
+    startDate: str
+    endDate: Optional[str] = None
+    renewalReminderDays: Optional[int] = 30
+    notes: Optional[str] = None
+
+    @field_validator("contractType")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        if v.upper() not in VALID_CONTRACT_TYPES:
+            raise ValueError(f"contractType must be one of {sorted(VALID_CONTRACT_TYPES)}")
+        return v.upper()
+
+
+@router.get("/employees/{employee_id}/contracts")
+def get_contracts(
+    employee_id: str,
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*HR_ROLES)),
+):
+    emp = db.query(models.Employee).filter(
+        models.Employee.id == employee_id, models.Employee.deletedAt == None
+    ).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    contracts = (
+        db.query(models.EmployeeContract)
+        .filter(models.EmployeeContract.employeeId == employee_id)
+        .order_by(models.EmployeeContract.startDate.desc())
+        .all()
+    )
+    return [
+        {
+            "id": c.id,
+            "contractType": c.contractType,
+            "startDate": c.startDate.isoformat() if c.startDate else None,
+            "endDate": c.endDate.isoformat() if c.endDate else None,
+            "renewalReminderDays": c.renewalReminderDays,
+            "notes": c.notes,
+            "isExpiringSoon": (
+                c.endDate is not None and
+                c.endDate.date() <= (datetime.now() + timedelta(days=c.renewalReminderDays or 30)).date()
+                and c.endDate.date() >= datetime.now().date()
+            ),
+            "createdAt": c.createdAt.isoformat() if c.createdAt else None,
+        }
+        for c in contracts
+    ]
+
+
+@router.post("/employees/{employee_id}/contracts", status_code=201)
+def create_contract(
+    employee_id: str,
+    body: ContractCreate,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*HR_ROLES)),
+):
+    emp = db.query(models.Employee).filter(
+        models.Employee.id == employee_id, models.Employee.deletedAt == None
+    ).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    try:
+        start = datetime.fromisoformat(body.startDate)
+    except (ValueError, TypeError):
+        raise HTTPException(422, "Invalid startDate format")
+
+    end = None
+    if body.endDate:
+        try:
+            end = datetime.fromisoformat(body.endDate)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "Invalid endDate format")
+        if end <= start:
+            raise HTTPException(422, "endDate must be after startDate")
+
+    contract = models.EmployeeContract(
+        id=generate_id(),
+        employeeId=employee_id,
+        contractType=body.contractType,
+        startDate=start,
+        endDate=end,
+        renewalReminderDays=body.renewalReminderDays,
+        notes=sanitize_string(body.notes),
+    )
+    db.add(contract)
+    db.commit()
+    db.refresh(contract)
+    log_audit(db, user.id, "CREATE", "EmployeeContract", contract.id, {"contractType": body.contractType, "employeeId": employee_id})
+
+    if emp.user and end:
+        days_until_expiry = (end.date() - datetime.now().date()).days
+        if days_until_expiry <= (body.renewalReminderDays or 30):
+            _notify(
+                db, emp.user.id,
+                "Contract Expiring Soon",
+                f"Your {body.contractType} contract expires in {days_until_expiry} day(s).",
+                "WARNING",
+                "/my-hr",
+            )
+
+    return {"id": contract.id, "contractType": contract.contractType, "startDate": contract.startDate.isoformat()}
+
+
+# ── Phase 5 — Analytics & Intelligence ────────────────────────────────────────
+
+@router.get("/reports/analytics")
+def get_analytics(
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*HR_ROLES)),
+):
+    """Unified HR analytics endpoint — headcount, leave stats, payroll summary, contract alerts."""
+    now = datetime.now()
+    first_of_month = datetime(now.year, now.month, 1)
+    start_of_year = datetime(now.year, 1, 1)
+
+    # Headcount
+    base = db.query(models.Employee).filter(models.Employee.deletedAt == None)
+    total = base.count()
+    active = base.filter(models.Employee.status == "ACTIVE").count()
+    on_leave = base.filter(models.Employee.status == "ON_LEAVE").count()
+
+    # Attrition this year
+    attrition_this_year = db.query(func.count(models.Employee.id)).filter(
+        models.Employee.deletedAt == None,
+        models.Employee.status == "TERMINATED",
+        models.Employee.endDate >= start_of_year,
+    ).scalar() or 0
+
+    # By department
+    dept_rows = (
+        db.query(models.Department.name, func.count(models.Employee.id).label("count"))
+        .join(models.Employee, models.Employee.departmentId == models.Department.id)
+        .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
+        .group_by(models.Department.name)
+        .order_by(func.count(models.Employee.id).desc())
+        .all()
+    )
+
+    # By employment type
+    type_rows = (
+        db.query(models.Employee.employmentType, func.count(models.Employee.id).label("count"))
+        .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
+        .group_by(models.Employee.employmentType)
+        .all()
+    )
+
+    # Leave stats
+    pending_leaves = db.query(func.count(models.LeaveRequest.id)).filter(
+        models.LeaveRequest.status == "PENDING"
+    ).scalar() or 0
+
+    approved_this_month = db.query(func.count(models.LeaveRequest.id)).filter(
+        models.LeaveRequest.status == "APPROVED",
+        models.LeaveRequest.approvedAt >= first_of_month,
+    ).scalar() or 0
+
+    leave_by_type = (
+        db.query(models.LeaveRequest.type, func.count(models.LeaveRequest.id).label("count"))
+        .group_by(models.LeaveRequest.type)
+        .all()
+    )
+
+    # Payroll this month
+    payroll_row = db.query(
+        func.sum(models.Payroll.grossSalary).label("gross"),
+        func.sum(models.Payroll.netSalary).label("net"),
+        func.count(models.Payroll.id).label("count"),
+    ).filter(models.Payroll.year == now.year, models.Payroll.month == now.month).first()
+
+    # Contracts expiring in next 30 days
+    thirty_days_out = now + timedelta(days=30)
+    contracts_expiring = db.query(func.count(models.EmployeeContract.id)).filter(
+        models.EmployeeContract.endDate != None,
+        models.EmployeeContract.endDate >= now,
+        models.EmployeeContract.endDate <= thirty_days_out,
+    ).scalar() or 0
+
+    # Headcount by month for last 12 months (join count of employees active at that month-start)
+    headcount_trend = []
+    for i in range(11, -1, -1):
+        month_offset = now.month - i
+        yr = now.year + (month_offset - 1) // 12
+        mo = ((month_offset - 1) % 12) + 1
+        month_start = datetime(yr, mo, 1)
+        count = db.query(func.count(models.Employee.id)).filter(
+            models.Employee.hireDate <= month_start,
+            models.Employee.deletedAt == None,
+            models.Employee.status != "TERMINATED",
+        ).scalar() or 0
+        headcount_trend.append({"month": f"{yr}-{mo:02d}", "count": count})
+
+    return {
+        "headcount": {"current": total, "active": active, "onLeave": on_leave},
+        "attritionThisYear": attrition_this_year,
+        "byDepartment": [{"name": r.name, "count": r.count} for r in dept_rows],
+        "byType": {r.employmentType: r.count for r in type_rows},
+        "leaveStats": {
+            "pendingCount": pending_leaves,
+            "approvedThisMonth": approved_this_month,
+            "byType": [{"type": r.type, "count": r.count} for r in leave_by_type],
+        },
+        "payrollSummary": {
+            "totalNetSalary": float(payroll_row.net or 0) if payroll_row else 0,
+            "totalGrossSalary": float(payroll_row.gross or 0) if payroll_row else 0,
+            "processedCount": int(payroll_row.count or 0) if payroll_row else 0,
+        },
+        "contractsExpiring": contracts_expiring,
+        "headcountTrend": headcount_trend,
+    }
+
+
+# ── Leave Policies ─────────────────────────────────────────────────────────────
+
+@router.get("/leave-policies")
+def get_leave_policies(db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
+    policies = db.query(models.LeavePolicy).order_by(models.LeavePolicy.leaveType).all()
+    return [
+        {
+            "id": p.id,
+            "leaveType": p.leaveType,
+            "maxDaysPerYear": p.maxDaysPerYear,
+            "carryForwardMax": p.carryForwardMax,
+            "requiresMedicalCert": p.requiresMedicalCert,
+            "probationAllowed": p.probationAllowed,
+            "minServiceDays": p.minServiceDays,
+            "encashmentAllowed": p.encashmentAllowed,
+        }
+        for p in policies
+    ]
