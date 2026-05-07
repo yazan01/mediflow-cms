@@ -316,12 +316,17 @@ function EditEmployeeModal({ emp, departments, branches, onClose, onSaved }: {
               </Field>
               <Field label={t.hr.type}>
                 <select className="input-field" value={form.employmentType} onChange={e => setF("employmentType", e.target.value)}>
-                  {EMP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="FULL_TIME">{t.hr.fullTime}</option>
+                  <option value="PART_TIME">{t.hr.partTime}</option>
+                  <option value="CONTRACT">{t.hr.contract}</option>
                 </select>
               </Field>
               <Field label={t.hr.status}>
                 <select className="input-field" value={form.status} onChange={e => setF("status", e.target.value)}>
-                  {EMP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value="ACTIVE">{t.hr.activeStatus}</option>
+                  <option value="ON_LEAVE">{t.hr.onLeaveStatus}</option>
+                  <option value="INACTIVE">{t.hr.inactiveStatus}</option>
+                  <option value="TERMINATED">{t.hr.terminated}</option>
                 </select>
               </Field>
               <Field label={t.hr.department}>
@@ -394,7 +399,7 @@ function EditEmployeeModal({ emp, departments, branches, onClose, onSaved }: {
               </div>
               {form.userRoles.length > 0 && (
                 <div className="bg-[#f4f3f7] rounded-lg p-3">
-                  <p className="text-xs text-[#74777f] mb-1.5">Selected: {form.userRoles.length}</p>
+                  <p className="text-xs text-[#74777f] mb-1.5">{t.hr.selectedRoles}: {form.userRoles.length}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {form.userRoles.map(r => (
                       <span key={r} className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#002045] text-white">{r}</span>

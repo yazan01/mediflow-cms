@@ -44,13 +44,16 @@ interface AttendanceRecord {
 }
 
 interface PayrollRecord {
+  id: string | null;
   employeeId: string;
   employeeName: string;
   department: string;
+  basicSalary: number;
   baseSalary: number;
   allowances: number;
   deductions: number;
   netPay: number;
+  netSalary: number;
   status: "PROCESSED" | "PENDING";
 }
 
@@ -156,6 +159,21 @@ export default function HRPage() {
     LEAVE:   t.hr.leaveFull,
     HOLIDAY: t.hr.holidayFull,
   };
+
+  const LEAVE_TYPE_LABEL: Record<string, string> = {
+    ANNUAL:       t.hr.leaveTypeAnnual,
+    ANNUAL_LEAVE: t.hr.leaveTypeAnnual,
+    SICK:         t.hr.leaveTypeSick,
+    SICK_LEAVE:   t.hr.leaveTypeSick,
+    EMERGENCY:    t.hr.leaveTypeEmergency,
+    UNPAID:       t.hr.leaveTypeUnpaid,
+    MATERNITY:    t.hr.leaveTypeMaternity,
+    PATERNITY:    t.hr.leaveTypePaternity,
+  };
+
+  function leaveTypeLabel(type: string): string {
+    return LEAVE_TYPE_LABEL[type?.toUpperCase()] ?? type?.replace(/_/g, " ");
+  }
 
   type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts";
   const TABS: { key: Tab; label: string }[] = [
@@ -341,7 +359,10 @@ export default function HRPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: action }),
       });
-      if (res.ok) fetchLeaves();
+      if (res.ok) {
+        fetchLeaves();
+        fetchStats();
+      }
     } catch { /* ignore */ }
   }
 
@@ -360,17 +381,17 @@ export default function HRPage() {
   }
 
   async function saveShift() {
-    if (!shiftForm.name.trim()) { setShiftError("Shift name is required."); return; }
+    if (!shiftForm.name.trim()) { setShiftError(t.hr.shiftRequired); return; }
     setShiftSaving(true);
     setShiftError("");
     try {
       const url = shiftModal === "edit" && editingShift ? `/api/shifts/${editingShift.id}` : "/api/shifts";
       const method = shiftModal === "edit" ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...shiftForm, branchId: shiftForm.branchId || null }) });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); setShiftError(e.detail || "Failed to save."); return; }
+      if (!res.ok) { const e = await res.json().catch(() => ({})); setShiftError(e.detail || t.hr.shiftSaveFailed); return; }
       setShiftModal(null);
       fetchShifts();
-    } catch { setShiftError("Network error."); } finally { setShiftSaving(false); }
+    } catch { setShiftError(t.hr.networkError); } finally { setShiftSaving(false); }
   }
 
   async function deleteShift(id: string) {
@@ -392,7 +413,7 @@ export default function HRPage() {
   }
 
   async function saveAssignment() {
-    if (!assignModal || !assignForm.employeeId || !assignForm.startDate) { setAssignError("Employee and start date are required."); return; }
+    if (!assignModal || !assignForm.employeeId || !assignForm.startDate) { setAssignError(t.hr.assignRequired); return; }
     setAssignSaving(true);
     setAssignError("");
     try {
@@ -401,11 +422,11 @@ export default function HRPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId: assignForm.employeeId, shiftId: assignModal.id, startDate: assignForm.startDate, endDate: assignForm.endDate || null, notes: assignForm.notes }),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); setAssignError(e.detail || "Failed to assign."); return; }
+      if (!res.ok) { const e = await res.json().catch(() => ({})); setAssignError(e.detail || t.hr.assignFailed); return; }
       setAssignForm({ employeeId: "", startDate: "", endDate: "", notes: "" });
       fetchAssignments(assignModal.id);
       fetchShifts();
-    } catch { setAssignError("Network error."); } finally { setAssignSaving(false); }
+    } catch { setAssignError(t.hr.networkError); } finally { setAssignSaving(false); }
   }
 
   async function removeAssignment(id: string) {
@@ -419,6 +440,7 @@ export default function HRPage() {
       const res = await fetch(`/api/hr/payroll`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // allowances auto-calculated from employee record in backend
         body: JSON.stringify({ employeeId, month: payrollMonth }),
       });
       if (res.ok) fetchPayroll();
@@ -580,7 +602,7 @@ export default function HRPage() {
                           <span className="text-xs text-[#74777f]">—</span>
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6] text-sm text-[#43474e]">
-                          {emp.annualLeaveBalance != null ? `${emp.annualLeaveBalance} days` : "—"}
+                          {emp.annualLeaveBalance != null ? `${emp.annualLeaveBalance} ${t.hr.daysUnit}` : "—"}
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
@@ -747,14 +769,14 @@ export default function HRPage() {
                             <p className="text-sm font-semibold text-[#1a1c1e] whitespace-nowrap">{lr.employeeName ?? lr.employee?.user?.name ?? "—"}</p>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-sm text-[#43474e] capitalize">{lr.type.replace("_", " ")}</td>
+                        <td className="px-5 py-4 text-sm text-[#43474e]">{leaveTypeLabel(lr.type)}</td>
                         <td className="px-5 py-4 text-sm text-[#43474e] whitespace-nowrap">{formatDate(lr.startDate)}</td>
                         <td className="px-5 py-4 text-sm text-[#43474e] whitespace-nowrap">{formatDate(lr.endDate)}</td>
                         <td className="px-5 py-4 text-sm text-[#43474e]">{lr.days}</td>
                         <td className="px-5 py-4">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${sc.cls}`}>{sc.label}</span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-[#43474e]">{lr.approvedById ?? "—"}</td>
+                        <td className="px-5 py-4 text-sm text-[#43474e]">{lr.approverName || "—"}</td>
                         <td className="px-5 py-4">
                           {lr.status === "PENDING" ? (
                             <div className="flex items-center gap-2">
@@ -830,10 +852,10 @@ export default function HRPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-sm text-[#43474e]">{pr.department}</td>
-                      <td className="px-5 py-4 text-sm text-[#43474e]">{formatCurrency(pr.baseSalary)}</td>
+                      <td className="px-5 py-4 text-sm text-[#43474e]">{formatCurrency(pr.basicSalary ?? pr.baseSalary)}</td>
                       <td className="px-5 py-4 text-sm text-[#0d9488]">+{formatCurrency(pr.allowances)}</td>
                       <td className="px-5 py-4 text-sm text-[#ba1a1a]">-{formatCurrency(pr.deductions)}</td>
-                      <td className="px-5 py-4 text-sm font-semibold text-[#1a1c1e]">{formatCurrency(pr.netPay)}</td>
+                      <td className="px-5 py-4 text-sm font-semibold text-[#1a1c1e]">{formatCurrency(pr.netSalary ?? pr.netPay)}</td>
                       <td className="px-5 py-4">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${pr.status === "PROCESSED" ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#fff7ed] text-[#d97706]"}`}>
                           {pr.status === "PROCESSED" ? t.hr.processed : t.hr.pendingStatus}
@@ -848,15 +870,15 @@ export default function HRPage() {
                             <span className="material-symbols-outlined text-[14px]">payments</span>
                             {t.hr.process}
                           </button>
-                        ) : (
-                          <Link
-                            href={`/hr/payslips/${pr.employeeId}?month=${payrollMonth}`}
+                        ) : pr.id ? (
+                          <button
+                            onClick={() => {/* payslip modal – handled elsewhere */}}
                             className="flex items-center gap-1 px-3 py-1.5 border border-[#c4c6cf] text-[#43474e] text-xs font-semibold rounded-lg hover:bg-[#f4f3f7] transition-colors"
                           >
                             <span className="material-symbols-outlined text-[14px]">receipt_long</span>
                             {t.hr.payslip}
-                          </Link>
-                        )}
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -1065,7 +1087,7 @@ export default function HRPage() {
                       <div key={a.id} className="flex items-center justify-between bg-white border border-[#e3e2e6] rounded-xl px-4 py-3">
                         <div>
                           <p className="text-sm font-semibold text-[#1a1c1e]">{a.employeeName}</p>
-                          <p className="text-xs text-[#74777f]">{a.jobTitle} · from {a.startDate?.slice(0, 10)}</p>
+                          <p className="text-xs text-[#74777f]">{a.jobTitle} · {t.hr.assignedFrom} {a.startDate?.slice(0, 10)}</p>
                         </div>
                         <button onClick={() => removeAssignment(a.id)} className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
                           <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">remove_circle</span>

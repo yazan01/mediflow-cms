@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, func
 
 from database import get_db
@@ -27,6 +27,8 @@ class EmployeeCreate(BaseModel):
     annualLeaveBalance: Optional[int] = 21
     sickLeaveBalance: Optional[int] = 14
     branchId: Optional[str] = None
+    bankName: Optional[str] = None
+    bankAccount: Optional[str] = None
 
 
 class EmployeeUpdate(BaseModel):
@@ -41,6 +43,8 @@ class EmployeeUpdate(BaseModel):
     annualLeaveBalance: Optional[int] = None
     sickLeaveBalance: Optional[int] = None
     branchId: Optional[str] = None
+    bankName: Optional[str] = None
+    bankAccount: Optional[str] = None
     # User-level fields (name, phone, roles)
     userName: Optional[str] = None
     userPhone: Optional[str] = None
@@ -56,11 +60,16 @@ class LeaveCreate(BaseModel):
     reason: Optional[str] = None
 
 
+class LeaveUpdate(BaseModel):
+    status: str
+    rejectedReason: Optional[str] = None
+
+
 class PayrollCreate(BaseModel):
     employeeId: str
     month: str
     basicSalary: Optional[float] = None
-    allowances: Optional[float] = 0
+    allowances: Optional[float] = None
     bonus: Optional[float] = 0
     overtimePay: Optional[float] = 0
     deductions: Optional[float] = 0
@@ -95,6 +104,8 @@ def employee_to_dict(e: models.Employee) -> dict:
         "annualLeaveBalance": e.annualLeaveBalance,
         "sickLeaveBalance": e.sickLeaveBalance,
         "branchId": e.branchId,
+        "bankName": e.bankName,
+        "bankAccount": e.bankAccount,
         "user": {
             "id": e.user.id if e.user else None,
             "name": e.user.name if e.user else "",
@@ -116,9 +127,10 @@ def employee_to_dict(e: models.Employee) -> dict:
 
 @router.get("/stats")
 def get_hr_stats(db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
-    total = db.query(func.count(models.Employee.id)).scalar() or 0
-    active = db.query(func.count(models.Employee.id)).filter(models.Employee.status == "ACTIVE").scalar() or 0
-    on_leave = db.query(func.count(models.Employee.id)).filter(models.Employee.status == "ON_LEAVE").scalar() or 0
+    base = db.query(models.Employee).filter(models.Employee.deletedAt == None)
+    total = base.count()
+    active = base.filter(models.Employee.status == "ACTIVE").count()
+    on_leave = base.filter(models.Employee.status == "ON_LEAVE").count()
     pending_leaves = db.query(func.count(models.LeaveRequest.id)).filter(models.LeaveRequest.status == "PENDING").scalar() or 0
     return {
         "totalEmployees": total,
@@ -140,10 +152,10 @@ def get_employees(
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    query = db.query(models.Employee)
+    query = db.query(models.Employee).filter(models.Employee.deletedAt == None)
 
     if search:
-        query = query.join(models.User).filter(
+        query = query.join(models.User, models.Employee.userId == models.User.id).filter(
             models.User.name.contains(search) | models.User.email.contains(search)
         )
 
@@ -151,10 +163,22 @@ def get_employees(
         query = query.filter(models.Employee.status == status)
 
     if department and department != "ALL":
-        query = query.filter(models.Employee.departmentId == department)
+        # Filter by department name (frontend sends display names, not IDs)
+        query = (
+            query
+            .join(models.Department, models.Employee.departmentId == models.Department.id)
+            .filter(models.Department.name.contains(department))
+        )
 
     total = query.count()
-    employees = query.order_by(models.Employee.empCode.asc()).offset((page - 1) * pageSize).limit(pageSize).all()
+    employees = (
+        query
+        .options(joinedload(models.Employee.user), joinedload(models.Employee.department))
+        .order_by(models.Employee.empCode.asc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
 
     return {
         "data": [employee_to_dict(e) for e in employees],
@@ -168,7 +192,7 @@ def get_employees(
 def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
     if not body.userId or not body.departmentId or not body.jobTitle:
         raise HTTPException(400, "userId, departmentId, and jobTitle are required")
-    existing = db.query(models.Employee).filter(models.Employee.userId == body.userId).first()
+    existing = db.query(models.Employee).filter(models.Employee.userId == body.userId, models.Employee.deletedAt == None).first()
     if existing:
         raise HTTPException(400, "An employee record already exists for this user")
     from auth import generate_emp_code, log_audit
@@ -192,6 +216,8 @@ def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=De
         annualLeaveBalance=body.annualLeaveBalance,
         sickLeaveBalance=body.sickLeaveBalance,
         branchId=body.branchId,
+        bankName=body.bankName,
+        bankAccount=body.bankAccount,
         status="ACTIVE",
     )
     db.add(emp)
@@ -203,7 +229,7 @@ def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=De
 
 @router.get("/employees/{employee_id}")
 def get_employee(employee_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id, models.Employee.deletedAt == None).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
     return employee_to_dict(emp)
@@ -212,19 +238,17 @@ def get_employee(employee_id: str, db: Session = Depends(get_db), _user=Depends(
 @router.patch("/employees/{employee_id}")
 def update_employee(employee_id: str, body: EmployeeUpdate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
     from auth import log_audit
-    emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id, models.Employee.deletedAt == None).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
 
     user_fields = {"userName", "userPhone", "userRoles"}
     data = body.model_dump(exclude_none=True)
 
-    # Apply employee fields
     for field, val in data.items():
         if field not in user_fields:
             setattr(emp, field, val)
 
-    # Apply user-level fields on the linked User record
     if user_fields & data.keys():
         linked_user = db.query(models.User).filter(models.User.id == emp.userId).first()
         if linked_user:
@@ -270,7 +294,21 @@ def get_leaves(
         query = query.filter(models.LeaveRequest.employeeId == employeeId)
 
     total = query.count()
-    leaves = query.order_by(models.LeaveRequest.createdAt.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
+    leaves = (
+        query
+        .options(joinedload(models.LeaveRequest.employee).joinedload(models.Employee.user))
+        .order_by(models.LeaveRequest.createdAt.desc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
+
+    # Batch-load approver names
+    approver_ids = list({lr.approvedById for lr in leaves if lr.approvedById})
+    approver_map: dict = {}
+    if approver_ids:
+        approvers = db.query(models.User).filter(models.User.id.in_(approver_ids)).all()
+        approver_map = {u.id: u.name for u in approvers}
 
     return {
         "data": [
@@ -284,6 +322,9 @@ def get_leaves(
                 "days": lr.days,
                 "reason": lr.reason,
                 "status": lr.status,
+                "approvedById": lr.approvedById,
+                "approverName": approver_map.get(lr.approvedById, "") if lr.approvedById else "",
+                "rejectedReason": lr.rejectedReason,
                 "createdAt": lr.createdAt.isoformat() if lr.createdAt else None,
             }
             for lr in leaves
@@ -295,14 +336,40 @@ def get_leaves(
 
 
 @router.patch("/leaves/{leave_id}")
-def update_leave(leave_id: str, body: dict, db: Session = Depends(get_db), current_user=Depends(require_roles(*HR_ROLES))):
+def update_leave(leave_id: str, body: LeaveUpdate, db: Session = Depends(get_db), current_user=Depends(require_roles(*HR_ROLES))):
     leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == leave_id).first()
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found")
-    if "status" in body:
-        leave.status = body["status"]
-        if body["status"] in ("APPROVED", "REJECTED"):
-            leave.approvedById = current_user.id
+
+    if leave.status != "PENDING":
+        raise HTTPException(status_code=409, detail="Leave request has already been actioned")
+
+    VALID_ACTIONS = {"APPROVED", "REJECTED", "CANCELLED"}
+    if body.status not in VALID_ACTIONS:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(VALID_ACTIONS)}")
+
+    leave.status = body.status
+    leave.approvedById = current_user.id
+    leave.approvedAt = datetime.now()
+
+    if body.status == "REJECTED" and body.rejectedReason:
+        leave.rejectedReason = body.rejectedReason
+
+    # Deduct leave balance on approval
+    if body.status == "APPROVED":
+        emp = db.query(models.Employee).filter(models.Employee.id == leave.employeeId).first()
+        if emp:
+            leave_type = leave.type.upper()
+            if leave_type in ("ANNUAL", "ANNUAL_LEAVE"):
+                emp.annualLeaveBalance = max(0, (emp.annualLeaveBalance or 0) - leave.days)
+            elif leave_type in ("SICK", "SICK_LEAVE"):
+                emp.sickLeaveBalance = max(0, (emp.sickLeaveBalance or 0) - leave.days)
+            # Update employee status to ON_LEAVE if leave starts today or has started
+            today = datetime.now().date()
+            if leave.startDate and leave.endDate:
+                if leave.startDate.date() <= today <= leave.endDate.date():
+                    emp.status = "ON_LEAVE"
+
     db.commit()
     return {"id": leave.id, "status": leave.status}
 
@@ -346,31 +413,46 @@ def create_leave(body: LeaveCreate, db: Session = Depends(get_db), _user=Depends
 @router.get("/payroll")
 def get_payroll(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(20, ge=1, le=100),
+    pageSize: int = Query(100, ge=1, le=500),
     month: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    query = db.query(models.Payroll)
-
+    yr, mo = None, None
     if month:
         try:
             parts = month.split("-")
             yr, mo = int(parts[0]), int(parts[1])
-            query = query.filter(models.Payroll.year == yr, models.Payroll.month == mo)
         except (ValueError, IndexError):
             pass
 
-    total = query.count()
-    records = query.order_by(models.Payroll.year.desc(), models.Payroll.month.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
+    # Fetch all active employees
+    all_emps = (
+        db.query(models.Employee)
+        .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
+        .options(joinedload(models.Employee.user), joinedload(models.Employee.department))
+        .order_by(models.Employee.empCode.asc())
+        .all()
+    )
 
-    return {
-        "data": [
-            {
+    # Fetch existing payroll records for this month
+    payroll_map: dict = {}
+    if yr and mo:
+        records = db.query(models.Payroll).filter(
+            models.Payroll.year == yr, models.Payroll.month == mo
+        ).all()
+        payroll_map = {p.employeeId: p for p in records}
+
+    result = []
+    for emp in all_emps:
+        p = payroll_map.get(emp.id)
+        allowances = float(emp.housingAllowance or 0) + float(emp.transportAllowance or 0) + float(emp.medicalAllowance or 0)
+        if p:
+            result.append({
                 "id": p.id,
-                "employeeId": p.employeeId,
-                "employeeName": p.employee.user.name if p.employee and p.employee.user else "",
-                "department": p.employee.department.name if p.employee and p.employee.department else "",
+                "employeeId": emp.id,
+                "employeeName": emp.user.name if emp.user else "",
+                "department": emp.department.name if emp.department else "",
                 "month": p.month,
                 "year": p.year,
                 "basicSalary": float(p.basicSalary),
@@ -384,9 +466,34 @@ def get_payroll(
                 "netSalary": float(p.netSalary),
                 "netPay": float(p.netSalary),
                 "status": p.status,
-            }
-            for p in records
-        ],
+            })
+        else:
+            # Show employee with PENDING status (not yet processed)
+            gross = float(emp.basicSalary) + allowances
+            result.append({
+                "id": None,
+                "employeeId": emp.id,
+                "employeeName": emp.user.name if emp.user else "",
+                "department": emp.department.name if emp.department else "",
+                "month": mo,
+                "year": yr,
+                "basicSalary": float(emp.basicSalary),
+                "baseSalary": float(emp.basicSalary),
+                "allowances": allowances,
+                "bonus": 0,
+                "overtimePay": 0,
+                "deductions": 0,
+                "taxDeduction": 0,
+                "grossSalary": gross,
+                "netSalary": gross,
+                "netPay": gross,
+                "status": "PENDING",
+            })
+
+    total = len(result)
+    offset = (page - 1) * pageSize
+    return {
+        "data": result[offset: offset + pageSize],
         "total": total,
         "page": page,
         "pageSize": pageSize,
@@ -394,18 +501,20 @@ def get_payroll(
 
 
 @router.post("/payroll", status_code=201)
-def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
+def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
+    from auth import log_audit
     try:
         parts = body.month.split("-")
         yr, mo = int(parts[0]), int(parts[1])
     except (ValueError, IndexError, AttributeError):
         raise HTTPException(status_code=400, detail="month must be in YYYY-MM format")
 
-    employee = db.query(models.Employee).filter(models.Employee.id == body.employeeId).first()
+    employee = db.query(models.Employee).filter(
+        models.Employee.id == body.employeeId,
+        models.Employee.deletedAt == None,
+    ).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
-
-    base = body.basicSalary if body.basicSalary is not None else float(employee.basicSalary)
 
     existing = db.query(models.Payroll).filter(
         and_(
@@ -414,11 +523,20 @@ def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Dep
             models.Payroll.year == yr,
         )
     ).first()
-
     if existing:
         raise HTTPException(status_code=409, detail="Payroll record already exists for this employee and period")
 
-    gross = base + (body.allowances or 0) + (body.bonus or 0) + (body.overtimePay or 0)
+    base = body.basicSalary if body.basicSalary is not None else float(employee.basicSalary)
+
+    # Auto-include employee allowances if not explicitly provided
+    auto_allowances = (
+        float(employee.housingAllowance or 0)
+        + float(employee.transportAllowance or 0)
+        + float(employee.medicalAllowance or 0)
+    )
+    allowances = body.allowances if body.allowances is not None else auto_allowances
+
+    gross = base + allowances + (body.bonus or 0) + (body.overtimePay or 0)
     net = gross - (body.deductions or 0) - (body.taxDeduction or 0)
 
     payroll = models.Payroll(
@@ -427,19 +545,23 @@ def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Dep
         month=mo,
         year=yr,
         basicSalary=base,
-        allowances=body.allowances or 0,
+        allowances=allowances,
         bonus=body.bonus or 0,
         overtimePay=body.overtimePay or 0,
         deductions=body.deductions or 0,
         taxDeduction=body.taxDeduction or 0,
         grossSalary=gross,
         netSalary=net,
+        status="PROCESSED",
+        processedById=user.id,
+        processedAt=datetime.now(),
         notes=body.notes,
     )
     db.add(payroll)
     db.commit()
     db.refresh(payroll)
-    return {"id": payroll.id, "grossSalary": float(payroll.grossSalary), "netSalary": float(payroll.netSalary)}
+    log_audit(db, user.id, "CREATE", "Payroll", payroll.id, {"employeeId": body.employeeId, "month": body.month})
+    return {"id": payroll.id, "grossSalary": float(payroll.grossSalary), "netSalary": float(payroll.netSalary), "status": payroll.status}
 
 
 # ── Attendance ─────────────────────────────────────────────────────────────────
@@ -472,7 +594,7 @@ def get_attendance(
 
     records = raw_records.order_by(models.Attendance.date.asc()).all()
 
-    # Batch-load all referenced employees in one query (avoids N+1)
+    # Batch-load all referenced employees (avoids N+1)
     emp_ids = list({a.employeeId for a in records})
     emps = db.query(models.Employee).filter(models.Employee.id.in_(emp_ids)).all() if emp_ids else []
     emp_map: dict = {e.id: (e.user.name if e.user else e.id) for e in emps}
@@ -537,12 +659,12 @@ def get_payslip(payroll_id: str, db: Session = Depends(get_db), _user=Depends(re
     dept_name = emp.department.name if emp and emp.department else ""
     job_title = emp.jobTitle if emp else ""
 
-    # Calculate absence deduction from attendance
+    # Absence days: count non-PRESENT records and cap against working days
     from calendar import monthrange
     working_days = monthrange(p.year, p.month)[1]
     attended = db.query(func.count(models.Attendance.id)).filter(
         models.Attendance.employeeId == p.employeeId,
-        models.Attendance.status == "PRESENT",
+        models.Attendance.status.in_(["PRESENT", "LATE"]),
         func.year(models.Attendance.date) == p.year,
         func.month(models.Attendance.date) == p.month,
     ).scalar() or 0
@@ -585,7 +707,7 @@ def attendance_summary(
     except (ValueError, IndexError):
         raise HTTPException(400, "month must be YYYY-MM")
 
-    emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id, models.Employee.deletedAt == None).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
 
@@ -601,8 +723,9 @@ def attendance_summary(
         models.Attendance.date < end,
     ).all()
 
-    present = sum(1 for r in records if r.status == "PRESENT")
+    present = sum(1 for r in records if r.status in ("PRESENT", "LATE"))
     absent = total_days - present
+    late = sum(1 for r in records if r.status == "LATE")
 
     avg_checkin = None
     checkin_times = [r.checkIn for r in records if r.checkIn]
@@ -618,5 +741,7 @@ def attendance_summary(
         "totalWorkingDays": total_days,
         "presentDays": present,
         "absentDays": absent,
+        "lateDays": late,
         "avgCheckIn": avg_checkin,
+        "attendancePct": round(present / total_days * 100, 1) if total_days > 0 else 0,
     }

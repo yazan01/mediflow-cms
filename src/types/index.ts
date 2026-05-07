@@ -318,6 +318,8 @@ export interface LeaveRequest {
   reason?: string;
   status: LeaveStatus;
   approvedById?: string;
+  approverName?: string;
+  rejectedReason?: string;
   createdAt: string;
 }
 
