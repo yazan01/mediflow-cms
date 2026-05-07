@@ -11,7 +11,7 @@ SRS reference: `../clinic_management/clinic_management_srs.md`
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router, Turbopack) + TypeScript |
+| Frontend | Next.js 16 (App Router, webpack) + TypeScript |
 | Backend | FastAPI (Python 3.11+) on port 8000 |
 | ORM | SQLAlchemy 2.0 + PyMySQL |
 | Database | MySQL 8.4 |
@@ -90,7 +90,9 @@ mediflow-cms/
 │   │       ├── page.tsx            # Dashboard → /
 │   │       ├── patients/           # → /patients
 │   │       ├── appointments/       # → /appointments
-│   │       ├── emr/[id]/           # → /emr/:id
+│   │       ├── emr/[id]/           # → /emr/:id  (detail page)
+│   │       ├── emr/page.tsx        # → /emr  (list page)
+│   │       ├── appointments/[id]/  # → /appointments/:id  (detail page)
 │   │       ├── billing/            # → /billing
 │   │       ├── pharmacy/           # → /pharmacy
 │   │       ├── hr/                 # → /hr
@@ -105,7 +107,10 @@ mediflow-cms/
 │   │   ├── Sidebar.tsx             # Navigation
 │   │   └── TopBar.tsx              # Search, notifications, user menu
 │   ├── lib/
-│   │   └── utils.ts                # cn, formatDate, formatCurrency, getInitials
+│   │   ├── utils.ts                # cn, formatDate, formatCurrency, getInitials
+│   │   └── i18n/
+│   │       ├── translations.ts     # Full EN/AR translation dictionaries
+│   │       └── LanguageContext.tsx # LanguageProvider + useLanguage hook
 │   └── types/
 │       └── index.ts                # Shared TypeScript types
 │
@@ -122,7 +127,7 @@ mediflow-cms/
 - **Success**: `#0d9488` / `#ccfbf1`
 - **Error**: `#ba1a1a` / `#ffdad6`
 - **Warning**: `#d97706` / `#fff7ed`
-- **Font**: Inter only
+- **Font**: Inter (EN) / Cairo (AR) — switched via `[lang="ar"]` CSS selector
 - **Icons**: `<span className="material-symbols-outlined">icon_name</span>` — NOT Lucide
 - **Border radius**: `rounded-lg` (8px) standard, `rounded-xl` (12px) for cards, `rounded-2xl` for modals
 - **Reusable CSS classes** (in `globals.css`): `btn-primary`, `btn-secondary`, `btn-ghost`, `btn-danger`, `card`, `input-field`, `select-field`, `badge`, `table-header`, `table-cell`, `table-row`, `no-scrollbar`
@@ -151,6 +156,15 @@ mediflow-cms/
 - `log_audit()` in `auth.py` — call after any mutation
 - Decimal fields returned as `float()` in response dicts
 
+## i18n — Bilingual (Arabic / English)
+- `useLanguage()` hook provides `{ t, lang, setLang, dir }`
+- Language stored in `localStorage` key `mediflow_lang`; default `"en"`
+- `document.documentElement.dir` is set to `"rtl"` / `"ltr"` automatically
+- All UI strings come from `t.*` — never hardcode English text in JSX
+- **Tab state pattern**: use static string keys (`"employees"`) as state, NOT translated strings (`t.hr.employees`) — translated strings only for display
+- Objects referencing `t.*` (TABS, STATUS_STYLES, etc.) must be defined **inside** the component so they re-render on language change
+- Logical CSS properties for RTL: `ps-` / `pe-` instead of `pl-` / `pr-`; `start-` / `end-` instead of `left-` / `right-`; `border-e` instead of `border-r`
+
 ## Development Rules
 - **No** Next.js API routes — all backend logic goes in `backend/routers/`
 - No `/dashboard/` URL prefix in any link or redirect
@@ -160,25 +174,29 @@ mediflow-cms/
 - Empty states with icon + message + CTA for all lists/tables
 - Passwords hashed with bcrypt via passlib (12 rounds) in `backend/auth.py`
 - Every mutation should call `log_audit()` when possible
+- Frontend runs with `--webpack` flag (Turbopack breaks CSS resolution with spaces in path)
 
 ## Running the Project
 
 **Terminal 1 — Backend (FastAPI):**
-```bash
+```cmd
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
 **Terminal 2 — Frontend (Next.js):**
-```bash
+```cmd
 npm run dev
 ```
+> Runs with `--webpack` flag. Do NOT use Turbopack — it fails to resolve `tailwindcss` when the project path contains spaces.
 
 **Seed admin user (first run only):**
-```bash
+```cmd
 cd backend
 python seed.py
 ```
 
 Default credentials: `admin@mediflow.com` / `Admin@1234`
+
+**On Windows — use cmd (not PowerShell)** to avoid execution policy errors with npm.
