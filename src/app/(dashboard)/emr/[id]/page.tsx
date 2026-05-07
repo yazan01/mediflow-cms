@@ -385,10 +385,19 @@ export default function EMRPage() {
                       {/* Prescriptions */}
                       {c.prescriptions.length > 0 && (
                         <div>
-                          <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[14px]">medication</span>
-                            {t.emr.prescriptions}
-                          </p>
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[14px]">medication</span>
+                              {t.emr.prescriptions}
+                            </p>
+                            <button
+                              onClick={() => window.open(`/print/prescription/${c.id}`, "_blank")}
+                              className="flex items-center gap-1 text-[10px] font-semibold text-[#1960a3] border border-[#1960a3]/30 px-2 py-1 rounded-lg hover:bg-[#eff6ff] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[13px]">print</span>
+                              Print Rx
+                            </button>
+                          </div>
                           <div className="space-y-2">
                             {c.prescriptions.map((rx, i) => (
                               <div key={i} className="flex items-start gap-3 p-3 bg-[#f4f3f7] rounded-lg">
@@ -611,6 +620,20 @@ export default function EMRPage() {
       {/* ─── PRESCRIPTIONS ─── */}
       {activeTab === "prescriptions" && (
         <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          {allPrescriptions.length > 0 && (
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#e3e2e6] bg-[#f8f9ff]">
+              <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">{t.emr.prescriptions}</p>
+              {consultations.length > 0 && consultations[0]?.id && (
+                <button
+                  onClick={() => window.open(`/print/prescription/${consultations[0].id}`, "_blank")}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[#1960a3] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[#eff6ff] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[15px]">print</span>
+                  Print Latest Rx
+                </button>
+              )}
+            </div>
+          )}
           {allPrescriptions.length === 0 ? (
             <div className="py-20 flex flex-col items-center gap-3">
               <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">

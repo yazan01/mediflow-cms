@@ -57,6 +57,70 @@ class ConsultationCreate(BaseModel):
     prescriptions: Optional[List[PrescriptionIn]] = []
 
 
+@router.get("/{consultation_id}")
+def get_consultation(consultation_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    c = db.query(models.Consultation).filter(models.Consultation.id == consultation_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    from auth import log_audit
+    patient = c.patient
+    doctor = c.doctor
+    return {
+        "id": c.id,
+        "createdAt": c.createdAt.isoformat() if c.createdAt else None,
+        "chiefComplaint": c.chiefComplaint,
+        "subjective": c.subjective,
+        "objective": c.objective,
+        "assessment": c.assessment,
+        "plan": c.plan,
+        "followUpDate": c.followUpDate.isoformat() if c.followUpDate else None,
+        "isLocked": c.isLocked,
+        "patient": {
+            "id": patient.id,
+            "firstName": patient.firstName,
+            "lastName": patient.lastName,
+            "mrn": patient.mrn,
+            "dateOfBirth": patient.dateOfBirth.isoformat() if patient.dateOfBirth else None,
+            "gender": patient.gender,
+            "phone": patient.phone,
+            "allergies": patient.allergies or [],
+            "bloodType": patient.bloodType,
+        } if patient else None,
+        "doctor": {
+            "name": doctor.user.name if doctor and doctor.user else "",
+            "specialization": doctor.specialization if doctor else "",
+            "licenseNumber": doctor.licenseNumber if doctor else "",
+        },
+        "vitals": {
+            "bpSystolic": c.vitals.bpSystolic, "bpDiastolic": c.vitals.bpDiastolic,
+            "heartRate": c.vitals.heartRate,
+            "temperature": float(c.vitals.temperature) if c.vitals.temperature else None,
+            "weight": float(c.vitals.weight) if c.vitals.weight else None,
+            "height": float(c.vitals.height) if c.vitals.height else None,
+            "bmi": float(c.vitals.bmi) if c.vitals.bmi else None,
+            "spo2": float(c.vitals.spo2) if c.vitals.spo2 else None,
+        } if c.vitals else None,
+        "diagnoses": [
+            {"icdCode": d.icdCode, "description": d.description, "type": d.type}
+            for d in c.diagnoses
+        ],
+        "prescriptions": [
+            {
+                "id": rx.id,
+                "medicationName": rx.medicationName,
+                "dosage": rx.dosage,
+                "frequency": rx.frequency,
+                "duration": rx.duration,
+                "quantity": rx.quantity,
+                "instructions": rx.instructions,
+                "isDispensed": rx.isDispensed,
+            }
+            for rx in c.prescriptions
+        ],
+    }
+
+
 @router.post("", status_code=201)
 def create_consultation(
     body: ConsultationCreate,

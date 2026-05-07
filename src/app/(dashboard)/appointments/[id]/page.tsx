@@ -28,6 +28,8 @@ export default function AppointmentDetailPage() {
   const [appt, setAppt] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [reminderResult, setReminderResult] = useState<{ sent: boolean; phone: string; message: string; configured: boolean } | null>(null);
+  const [sendingReminder, setSendingReminder] = useState(false);
 
   useEffect(() => {
     fetch(`/api/appointments/${id}`)
@@ -35,6 +37,17 @@ export default function AppointmentDetailPage() {
       .then(setAppt)
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function sendReminder() {
+    setSendingReminder(true);
+    setReminderResult(null);
+    try {
+      const res = await fetch(`/api/appointments/${id}/remind`, { method: "POST" });
+      const data = await res.json();
+      setReminderResult(data);
+    } catch { /* ignore */ }
+    finally { setSendingReminder(false); }
+  }
 
   async function updateStatus(status: string) {
     setUpdating(true);
@@ -142,7 +155,36 @@ export default function AppointmentDetailPage() {
                 <ActionBtn icon="cancel" label={t.appointments.cancelAppt} color="bg-[#ffdad6] text-[#ba1a1a]" onClick={() => updateStatus("CANCELLED")} loading={updating} />
               )}
               <ActionBtn icon="person" label={t.appointments.patientProfile} color="bg-[#f4f3f7] text-[#43474e]" onClick={() => router.push(`/patients/${appt.patientId}`)} />
+              {!["CANCELLED", "COMPLETED", "NO_SHOW"].includes(status) && (
+                <ActionBtn icon="sms" label={sendingReminder ? "Sending..." : "Send Reminder"} color="bg-[#eff6ff] text-[#1960a3]" onClick={sendReminder} loading={sendingReminder} />
+              )}
             </div>
+
+            {/* Reminder result panel */}
+            {reminderResult && (
+              <div className={`mt-4 p-3 rounded-xl border text-sm ${reminderResult.sent ? "bg-[#ccfbf1] border-[#0d9488]/20 text-[#0d9488]" : "bg-[#eff6ff] border-[#1960a3]/20 text-[#1a1c1e]"}`}>
+                <div className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">{reminderResult.sent ? "check_circle" : "sms"}</span>
+                  <div className="flex-1 min-w-0">
+                    {reminderResult.sent ? (
+                      <p className="font-semibold">Reminder sent to {reminderResult.phone}</p>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-[#1960a3]">{reminderResult.configured ? "SMS failed — preview:" : "SMS not configured — message preview:"}</p>
+                        <p className="text-xs text-[#43474e] mt-1 italic">To: {reminderResult.phone}</p>
+                        <p className="text-xs text-[#43474e] mt-0.5 bg-white/60 p-2 rounded-lg">{reminderResult.message}</p>
+                        {!reminderResult.configured && (
+                          <p className="text-[10px] text-[#74777f] mt-1">Add TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM to backend/.env to enable SMS sending.</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <button onClick={() => setReminderResult(null)} className="flex-shrink-0 text-[#74777f] hover:text-[#1a1c1e]">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

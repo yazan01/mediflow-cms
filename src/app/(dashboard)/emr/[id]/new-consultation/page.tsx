@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
 import type { Appointment } from "@/types";
+import ICD10Search from "@/components/layout/ICD10Search";
 
 /* ─── Local sub-types ─── */
 type VitalsForm = {
@@ -622,27 +623,22 @@ export default function NewConsultationPage() {
             {diagnoses.map((d, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[120px_1fr_160px_40px] gap-3 items-start p-3 bg-[#f4f3f7] rounded-xl"
+                className="grid grid-cols-[1fr_180px_40px] gap-3 items-start p-3 bg-[#f4f3f7] rounded-xl"
               >
-                <div>
-                  {i === 0 && <label className={LABEL}>ICD-10 Code</label>}
-                  <input
-                    type="text"
-                    placeholder="E.g. J06.9"
+                {/* ICD-10 search — fills code + description together */}
+                <div className="col-span-1">
+                  {i === 0 && <label className={LABEL}>ICD-10 Code / Description</label>}
+                  <ICD10Search
                     value={d.icdCode}
-                    onChange={(e) => updateDiagnosis(i, "icdCode", e.target.value)}
-                    className={INPUT}
+                    onChange={(code, desc) => {
+                      updateDiagnosis(i, "icdCode", code);
+                      if (desc) updateDiagnosis(i, "description", desc);
+                    }}
+                    inputClassName={INPUT}
                   />
-                </div>
-                <div>
-                  {i === 0 && <label className={LABEL}>Description</label>}
-                  <input
-                    type="text"
-                    placeholder="Diagnosis description..."
-                    value={d.description}
-                    onChange={(e) => updateDiagnosis(i, "description", e.target.value)}
-                    className={INPUT}
-                  />
+                  {d.description && (
+                    <p className="mt-1 text-xs text-[#1960a3] font-semibold ps-1">{d.description}</p>
+                  )}
                 </div>
                 <div>
                   {i === 0 && <label className={LABEL}>Type</label>}

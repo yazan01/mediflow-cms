@@ -87,7 +87,10 @@ export default function InvoiceDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-semibold px-3 py-1.5 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
-          <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+          <button
+            onClick={() => window.open(`/print/invoice/${id}`, "_blank")}
+            className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
+          >
             <span className="material-symbols-outlined text-[18px]">print</span>
             Print
           </button>

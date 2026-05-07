@@ -190,3 +190,51 @@ def update_appointment(
     db.commit()
     db.refresh(appt)
     return appt_to_dict(appt)
+
+
+@router.post("/{appointment_id}/remind")
+def send_reminder(
+    appointment_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    import os
+    appt = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    if not appt.patient or not appt.patient.phone:
+        raise HTTPException(status_code=400, detail="Patient has no phone number on record")
+
+    doctor_name = appt.doctor.user.name if appt.doctor and appt.doctor.user else "your doctor"
+    scheduled = appt.scheduledAt.strftime("%A %d %B %Y at %H:%M") if appt.scheduledAt else "your scheduled time"
+    message = (
+        f"Reminder: You have an appointment with {doctor_name} on {scheduled}. "
+        f"Please arrive 10 minutes early. To cancel or reschedule, contact us."
+    )
+
+    sid   = os.getenv("TWILIO_SID", "")
+    token = os.getenv("TWILIO_TOKEN", "")
+    from_  = os.getenv("TWILIO_FROM", "")
+    sent = False
+    error_msg = None
+
+    if sid and token and from_:
+        try:
+            from twilio.rest import Client
+            client = Client(sid, token)
+            client.messages.create(body=message, from_=from_, to=appt.patient.phone)
+            sent = True
+        except Exception as e:
+            error_msg = str(e)
+
+    from auth import log_audit
+    log_audit(db, current_user["id"], "REMINDER_SENT" if sent else "REMINDER_PREVIEW",
+              "appointments", appointment_id, "Appointment")
+
+    return {
+        "sent": sent,
+        "phone": appt.patient.phone,
+        "message": message,
+        "error": error_msg,
+        "configured": bool(sid and token and from_),
+    }
