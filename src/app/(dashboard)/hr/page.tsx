@@ -149,6 +149,14 @@ export default function HRPage() {
     CANCELLED:{ label: t.common.cancel,    cls: "bg-[#e3e2e6] text-[#74777f]" },
   };
 
+  const ATT_LABEL: Record<string, string> = {
+    PRESENT: t.hr.presentFull,
+    ABSENT:  t.hr.absentFull,
+    LATE:    t.hr.lateFull,
+    LEAVE:   t.hr.leaveFull,
+    HOLIDAY: t.hr.holidayFull,
+  };
+
   type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts";
   const TABS: { key: Tab; label: string }[] = [
     { key: "employees",     label: t.hr.employees },
@@ -643,7 +651,7 @@ export default function HRPage() {
               {Object.entries(ATT_MARKER).map(([k, v]) => (
                 <span key={k} className="flex items-center gap-1">
                   <span className={`material-symbols-outlined text-[14px] ${v.cls}`}>{v.sym}</span>
-                  {k.charAt(0) + k.slice(1).toLowerCase()}
+                  {ATT_LABEL[k] ?? k}
                 </span>
               ))}
             </div>
@@ -915,7 +923,7 @@ export default function HRPage() {
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4">
-                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day, i) => (
+                    {t.hr.daysShort.map((day, i) => (
                       <span key={day} className={`text-xs px-2 py-0.5 rounded font-medium ${s.daysOfWeek.includes(i) ? "bg-[#d3e4ff] text-[#1960a3]" : "bg-[#f4f3f7] text-[#c4c6cf]"}`}>{day}</span>
                     ))}
                   </div>
@@ -957,7 +965,7 @@ export default function HRPage() {
               {shiftError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{shiftError}</div>}
               <div>
                 <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.shiftName} *</label>
-                <input className="input-field" placeholder="Morning Shift" value={shiftForm.name} onChange={(e) => setShiftForm(f => ({ ...f, name: e.target.value }))} />
+                <input className="input-field" placeholder={t.hr.shiftNamePlaceholder} value={shiftForm.name} onChange={(e) => setShiftForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -972,7 +980,7 @@ export default function HRPage() {
               <div>
                 <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.daysOfWeek}</label>
                 <div className="flex gap-2 flex-wrap">
-                  {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day, i) => (
+                  {t.hr.daysShort.map((day, i) => (
                     <button
                       key={day}
                       type="button"

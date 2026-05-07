@@ -49,16 +49,31 @@ export default function AppointmentsPage() {
     setLoading(true);
     setFetchError(null);
     try {
-      const params = new URLSearchParams({ pageSize: "200" });
+      const params = new URLSearchParams({ pageSize: "500" });
       if (filterStatus !== "ALL") params.set("status", filterStatus);
       if (filterDoctor !== "ALL") params.set("doctorId", filterDoctor);
+
+      if (view === "week") {
+        const d = new Date(currentDate);
+        const startOfWeek = new Date(d);
+        startOfWeek.setDate(d.getDate() - d.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        params.set("startDate", localDateTimeStr(startOfWeek));
+        params.set("endDate", localDateTimeStr(endOfWeek));
+      } else if (view === "day") {
+        params.set("date", localDateStr(currentDate));
+      }
+      // list view: no date filter — fetch all paginated
+
       const res = await fetch(`/api/appointments?${params}`);
       if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
       setAppointments((await res.json()).data ?? []);
     } catch (err) {
       setFetchError(err as Error);
     } finally { setLoading(false); }
-  }, [filterStatus, filterDoctor]);
+  }, [filterStatus, filterDoctor, view, currentDate]);
 
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
@@ -83,6 +98,12 @@ export default function AppointmentsPage() {
   /** Compare date using local timezone, not UTC */
   function localDateStr(d: Date) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+
+  /** Build a naive ISO datetime string in local time (no UTC offset) */
+  function localDateTimeStr(d: Date) {
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
   }
 
   /** Parse appointment date respecting naive ISO string as local time */
@@ -243,13 +264,13 @@ export default function AppointmentsPage() {
                     <thead>
                       <tr>
                         {[
-                          t.appointments.time ?? "الوقت",
-                          t.appointments.patient ?? "المريض",
-                          t.appointments.doctor ?? "الطبيب",
-                          t.appointments.type ?? "النوع",
-                          t.common.room ?? "الغرفة",
-                          t.common.status ?? "الحالة",
-                          "إجراءات سريعة",
+                          t.appointments.time,
+                          t.appointments.patient,
+                          t.appointments.doctor,
+                          t.appointments.type,
+                          t.common.room,
+                          t.common.status,
+                          t.common.actions,
                         ].map((h) => (
                           <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-4 py-3 bg-[#f4f3f7] border-b border-[#e3e2e6] whitespace-nowrap">{h}</th>
                         ))}
@@ -293,24 +314,24 @@ export default function AppointmentsPage() {
                               <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
                                 <div className="flex items-center gap-1">
                                   <button
-                                    aria-label="فتح السجل الطبي"
-                                    title="فتح السجل الطبي"
+                                    aria-label={t.appointments.openEMR}
+                                    title={t.appointments.openEMR}
                                     onClick={(e) => { e.stopPropagation(); router.push(`/emr/${apt.patientId}`); }}
                                     className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
                                   >
                                     <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
                                   </button>
                                   <button
-                                    aria-label="استشارة سريعة"
-                                    title="استشارة سريعة"
+                                    aria-label={t.appointments.quickConsult}
+                                    title={t.appointments.quickConsult}
                                     onClick={(e) => { e.stopPropagation(); setQuickConsult({ appointmentId: apt.id, patientName: apt.patientName, doctorName: apt.doctorName ?? "" }); }}
                                     className="p-1.5 hover:bg-[#ccfbf1] rounded-lg text-[#74777f] hover:text-[#0d9488] transition-colors"
                                   >
                                     <span className="material-symbols-outlined text-[18px]">stethoscope</span>
                                   </button>
                                   <button
-                                    aria-label="إصدار فاتورة"
-                                    title="إصدار فاتورة"
+                                    aria-label={t.appointments.issueInvoice}
+                                    title={t.appointments.issueInvoice}
                                     onClick={(e) => { e.stopPropagation(); router.push(`/billing?appointmentId=${apt.id}`); }}
                                     className="p-1.5 hover:bg-[#ffddba] rounded-lg text-[#74777f] hover:text-[#d97706] transition-colors"
                                   >
@@ -336,7 +357,7 @@ export default function AppointmentsPage() {
                 <div className="h-14 border-b border-[#e3e2e6]"></div>
                 {HOURS.map((h) => (
                   <div key={h} className="h-20 flex items-start justify-end pe-2 pt-1 text-[10px] text-[#74777f] font-semibold border-b border-[#e3e2e6]">
-                    {h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}
+                    {h === 12 ? `12 ${t.common.pm}` : h > 12 ? `${h - 12} ${t.common.pm}` : `${h} ${t.common.am}`}
                   </div>
                 ))}
               </div>

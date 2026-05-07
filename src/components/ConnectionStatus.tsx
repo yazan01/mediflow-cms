@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { checkHealth } from "@/lib/api-client";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ConnectionStatus() {
+  const { t } = useLanguage();
   const [offline, setOffline] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -56,14 +58,14 @@ export function ConnectionStatus() {
       className="fixed bottom-4 start-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl px-5 py-3 shadow-lg bg-[#ba1a1a] text-white text-sm font-medium"
     >
       <span className="material-symbols-outlined text-base">wifi_off</span>
-      <span>تعذّر الاتصال بالخادم — تحقق من تشغيل النظام</span>
+      <span>{t.common.serverOffline}</span>
       <button
         onClick={handleRetry}
         disabled={retrying}
         className="ms-2 rounded-lg border border-white/40 px-3 py-1 text-xs hover:bg-white/20 disabled:opacity-50 transition-colors"
-        aria-label="إعادة المحاولة"
+        aria-label={t.common.retry}
       >
-        {retrying ? "جارٍ المحاولة..." : "إعادة المحاولة"}
+        {retrying ? t.common.retrying : t.common.retry}
       </button>
     </div>
   );

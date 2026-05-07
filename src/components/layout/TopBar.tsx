@@ -140,7 +140,7 @@ export default function TopBar({ user, onMenuClick }: TopBarProps) {
           <button
             onClick={() => setSearchOpen(true)}
             className="flex items-center gap-2 w-full max-w-md bg-[#f4f3f7] rounded-full py-2 ps-4 pe-4 text-sm text-[#74777f] hover:bg-[#ebebef] transition-colors"
-            aria-label="فتح البحث الشامل"
+            aria-label={t.common.searchLabel}
           >
             <span className="material-symbols-outlined text-[18px]">search</span>
             <span className="flex-1 text-start">{t.topbar.search}</span>

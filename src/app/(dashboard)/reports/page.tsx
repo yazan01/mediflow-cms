@@ -78,7 +78,7 @@ export default function ReportsPage() {
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
       const res = await fetch(`/api/reports/export?${params}`);
-      if (!res.ok) { setExportError("فشل التصدير"); return; }
+      if (!res.ok) { setExportError(t.reports.exportFailed); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -86,7 +86,7 @@ export default function ReportsPage() {
       a.download = `report_${dateFrom || "all"}_${dateTo || "all"}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { setExportError("فشل التصدير — تحقق من الاتصال"); }
+    } catch { setExportError(t.reports.exportRequires); }
     finally { setExporting(false); }
   }
 
@@ -138,7 +138,7 @@ export default function ReportsPage() {
             value={dateRange}
             onChange={(e) => { setDateRange(e.target.value as DateRange); setDateFrom(""); setDateTo(""); }}
             className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            aria-label="نطاق التاريخ"
+            aria-label={t.reports.dateRange}
           >
             <option value="this_month">{t.reports.thisMonth}</option>
             <option value="last_month">{t.reports.lastMonth}</option>
@@ -150,14 +150,14 @@ export default function ReportsPage() {
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            aria-label="من تاريخ"
+            aria-label={t.reports.dateFrom}
           />
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            aria-label="إلى تاريخ"
+            aria-label={t.reports.dateTo}
           />
           <button
             onClick={handleExportCSV}
@@ -165,7 +165,7 @@ export default function ReportsPage() {
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">download</span>
-            {exporting ? "جارٍ التصدير..." : "Excel/CSV"}
+            {exporting ? t.reports.exporting : "Excel/CSV"}
           </button>
           <button
             onClick={handleExportPDF}

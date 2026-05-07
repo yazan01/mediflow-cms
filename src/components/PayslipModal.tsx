@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface PayslipData {
   id: string;
@@ -28,9 +29,8 @@ interface Props {
   onClose: () => void;
 }
 
-const MONTHS_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
-
 export function PayslipModal({ payrollId, onClose }: Props) {
+  const { t, lang } = useLanguage();
   const [data, setData] = useState<PayslipData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,9 +39,9 @@ export function PayslipModal({ payrollId, onClose }: Props) {
     fetch(`/api/hr/payroll/${payrollId}/payslip`)
       .then((r) => r.ok ? r.json() : Promise.reject(r.statusText))
       .then(setData)
-      .catch(() => setError("فشل تحميل بيانات الراتب"))
+      .catch(() => setError(t.hr.payslipLoadFailed))
       .finally(() => setLoading(false));
-  }, [payrollId]);
+  }, [payrollId, t.hr.payslipLoadFailed]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -49,8 +49,9 @@ export function PayslipModal({ payrollId, onClose }: Props) {
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  function handlePrint() {
-    window.print();
+  function getMonthName(month: number, year: number) {
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-SA" : "en-US", { month: "long" })
+      .format(new Date(year, month - 1));
   }
 
   return (
@@ -64,13 +65,13 @@ export function PayslipModal({ payrollId, onClose }: Props) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden print:shadow-none print:rounded-none">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6] print:border-b-2 print:border-[#002045]">
-          <h2 id="payslip-title" className="text-base font-bold text-[#1a1c1e]">إيصال الراتب</h2>
+          <h2 id="payslip-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.payslip}</h2>
           <div className="flex gap-2 print:hidden">
-            <button onClick={handlePrint} className="btn-secondary text-sm flex items-center gap-1.5">
+            <button onClick={() => window.print()} className="btn-secondary text-sm flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base">print</span>
-              طباعة
+              {t.hr.print}
             </button>
-            <button onClick={onClose} aria-label="إغلاق" className="p-2 rounded-lg hover:bg-[#f4f3f7] text-[#74777f]">
+            <button onClick={onClose} aria-label={t.common.close} className="p-2 rounded-lg hover:bg-[#f4f3f7] text-[#74777f]">
               <span className="material-symbols-outlined">close</span>
             </button>
           </div>
@@ -90,29 +91,29 @@ export function PayslipModal({ payrollId, onClose }: Props) {
                 <p className="font-semibold text-[#1a1c1e]">{data.employeeName}</p>
                 <p className="text-sm text-[#43474e]">{data.jobTitle} · {data.department}</p>
                 <p className="text-xs text-[#74777f]">
-                  {MONTHS_AR[data.month - 1]} {data.year}
+                  {getMonthName(data.month, data.year)} {data.year}
                 </p>
               </div>
 
               {/* Salary breakdown */}
               <div className="space-y-2 text-sm">
-                <Row label="الراتب الأساسي" value={data.basicSalary} positive />
-                {data.allowances > 0 && <Row label="البدلات" value={data.allowances} positive />}
-                {data.bonus > 0 && <Row label="المكافأة" value={data.bonus} positive />}
-                {data.overtimePay > 0 && <Row label="الساعات الإضافية" value={data.overtimePay} positive />}
+                <Row label={t.hr.baseSalary} value={data.basicSalary} positive />
+                {data.allowances > 0 && <Row label={t.hr.allowances} value={data.allowances} positive />}
+                {data.bonus > 0 && <Row label={t.hr.bonus} value={data.bonus} positive />}
+                {data.overtimePay > 0 && <Row label={t.hr.overtimePay} value={data.overtimePay} positive />}
 
                 <div className="border-t border-[#e3e2e6] pt-2 mt-2">
-                  <Row label="الراتب الإجمالي" value={data.grossSalary} bold />
+                  <Row label={t.hr.grossSalary} value={data.grossSalary} bold />
                 </div>
 
                 {data.absenceDays > 0 && (
-                  <Row label={`خصم الغياب (${data.absenceDays} يوم)`} value={-data.absenceDeduction} negative />
+                  <Row label={`${t.hr.absenceDeduction} (${data.absenceDays} ${t.hr.days})`} value={-data.absenceDeduction} negative />
                 )}
-                {data.deductions > 0 && <Row label="خصومات أخرى" value={-data.deductions} negative />}
-                {data.taxDeduction > 0 && <Row label="ضريبة الدخل" value={-data.taxDeduction} negative />}
+                {data.deductions > 0 && <Row label={t.hr.otherDeductions} value={-data.deductions} negative />}
+                {data.taxDeduction > 0 && <Row label={t.hr.incomeTax} value={-data.taxDeduction} negative />}
 
                 <div className="border-t-2 border-[#002045] pt-2 mt-2">
-                  <Row label="صافي الراتب" value={data.netSalary} bold large />
+                  <Row label={t.hr.netSalary} value={data.netSalary} bold large />
                 </div>
               </div>
 

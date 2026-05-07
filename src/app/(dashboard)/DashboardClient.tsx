@@ -113,7 +113,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
           {/* SSE live indicator */}
           <div className="hidden md:flex items-center gap-1.5 text-xs text-[#74777f]">
             <span className={`w-2 h-2 rounded-full ${sseStatus === "connected" ? "bg-[#0d9488] animate-pulse" : "bg-[#74777f]"}`} aria-hidden="true" />
-            {sseStatus === "connected" ? "مباشر" : "غير متصل"}
+            {sseStatus === "connected" ? t.dashboard.live : t.dashboard.offline}
           </div>
           <Link
             href="/reports"

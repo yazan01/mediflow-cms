@@ -25,14 +25,15 @@ export default function DashboardShell({ user, children }: Props) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const router = useRouter();
   const showTimeoutRef = useRef(false);
+  const { t } = useLanguage();
 
   const shortcuts: Shortcut[] = [
-    { key: "n", alt: true, action: () => router.push("/appointments/new"), description: "موعد جديد", category: "create" },
-    { key: "p", alt: true, action: () => router.push("/patients"), description: "البحث عن مريض", category: "search" },
-    { key: "b", alt: true, action: () => router.push("/billing"), description: "فاتورة جديدة", category: "create" },
-    { key: "h", alt: true, action: () => router.push("/"), description: "لوحة التحكم", category: "navigate" },
-    { key: "l", alt: true, action: () => { fetch("/api/auth/logout", { method: "POST" }).then(() => router.push("/login")); }, description: "تسجيل الخروج", category: "general" },
-    { key: "?", alt: true, action: () => setShowShortcuts(true), description: "عرض الاختصارات", category: "general" },
+    { key: "n", alt: true, action: () => router.push("/appointments/new"), description: t.common.scNewAppointment, category: "create" },
+    { key: "p", alt: true, action: () => router.push("/patients"), description: t.common.scSearchPatients, category: "search" },
+    { key: "b", alt: true, action: () => router.push("/billing"), description: t.common.scNewInvoice, category: "create" },
+    { key: "h", alt: true, action: () => router.push("/"), description: t.common.scDashboard, category: "navigate" },
+    { key: "l", alt: true, action: () => { fetch("/api/auth/logout", { method: "POST" }).then(() => router.push("/login")); }, description: t.common.scLogout, category: "general" },
+    { key: "?", alt: true, action: () => setShowShortcuts(true), description: t.common.scViewShortcuts, category: "general" },
   ];
 
   useKeyboardShortcuts(shortcuts);

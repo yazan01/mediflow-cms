@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface SearchResult {
   type: "patient" | "appointment" | "invoice" | "medication" | "employee";
@@ -18,14 +19,6 @@ const TYPE_ICONS: Record<string, string> = {
   invoice: "receipt_long",
   medication: "medication",
   employee: "badge",
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  patient: "مريض",
-  appointment: "موعد",
-  invoice: "فاتورة",
-  medication: "دواء",
-  employee: "موظف",
 };
 
 const HISTORY_KEY = "mediflow_search_history";
@@ -50,6 +43,7 @@ interface Props {
 }
 
 export function GlobalSearch({ onClose }: Props) {
+  const { t } = useLanguage();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -58,6 +52,14 @@ export function GlobalSearch({ onClose }: Props) {
   const [history] = useState(getHistory);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 300);
+
+  const typeLabels: Record<string, string> = {
+    patient: t.common.patientSingular,
+    appointment: t.common.appointmentSingular,
+    invoice: t.common.invoiceSingular,
+    medication: t.pharmacy.medication,
+    employee: t.common.employeeSingular,
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -106,13 +108,13 @@ export function GlobalSearch({ onClose }: Props) {
     grouped[r.type].push(r);
   }
 
-  const flatItems = results; // for keyboard nav index
+  const flatItems = results;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="البحث الشامل"
+      aria-label={t.common.searchLabel}
       className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -126,9 +128,9 @@ export function GlobalSearch({ onClose }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="ابحث في النظام... (مرضى، مواعيد، فواتير، أدوية)"
+            placeholder={t.common.searchSystemPlaceholder}
             className="flex-1 text-[#1a1c1e] placeholder-[#74777f] bg-transparent outline-none text-sm"
-            aria-label="بحث شامل"
+            aria-label={t.common.searchLabel}
             role="combobox"
             aria-expanded={results.length > 0}
             aria-autocomplete="list"
@@ -136,7 +138,7 @@ export function GlobalSearch({ onClose }: Props) {
           {loading && (
             <span className="animate-spin material-symbols-outlined text-[#74777f] text-lg">progress_activity</span>
           )}
-          <button onClick={onClose} aria-label="إغلاق البحث" className="text-[#74777f] hover:text-[#1a1c1e]">
+          <button onClick={onClose} aria-label={t.common.closeSearch} className="text-[#74777f] hover:text-[#1a1c1e]">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -145,7 +147,7 @@ export function GlobalSearch({ onClose }: Props) {
         <div className="max-h-[60vh] overflow-y-auto" role="listbox">
           {!query && history.length > 0 && (
             <div className="p-4">
-              <p className="text-xs text-[#74777f] font-medium mb-2">آخر عمليات البحث</p>
+              <p className="text-xs text-[#74777f] font-medium mb-2">{t.common.recentSearches}</p>
               <div className="flex flex-wrap gap-2">
                 {history.map((h) => (
                   <button
@@ -164,7 +166,7 @@ export function GlobalSearch({ onClose }: Props) {
           {query && results.length === 0 && !loading && (
             <div className="p-8 text-center text-[#74777f]">
               <span className="material-symbols-outlined text-4xl mb-2 block">search_off</span>
-              <p className="text-sm">لا توجد نتائج لـ "{query}"</p>
+              <p className="text-sm">{t.common.noResultsFor} &ldquo;{query}&rdquo;</p>
             </div>
           )}
 
@@ -172,7 +174,7 @@ export function GlobalSearch({ onClose }: Props) {
             <div key={type}>
               <div className="px-4 py-2 bg-[#faf9fd] border-b border-[#e3e2e6]">
                 <span className="text-xs font-semibold text-[#74777f] uppercase tracking-wide">
-                  {TYPE_LABELS[type] ?? type}
+                  {typeLabels[type] ?? type}
                 </span>
               </div>
               {items.map((r) => {
@@ -207,13 +209,13 @@ export function GlobalSearch({ onClose }: Props) {
 
         <div className="px-4 py-2 bg-[#faf9fd] border-t border-[#e3e2e6] flex items-center gap-4 text-xs text-[#74777f]">
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">↑↓</kbd> للتنقل
+            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">↑↓</kbd> {t.common.kbNavigate}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">Enter</kbd> للذهاب
+            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">Enter</kbd> {t.common.kbSelect}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">Esc</kbd> للإغلاق
+            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">Esc</kbd> {t.common.kbClose}
           </span>
         </div>
       </div>

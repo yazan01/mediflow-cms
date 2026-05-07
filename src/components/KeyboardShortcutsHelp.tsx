@@ -2,20 +2,23 @@
 
 import { useEffect } from "react";
 import { shortcutLabel, type Shortcut } from "@/lib/hooks/useKeyboardShortcuts";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Props {
   shortcuts: Shortcut[];
   onClose: () => void;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  navigate: "التنقل",
-  create: "إنشاء",
-  search: "البحث",
-  general: "عام",
-};
-
 export function KeyboardShortcutsHelp({ shortcuts, onClose }: Props) {
+  const { t } = useLanguage();
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    navigate: t.common.catNavigate,
+    create: t.common.catCreate,
+    search: t.common.catSearch,
+    general: t.common.catGeneral,
+  };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -43,11 +46,11 @@ export function KeyboardShortcutsHelp({ shortcuts, onClose }: Props) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
           <h2 id="shortcuts-title" className="text-lg font-semibold text-[#1a1c1e] flex items-center gap-2">
             <span className="material-symbols-outlined text-[#1960a3]">keyboard</span>
-            اختصارات لوحة المفاتيح
+            {t.common.keyboardShortcuts}
           </h2>
           <button
             onClick={onClose}
-            aria-label="إغلاق"
+            aria-label={t.common.close}
             className="p-2 rounded-lg hover:bg-[#f0f4ff] transition-colors text-[#74777f]"
           >
             <span className="material-symbols-outlined text-xl">close</span>
@@ -75,7 +78,7 @@ export function KeyboardShortcutsHelp({ shortcuts, onClose }: Props) {
         </div>
 
         <div className="px-6 py-3 bg-[#faf9fd] border-t border-[#e3e2e6] text-center">
-          <span className="text-xs text-[#74777f]">اضغط <kbd className="rounded border border-[#e3e2e6] px-1 font-mono text-[10px]">Esc</kbd> للإغلاق</span>
+          <span className="text-xs text-[#74777f]">{t.common.pressEscToClose}</span>
         </div>
       </div>
     </div>
@@ -87,9 +90,10 @@ interface HintProps {
 }
 
 export function KeyboardShortcutHint({ shortcut }: HintProps) {
+  const { t } = useLanguage();
   return (
     <kbd
-      title={`اختصار: ${shortcutLabel(shortcut)}`}
+      title={`${t.common.shortcutHint}: ${shortcutLabel(shortcut)}`}
       className="hidden md:inline-flex ms-1.5 items-center rounded border border-[#e3e2e6] bg-[#faf9fd] px-1.5 py-0.5 text-[10px] font-mono text-[#74777f]"
     >
       {shortcutLabel(shortcut)}

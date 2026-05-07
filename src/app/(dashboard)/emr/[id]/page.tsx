@@ -12,17 +12,17 @@ const BLOOD_LABELS: Record<string, string> = {
   AB_POS: "AB+", AB_NEG: "AB−", O_POS: "O+", O_NEG: "O−",
 };
 
-const LAB_STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  PENDING_COLLECTION: { label: "Pending Collection", bg: "bg-[#e9e7eb]",  text: "text-[#43474e]" },
-  IN_PROGRESS:        { label: "In Progress",        bg: "bg-[#d3e4ff]",  text: "text-[#00477f]" },
-  RESULTS_READY:      { label: "Results Ready",      bg: "bg-[#ccfbf1]",  text: "text-[#0d9488]" },
-  CANCELLED:          { label: "Cancelled",          bg: "bg-[#ffdad6]",  text: "text-[#ba1a1a]" },
+const LAB_STATUS_CSS: Record<string, { bg: string; text: string }> = {
+  PENDING_COLLECTION: { bg: "bg-[#e9e7eb]", text: "text-[#43474e]" },
+  IN_PROGRESS:        { bg: "bg-[#d3e4ff]", text: "text-[#00477f]" },
+  RESULTS_READY:      { bg: "bg-[#ccfbf1]", text: "text-[#0d9488]" },
+  CANCELLED:          { bg: "bg-[#ffdad6]", text: "text-[#ba1a1a]" },
 };
 
-const PRIORITY_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  ROUTINE: { label: "Routine", bg: "bg-[#e9e7eb]", text: "text-[#43474e]" },
-  URGENT:  { label: "Urgent",  bg: "bg-[#ffddba]", text: "text-[#633f0f]" },
-  STAT:    { label: "STAT",    bg: "bg-[#ffdad6]", text: "text-[#ba1a1a]" },
+const PRIORITY_CSS: Record<string, { bg: string; text: string }> = {
+  ROUTINE: { bg: "bg-[#e9e7eb]", text: "text-[#43474e]" },
+  URGENT:  { bg: "bg-[#ffddba]", text: "text-[#633f0f]" },
+  STAT:    { bg: "bg-[#ffdad6]", text: "text-[#ba1a1a]" },
 };
 
 type RadiologyOrder = {
@@ -51,6 +51,19 @@ export default function EMRPage() {
   const [expandedConsult, setExpandedConsult] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  const labStatusLabel: Record<string, string> = {
+    PENDING_COLLECTION: t.laboratory.pendingCollection,
+    IN_PROGRESS:        t.laboratory.inProgressStatus,
+    RESULTS_READY:      t.laboratory.resultsReadyStatus,
+    CANCELLED:          t.laboratory.cancelledStatus,
+  };
+
+  const priorityLabel: Record<string, string> = {
+    ROUTINE: t.laboratory.routine,
+    URGENT:  t.laboratory.urgent,
+    STAT:    t.laboratory.stat,
+  };
+
   const fetchEMR = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -60,11 +73,11 @@ export default function EMRPage() {
       const data = await res.json();
       setEmr(data.data ?? data);
     } catch {
-      setError("Failed to load patient EMR. Please try again.");
+      setError(t.emr.failedToLoad);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t.emr.failedToLoad]);
 
   useEffect(() => {
     fetchEMR();
@@ -94,9 +107,9 @@ export default function EMRPage() {
         <div className="w-16 h-16 bg-[#ffdad6] rounded-2xl flex items-center justify-center">
           <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">error</span>
         </div>
-        <p className="text-sm font-semibold text-[#1a1c1e]">{error || "Patient not found"}</p>
+        <p className="text-sm font-semibold text-[#1a1c1e]">{error || t.emr.patientNotFound}</p>
         <Link href="/patients" className="text-sm text-[#1960a3] font-semibold hover:underline">
-          Back to Patients
+          {t.emr.backToPatients}
         </Link>
       </div>
     );
@@ -161,7 +174,7 @@ export default function EMRPage() {
           </div>
 
           {/* Clinical chips */}
-          <div className="lg:ml-6 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="lg:ms-6 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Allergies */}
             <div className="p-3 bg-[#fff8f7] border border-[#ffdad6] rounded-xl">
               <p className="text-xs font-bold text-[#ba1a1a] uppercase tracking-wider mb-2 flex items-center gap-1">
@@ -177,7 +190,7 @@ export default function EMRPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#74777f]">No known allergies</p>
+                <p className="text-xs text-[#74777f]">{t.emr.noKnownAllergies}</p>
               )}
             </div>
 
@@ -196,7 +209,7 @@ export default function EMRPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#74777f]">No chronic conditions</p>
+                <p className="text-xs text-[#74777f]">{t.emr.noChronicConditions}</p>
               )}
             </div>
           </div>
@@ -208,14 +221,14 @@ export default function EMRPage() {
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              New Consultation
+              {t.emr.newConsultation}
             </Link>
             <Link
               href={`/patients/${id}`}
               className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">person</span>
-              Patient Profile
+              {t.emr.patientProfile}
             </Link>
           </div>
         </div>
@@ -249,13 +262,13 @@ export default function EMRPage() {
                 <span className="material-symbols-outlined text-[#74777f] text-3xl">clinical_notes</span>
               </div>
               <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noConsultations}</p>
-              <p className="text-xs text-[#74777f]">Start the first consultation for this patient</p>
+              <p className="text-xs text-[#74777f]">{t.emr.startFirstConsultation}</p>
               <Link
                 href={`/emr/${id}/new-consultation`}
                 className="mt-1 flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                New Consultation
+                {t.emr.newConsultation}
               </Link>
             </div>
           ) : (
@@ -277,12 +290,12 @@ export default function EMRPage() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-[#1a1c1e]">
-                          {c.chiefComplaint ?? "Consultation"}
+                          {c.chiefComplaint ?? t.appointments.consultation}
                         </p>
                         <p className="text-xs text-[#74777f] mt-0.5">
                           {formatDateTime(c.createdAt)}
                           {c.diagnoses.length > 0 && (
-                            <> &middot; {c.diagnoses.length} diagnosis{c.diagnoses.length > 1 ? "es" : ""}</>
+                            <> &middot; {c.diagnoses.length} {c.diagnoses.length > 1 ? t.emr.diagnoses_ : t.emr.diagnosis}</>
                           )}
                         </p>
                       </div>
@@ -356,7 +369,7 @@ export default function EMRPage() {
                                 </span>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm text-[#1a1c1e]">{d.description}</p>
-                                  <p className="text-xs text-[#74777f]">{d.type === "PRIMARY" ? "Primary" : "Secondary"}</p>
+                                  <p className="text-xs text-[#74777f]">{d.type === "PRIMARY" ? t.emr.primaryDx : t.emr.secondaryDx}</p>
                                 </div>
                               </div>
                             ))}
@@ -369,7 +382,7 @@ export default function EMRPage() {
                         <div>
                           <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider mb-3 flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[14px]">monitor_heart</span>
-                            Vitals at Consultation
+                            {t.emr.vitalsAtConsultation}
                           </p>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <VitalChip label={t.emr.bloodPressure} value={c.vitals.bpSystolic != null && c.vitals.bpDiastolic != null ? `${c.vitals.bpSystolic}/${c.vitals.bpDiastolic}` : undefined} unit="mmHg" />
@@ -395,7 +408,7 @@ export default function EMRPage() {
                               className="flex items-center gap-1 text-[10px] font-semibold text-[#1960a3] border border-[#1960a3]/30 px-2 py-1 rounded-lg hover:bg-[#eff6ff] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[13px]">print</span>
-                              Print Rx
+                              {t.emr.printRx}
                             </button>
                           </div>
                           <div className="space-y-2">
@@ -445,7 +458,7 @@ export default function EMRPage() {
                 <span className="material-symbols-outlined text-[#74777f] text-3xl">monitor_heart</span>
               </div>
               <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noVitals}</p>
-              <p className="text-xs text-[#74777f]">Vitals are recorded during consultations</p>
+              <p className="text-xs text-[#74777f]">{t.emr.vitalsRecorded}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -522,22 +535,32 @@ export default function EMRPage() {
                 <span className="material-symbols-outlined text-[#74777f] text-3xl">science</span>
               </div>
               <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noLabOrders}</p>
-              <p className="text-xs text-[#74777f]">Lab orders are created during consultations</p>
+              <p className="text-xs text-[#74777f]">{t.emr.labsCreated}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr>
-                    {["Order ID", "Tests", "Date", "Ordered By", "Priority", "Status", "Actions"].map((h, i) => (
+                    {[
+                      t.laboratory.orderId,
+                      t.laboratory.tests,
+                      t.laboratory.date,
+                      t.laboratory.orderedBy,
+                      t.laboratory.priority,
+                      t.laboratory.status,
+                      t.laboratory.actions,
+                    ].map((h, i) => (
                       <th key={h} className={`table-header ${i === 6 ? "text-right" : "text-left"}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {labOrders.map((order) => {
-                    const st = LAB_STATUS_STYLES[order.status] ?? LAB_STATUS_STYLES.PENDING_COLLECTION;
-                    const pr = PRIORITY_STYLES[order.priority] ?? PRIORITY_STYLES.ROUTINE;
+                    const stCss = LAB_STATUS_CSS[order.status] ?? LAB_STATUS_CSS.PENDING_COLLECTION;
+                    const prCss = PRIORITY_CSS[order.priority] ?? PRIORITY_CSS.ROUTINE;
+                    const stLabel = labStatusLabel[order.status] ?? order.status;
+                    const prLabel = priorityLabel[order.priority] ?? order.priority;
                     return (
                       <tr key={order.id} className="hover:bg-[#f4f3f7] transition-colors">
                         <td className="table-cell">
@@ -547,9 +570,9 @@ export default function EMRPage() {
                         </td>
                         <td className="table-cell max-w-[220px]">
                           <div className="flex flex-wrap gap-1">
-                            {order.tests.map((t, i) => (
+                            {order.tests.map((test, i) => (
                               <span key={i} className="text-xs bg-[#f4f3f7] text-[#43474e] px-2 py-0.5 rounded-full border border-[#e3e2e6]">
-                                {t}
+                                {test}
                               </span>
                             ))}
                           </div>
@@ -557,13 +580,17 @@ export default function EMRPage() {
                         <td className="table-cell whitespace-nowrap text-[#43474e]">{formatDate(order.date)}</td>
                         <td className="table-cell text-[#43474e]">{order.orderedBy}</td>
                         <td className="table-cell">
-                          <span className={`badge ${pr.bg} ${pr.text}`}>{pr.label}</span>
+                          <span className={`badge ${prCss.bg} ${prCss.text}`}>{prLabel}</span>
                         </td>
                         <td className="table-cell">
-                          <span className={`badge ${st.bg} ${st.text}`}>{st.label}</span>
+                          <span className={`badge ${stCss.bg} ${stCss.text}`}>{stLabel}</span>
                         </td>
                         <td className="table-cell text-right">
-                          <button className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" title="View Results">
+                          <button
+                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
+                            aria-label={t.emr.viewResults}
+                            title={t.emr.viewResults}
+                          >
                             <span className="material-symbols-outlined text-[18px]">visibility</span>
                           </button>
                         </td>
@@ -586,14 +613,22 @@ export default function EMRPage() {
                 <span className="material-symbols-outlined text-[#74777f] text-3xl">image_search</span>
               </div>
               <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noRadiology}</p>
-              <p className="text-xs text-[#74777f]">Radiology orders are created during consultations</p>
+              <p className="text-xs text-[#74777f]">{t.emr.radiologyCreated}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr>
-                    {["Order ID", "Modality", "Study", "Body Part", "Priority", "Status", "Date"].map((h) => (
+                    {[
+                      t.radiology.orderId,
+                      t.radiology.modality,
+                      t.emr.study,
+                      t.emr.bodyPart,
+                      t.radiology.priority,
+                      t.radiology.status,
+                      t.common.date,
+                    ].map((h) => (
                       <th key={h} className="table-header text-left">{h}</th>
                     ))}
                   </tr>
@@ -605,7 +640,11 @@ export default function EMRPage() {
                       <td className="table-cell"><span className="text-xs font-bold bg-[#d3e4ff] text-[#00477f] px-2 py-1 rounded-full">{ro.modality}</span></td>
                       <td className="table-cell text-sm text-[#1a1c1e]">{ro.study}</td>
                       <td className="table-cell text-sm text-[#43474e]">{ro.bodyPart}</td>
-                      <td className="table-cell"><span className={`badge ${ro.priority === "STAT" ? "bg-[#ba1a1a] text-white" : ro.priority === "URGENT" ? "bg-[#ffddba] text-[#633f0f]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{ro.priority}</span></td>
+                      <td className="table-cell">
+                        <span className={`badge ${priorityLabel[ro.priority] ? PRIORITY_CSS[ro.priority]?.bg ?? "bg-[#f4f3f7]" : "bg-[#f4f3f7]"} ${priorityLabel[ro.priority] ? PRIORITY_CSS[ro.priority]?.text ?? "text-[#74777f]" : "text-[#74777f]"}`}>
+                          {priorityLabel[ro.priority] ?? ro.priority}
+                        </span>
+                      </td>
                       <td className="table-cell"><span className="badge bg-[#d3e4ff] text-[#00477f]">{ro.status.replace(/_/g, " ")}</span></td>
                       <td className="table-cell text-xs text-[#74777f] whitespace-nowrap">{formatDate(ro.createdAt)}</td>
                     </tr>
@@ -629,7 +668,7 @@ export default function EMRPage() {
                   className="flex items-center gap-1.5 text-xs font-semibold text-[#1960a3] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[#eff6ff] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[15px]">print</span>
-                  Print Latest Rx
+                  {t.emr.printLatestRx}
                 </button>
               )}
             </div>
@@ -640,14 +679,22 @@ export default function EMRPage() {
                 <span className="material-symbols-outlined text-[#74777f] text-3xl">medication</span>
               </div>
               <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noPrescriptions}</p>
-              <p className="text-xs text-[#74777f]">Prescriptions are issued during consultations</p>
+              <p className="text-xs text-[#74777f]">{t.emr.prescriptionsCreated}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr>
-                    {["Medication", "Dosage", "Frequency", "Duration", "Instructions", "Date", "Dispensed"].map((h) => (
+                    {[
+                      t.pharmacy.medication,
+                      t.emr.dosage,
+                      t.emr.frequency,
+                      t.emr.rxDuration,
+                      t.emr.rxInstructions,
+                      t.common.date,
+                      t.emr.dispensed,
+                    ].map((h) => (
                       <th key={h} className="table-header text-left">{h}</th>
                     ))}
                   </tr>
@@ -663,7 +710,7 @@ export default function EMRPage() {
                       <td className="table-cell text-xs text-[#74777f] whitespace-nowrap">{rx.consultDate ? formatDate(rx.consultDate) : "—"}</td>
                       <td className="table-cell">
                         <span className={`badge ${rx.isDispensed ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e9e7eb] text-[#43474e]"}`}>
-                          {rx.isDispensed ? "Dispensed" : "Pending"}
+                          {rx.isDispensed ? t.emr.dispensed : t.emr.pendingDispense}
                         </span>
                       </td>
                     </tr>
@@ -682,7 +729,7 @@ export default function EMRPage() {
             <span className="material-symbols-outlined text-[#74777f] text-3xl">folder_open</span>
           </div>
           <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noDocuments}</p>
-          <p className="text-xs text-[#74777f]">Upload patient documents from the profile page</p>
+          <p className="text-xs text-[#74777f]">{t.emr.uploadFromProfile}</p>
         </div>
       )}
     </div>
@@ -719,7 +766,7 @@ function VitalChip({ label, value, unit }: { label: string; value?: string; unit
       <p className="text-[10px] text-[#74777f] font-semibold uppercase tracking-wider">{label}</p>
       <p className="text-base font-bold text-[#1a1c1e] mt-0.5">
         {value}
-        {unit && <span className="text-xs font-normal text-[#74777f] ml-1">{unit}</span>}
+        {unit && <span className="text-xs font-normal text-[#74777f] ms-1">{unit}</span>}
       </p>
     </div>
   );

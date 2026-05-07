@@ -100,11 +100,11 @@ export default function AuditPage() {
           className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
         >
           <option value="ALL">{t.audit.allActions}</option>
-          <option value="CREATE">CREATE</option>
-          <option value="UPDATE">UPDATE</option>
-          <option value="DELETE">DELETE</option>
-          <option value="LOGIN">LOGIN</option>
-          <option value="LOGOUT">LOGOUT</option>
+          <option value="CREATE">{t.audit.actionCreate}</option>
+          <option value="UPDATE">{t.audit.actionUpdate}</option>
+          <option value="DELETE">{t.audit.actionDelete}</option>
+          <option value="LOGIN">{t.audit.actionLogin}</option>
+          <option value="LOGOUT">{t.audit.actionLogout}</option>
         </select>
       </div>
 

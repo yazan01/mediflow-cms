@@ -126,7 +126,7 @@ export default function SettingsPage() {
 
   async function saveBranch() {
     if (!branchForm.name.trim() || !branchForm.code.trim()) {
-      setBranchError("Name and code are required.");
+      setBranchError(t.settings.branchRequired);
       return;
     }
     setBranchSaving(true);
@@ -141,13 +141,13 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setBranchError(err.detail || "Failed to save branch.");
+        setBranchError(err.detail || t.settings.branchSaveFailed);
         return;
       }
       setBranchModal(null);
       loadBranches();
     } catch {
-      setBranchError("Network error.");
+      setBranchError(t.settings.networkError);
     } finally {
       setBranchSaving(false);
     }

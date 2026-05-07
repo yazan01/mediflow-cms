@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Props {
   appointmentId: string;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function QuickConsultationModal({ appointmentId, patientName, doctorName, onClose, onSuccess }: Props) {
+  const { t } = useLanguage();
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [assessment, setAssessment] = useState("");
   const [plan, setPlan] = useState("");
@@ -24,7 +26,7 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
   }, [onClose]);
 
   async function handleSave() {
-    if (!chiefComplaint.trim()) { setError("الشكوى الرئيسية مطلوبة"); return; }
+    if (!chiefComplaint.trim()) { setError(t.emr.chiefComplaintRequired); return; }
     setSaving(true);
     setError("");
     try {
@@ -35,9 +37,8 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d.detail ?? "فشل الحفظ");
+        throw new Error(d.detail ?? t.emr.saveFailed);
       }
-      // Update appointment status to IN_CONSULTATION
       await fetch(`/api/appointments/${appointmentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -46,7 +47,7 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
       onSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "حدث خطأ");
+      setError(err instanceof Error ? err.message : t.common.error);
     } finally {
       setSaving(false);
     }
@@ -63,10 +64,10 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
           <div>
-            <h2 id="qc-title" className="text-base font-semibold text-[#1a1c1e]">استشارة سريعة</h2>
+            <h2 id="qc-title" className="text-base font-semibold text-[#1a1c1e]">{t.appointments.quickConsult}</h2>
             <p className="text-xs text-[#74777f] mt-0.5">{patientName} · {doctorName}</p>
           </div>
-          <button onClick={onClose} aria-label="إغلاق" className="p-2 rounded-lg hover:bg-[#f4f3f7] text-[#74777f]">
+          <button onClick={onClose} aria-label={t.common.close} className="p-2 rounded-lg hover:bg-[#f4f3f7] text-[#74777f]">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -80,48 +81,48 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
           )}
           <div>
             <label className="block text-sm font-medium text-[#43474e] mb-1">
-              الشكوى الرئيسية <span className="text-[#ba1a1a]">*</span>
+              {t.emr.chiefComplaint} <span className="text-[#ba1a1a]">*</span>
             </label>
             <textarea
               value={chiefComplaint}
               onChange={(e) => setChiefComplaint(e.target.value)}
               rows={2}
               className="input-field w-full resize-none"
-              placeholder="صف الشكوى الرئيسية للمريض..."
+              placeholder={t.emr.chiefComplaintPlaceholder}
               aria-required="true"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#43474e] mb-1">التشخيص</label>
+            <label className="block text-sm font-medium text-[#43474e] mb-1">{t.emr.assessment}</label>
             <textarea
               value={assessment}
               onChange={(e) => setAssessment(e.target.value)}
               rows={2}
               className="input-field w-full resize-none"
-              placeholder="التشخيص والتقييم..."
+              placeholder={t.emr.assessmentPlaceholder}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#43474e] mb-1">خطة العلاج</label>
+            <label className="block text-sm font-medium text-[#43474e] mb-1">{t.emr.plan}</label>
             <textarea
               value={plan}
               onChange={(e) => setPlan(e.target.value)}
               rows={2}
               className="input-field w-full resize-none"
-              placeholder="الأدوية والإجراءات المطلوبة..."
+              placeholder={t.emr.planPlaceholder}
             />
           </div>
         </div>
 
         <div className="px-6 py-4 border-t border-[#e3e2e6] flex justify-end gap-3">
-          <button onClick={onClose} className="btn-secondary" disabled={saving}>إلغاء</button>
+          <button onClick={onClose} className="btn-secondary" disabled={saving}>{t.common.cancel}</button>
           <button onClick={handleSave} className="btn-primary" disabled={saving}>
             {saving ? (
               <span className="flex items-center gap-2">
                 <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
-                حفظ...
+                {t.common.saving}
               </span>
-            ) : "حفظ الاستشارة"}
+            ) : t.emr.saveConsultation}
           </button>
         </div>
       </div>

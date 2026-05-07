@@ -302,8 +302,8 @@ export default function RadiologyPage() {
                           )}
                           {!isCancelled && (
                             <button
-                              aria-label="رفع الصور"
-                              title="رفع الصور"
+                              aria-label={t.radiology.uploadImages}
+                              title={t.radiology.uploadImages}
                               onClick={() => setUploadOrderId(order.id)}
                               className="p-1.5 hover:bg-[#dbeafe] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
                             >
@@ -456,6 +456,7 @@ interface UploadedImage {
 }
 
 function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const { t } = useLanguage();
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -475,13 +476,13 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
     fetch(`/api/radiology/${orderId}/images`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setImages(data.data ?? data ?? []))
-      .catch(() => setError("فشل تحميل الصور"))
+      .catch(() => setError(t.radiology.loadFailed))
       .finally(() => setLoading(false));
   }, [orderId]);
 
   async function uploadFiles(files: File[]) {
     const allowed = files.filter((f) => ["image/jpeg", "image/png", "application/pdf"].includes(f.type));
-    if (allowed.length === 0) { setError("يُسمح فقط بملفات JPEG و PNG و PDF"); return; }
+    if (allowed.length === 0) { setError(t.radiology.typeError); return; }
     setUploading(true);
     setUploadProgress(0);
     setError("");
@@ -495,7 +496,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
         const newImage = await res.json();
         setImages((prev) => [...prev, newImage]);
       } catch {
-        setError(`فشل رفع ${file.name}`);
+        setError(`${t.radiology.uploadFailed} ${file.name}`);
       }
       uploaded++;
       setUploadProgress(Math.round((uploaded / allowed.length) * 100));
@@ -516,7 +517,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
       if (!res.ok) throw new Error();
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch {
-      setError("فشل حذف الصورة");
+      setError(t.radiology.deleteFailed);
     }
   }
 
@@ -531,8 +532,8 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
-          <h2 id="img-upload-title" className="text-base font-bold text-[#1a1c1e]">رفع الصور والملفات</h2>
-          <button onClick={onClose} aria-label="إغلاق" className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+          <h2 id="img-upload-title" className="text-base font-bold text-[#1a1c1e]">{t.radiology.uploadImages}</h2>
+          <button onClick={onClose} aria-label={t.common.close} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
@@ -556,8 +557,8 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
             }`}
           >
             <span className="material-symbols-outlined text-4xl text-[#74777f] mb-2 block">cloud_upload</span>
-            <p className="text-sm font-semibold text-[#1a1c1e]">اسحب الملفات هنا أو انقر للاختيار</p>
-            <p className="text-xs text-[#74777f] mt-1">JPEG · PNG · PDF</p>
+            <p className="text-sm font-semibold text-[#1a1c1e]">{t.radiology.uploadDrag}</p>
+            <p className="text-xs text-[#74777f] mt-1">{t.radiology.uploadFormats}</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -572,7 +573,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
           {uploading && (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs text-[#74777f]">
-                <span>جارٍ الرفع...</span>
+                <span>{t.radiology.uploading}</span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="h-1.5 bg-[#e3e2e6] rounded-full overflow-hidden">
@@ -592,7 +593,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
               </div>
             )}
             {!loading && images.length === 0 && (
-              <p className="text-center text-sm text-[#74777f] py-4">لا توجد ملفات مرفوعة</p>
+              <p className="text-center text-sm text-[#74777f] py-4">{t.radiology.noImages}</p>
             )}
             {images.map((img) => (
               <div key={img.id} className="flex items-center gap-3 bg-[#f4f3f7] rounded-lg px-3 py-2">
@@ -608,7 +609,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
                   {img.filename}
                 </a>
                 <button
-                  aria-label="حذف الملف"
+                  aria-label={t.radiology.deleteImage}
                   onClick={() => handleDelete(img.id)}
                   className="p-1 hover:bg-[#ffdad6] rounded text-[#74777f] hover:text-[#ba1a1a] transition-colors flex-shrink-0"
                 >
@@ -620,7 +621,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
         </div>
 
         <div className="px-6 py-4 border-t border-[#e3e2e6] flex justify-end">
-          <button onClick={onClose} className="btn-secondary">إغلاق</button>
+          <button onClick={onClose} className="btn-secondary">{t.common.close}</button>
         </div>
       </div>
     </div>
