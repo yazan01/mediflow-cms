@@ -87,7 +87,7 @@ def get_overview(db: Session = Depends(get_db), _user=Depends(get_current_user))
     return {
         "totalRevenue": float(total_revenue),
         "totalExpenses": float(total_expenses),
-        "netIncome": float(total_revenue) - float(total_expenses),
+        "netProfit": float(total_revenue) - float(total_expenses),
         "accountsReceivable": float(accounts_receivable),
         "accountsPayable": float(accounts_payable),
         "recentExpenses": [
@@ -151,7 +151,8 @@ def get_assets(
                 "currentValue": float(a.currentValue) if a.currentValue else None,
                 "status": a.status,
                 "usefulLifeYears": a.usefulLifeYears,
-                "department": {"name": a.department.name} if a.department else None,
+                "warrantyExpiry": a.warrantyExpiry.isoformat() if a.warrantyExpiry else None,
+                "department": {"id": a.department.id, "name": a.department.name} if a.department else None,
             }
             for a in assets
         ],
@@ -332,13 +333,23 @@ def get_purchase_orders(
                 "id": po.id,
                 "poNumber": po.poNumber,
                 "vendorId": po.vendorId,
-                "vendorName": po.vendor.name if po.vendor else "",
+                "vendor": {"id": po.vendor.id, "name": po.vendor.name} if po.vendor else {"id": "", "name": ""},
                 "date": po.date.isoformat() if po.date else None,
                 "expectedDelivery": po.expectedDelivery.isoformat() if po.expectedDelivery else None,
                 "status": po.status,
                 "subtotal": float(po.subtotal),
                 "totalAmount": float(po.totalAmount),
-                "itemCount": len(po.items),
+                "items": [
+                    {
+                        "id": item.id,
+                        "itemName": item.itemName,
+                        "quantity": item.quantity,
+                        "unitPrice": float(item.unitPrice),
+                        "totalPrice": float(item.totalPrice),
+                        "receivedQty": item.receivedQty if hasattr(item, "receivedQty") and item.receivedQty else 0,
+                    }
+                    for item in (po.items or [])
+                ],
             }
             for po in pos
         ],

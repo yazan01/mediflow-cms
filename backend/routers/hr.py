@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from database import get_db
 from auth import get_current_user, generate_id
@@ -23,9 +23,8 @@ class LeaveCreate(BaseModel):
 
 class PayrollCreate(BaseModel):
     employeeId: str
-    month: int
-    year: int
-    basicSalary: float
+    month: str
+    basicSalary: Optional[float] = None
     allowances: Optional[float] = 0
     bonus: Optional[float] = 0
     overtimePay: Optional[float] = 0
@@ -72,6 +71,22 @@ def employee_to_dict(e: models.Employee) -> dict:
             "name": e.department.name if e.department else "",
         },
         "createdAt": e.createdAt.isoformat() if e.createdAt else None,
+    }
+
+
+# ── Stats ──────────────────────────────────────────────────────────────────────
+
+@router.get("/stats")
+def get_hr_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    total = db.query(func.count(models.Employee.id)).scalar() or 0
+    active = db.query(func.count(models.Employee.id)).filter(models.Employee.status == "ACTIVE").scalar() or 0
+    on_leave = db.query(func.count(models.Employee.id)).filter(models.Employee.status == "ON_LEAVE").scalar() or 0
+    pending_leaves = db.query(func.count(models.LeaveRequest.id)).filter(models.LeaveRequest.status == "PENDING").scalar() or 0
+    return {
+        "totalEmployees": total,
+        "activeEmployees": active,
+        "onLeave": on_leave,
+        "pendingLeaveRequests": pending_leaves,
     }
 
 
@@ -154,6 +169,19 @@ def get_leaves(
     }
 
 
+@router.patch("/leaves/{leave_id}")
+def update_leave(leave_id: str, body: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == leave_id).first()
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    if "status" in body:
+        leave.status = body["status"]
+        if body["status"] in ("APPROVED", "REJECTED"):
+            leave.approvedById = current_user.id
+    db.commit()
+    return {"id": leave.id, "status": leave.status}
+
+
 @router.post("/leaves", status_code=201)
 def create_leave(body: LeaveCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
     leave = models.LeaveRequest(
@@ -178,17 +206,19 @@ def create_leave(body: LeaveCreate, db: Session = Depends(get_db), _user=Depends
 def get_payroll(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
-    month: Optional[int] = None,
-    year: Optional[int] = None,
+    month: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
     query = db.query(models.Payroll)
 
     if month:
-        query = query.filter(models.Payroll.month == month)
-    if year:
-        query = query.filter(models.Payroll.year == year)
+        try:
+            parts = month.split("-")
+            yr, mo = int(parts[0]), int(parts[1])
+            query = query.filter(models.Payroll.year == yr, models.Payroll.month == mo)
+        except (ValueError, IndexError):
+            pass
 
     total = query.count()
     records = query.order_by(models.Payroll.year.desc(), models.Payroll.month.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
@@ -199,9 +229,11 @@ def get_payroll(
                 "id": p.id,
                 "employeeId": p.employeeId,
                 "employeeName": p.employee.user.name if p.employee and p.employee.user else "",
+                "department": p.employee.department.name if p.employee and p.employee.department else "",
                 "month": p.month,
                 "year": p.year,
                 "basicSalary": float(p.basicSalary),
+                "baseSalary": float(p.basicSalary),
                 "allowances": float(p.allowances or 0),
                 "bonus": float(p.bonus or 0),
                 "overtimePay": float(p.overtimePay or 0),
@@ -209,6 +241,7 @@ def get_payroll(
                 "taxDeduction": float(p.taxDeduction or 0),
                 "grossSalary": float(p.grossSalary),
                 "netSalary": float(p.netSalary),
+                "netPay": float(p.netSalary),
                 "status": p.status,
             }
             for p in records
@@ -221,26 +254,38 @@ def get_payroll(
 
 @router.post("/payroll", status_code=201)
 def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    try:
+        parts = body.month.split("-")
+        yr, mo = int(parts[0]), int(parts[1])
+    except (ValueError, IndexError, AttributeError):
+        raise HTTPException(status_code=400, detail="month must be in YYYY-MM format")
+
+    employee = db.query(models.Employee).filter(models.Employee.id == body.employeeId).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    base = body.basicSalary if body.basicSalary is not None else float(employee.basicSalary)
+
     existing = db.query(models.Payroll).filter(
         and_(
             models.Payroll.employeeId == body.employeeId,
-            models.Payroll.month == body.month,
-            models.Payroll.year == body.year,
+            models.Payroll.month == mo,
+            models.Payroll.year == yr,
         )
     ).first()
 
     if existing:
         raise HTTPException(status_code=409, detail="Payroll record already exists for this employee and period")
 
-    gross = body.basicSalary + (body.allowances or 0) + (body.bonus or 0) + (body.overtimePay or 0)
+    gross = base + (body.allowances or 0) + (body.bonus or 0) + (body.overtimePay or 0)
     net = gross - (body.deductions or 0) - (body.taxDeduction or 0)
 
     payroll = models.Payroll(
         id=generate_id(),
         employeeId=body.employeeId,
-        month=body.month,
-        year=body.year,
-        basicSalary=body.basicSalary,
+        month=mo,
+        year=yr,
+        basicSalary=base,
         allowances=body.allowances or 0,
         bonus=body.bonus or 0,
         overtimePay=body.overtimePay or 0,
@@ -260,43 +305,53 @@ def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Dep
 
 @router.get("/attendance")
 def get_attendance(
-    month: Optional[int] = None,
-    year: Optional[int] = None,
+    month: Optional[str] = None,
     employeeId: Optional[str] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
-    query = db.query(models.Attendance)
+    raw_records = db.query(models.Attendance)
 
     if employeeId:
-        query = query.filter(models.Attendance.employeeId == employeeId)
+        raw_records = raw_records.filter(models.Attendance.employeeId == employeeId)
 
-    if month and year:
-        from datetime import date as dt_date
-        start = datetime(year, month, 1)
-        end_month = month + 1 if month < 12 else 1
-        end_year = year if month < 12 else year + 1
-        end = datetime(end_year, end_month, 1)
-        query = query.filter(and_(models.Attendance.date >= start, models.Attendance.date < end))
+    yr, mo = None, None
+    if month:
+        try:
+            parts = month.split("-")
+            yr, mo = int(parts[0]), int(parts[1])
+            start = datetime(yr, mo, 1)
+            end_mo = mo + 1 if mo < 12 else 1
+            end_yr = yr if mo < 12 else yr + 1
+            end = datetime(end_yr, end_mo, 1)
+            raw_records = raw_records.filter(and_(models.Attendance.date >= start, models.Attendance.date < end))
+        except (ValueError, IndexError):
+            pass
 
-    records = query.order_by(models.Attendance.date.desc()).all()
+    records = raw_records.order_by(models.Attendance.date.asc()).all()
 
-    return {
-        "data": [
-            {
-                "id": a.id,
-                "employeeId": a.employeeId,
-                "date": a.date.isoformat() if a.date else None,
-                "checkIn": a.checkIn.isoformat() if a.checkIn else None,
-                "checkOut": a.checkOut.isoformat() if a.checkOut else None,
-                "status": a.status,
-                "overtimeHrs": float(a.overtimeHrs) if a.overtimeHrs else None,
-                "notes": a.notes,
-                "isManual": a.isManual,
-            }
-            for a in records
-        ]
-    }
+    emp_map: dict = {}
+    for a in records:
+        eid = a.employeeId
+        if eid not in emp_map:
+            emp = db.query(models.Employee).filter(models.Employee.id == eid).first()
+            emp_map[eid] = emp.user.name if emp and emp.user else eid
+
+    if search:
+        emp_map = {k: v for k, v in emp_map.items() if search.lower() in v.lower()}
+        records = [r for r in records if r.employeeId in emp_map]
+
+    grouped: dict = {}
+    for a in records:
+        eid = a.employeeId
+        if eid not in grouped:
+            grouped[eid] = {"employeeId": eid, "employeeName": emp_map.get(eid, eid), "days": {}}
+        if a.date:
+            key = a.date.strftime("%Y-%m-%d")
+            grouped[eid]["days"][key] = a.status
+
+    return {"data": list(grouped.values())}
 
 
 @router.post("/attendance", status_code=201)

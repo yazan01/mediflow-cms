@@ -172,6 +172,43 @@ def get_stock_movements(
     }
 
 
+@router.post("/medications/{med_id}/adjust", status_code=200)
+def adjust_medication_stock(
+    med_id: str,
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    med = db.query(models.Medication).filter(models.Medication.id == med_id).first()
+    if not med:
+        raise HTTPException(status_code=404, detail="Medication not found")
+
+    qty = int(body.get("quantity", 0))
+    note = body.get("note", "")
+    previous_qty = med.stockQuantity
+    new_qty = previous_qty + qty
+    if new_qty < 0:
+        raise HTTPException(status_code=400, detail="Insufficient stock")
+
+    movement_type = "ADJUSTMENT_IN" if qty > 0 else "ADJUSTMENT_OUT"
+    movement = models.StockMovement(
+        id=generate_id(),
+        medicationId=med_id,
+        type=movement_type,
+        quantity=abs(qty),
+        previousQty=previous_qty,
+        newQty=new_qty,
+        reason="Manual adjustment",
+        notes=note,
+        performedById=current_user.id,
+    )
+    db.add(movement)
+    med.stockQuantity = new_qty
+    db.commit()
+
+    return {"id": med_id, "stockQuantity": new_qty, "previousQty": previous_qty}
+
+
 @router.post("/stock-movements", status_code=201)
 def create_stock_movement(
     body: StockMovementCreate,

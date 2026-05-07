@@ -146,7 +146,7 @@ export default function AccountingPage() {
     setOverviewLoading(true);
     try {
       const res = await fetch("/api/accounting/overview");
-      if (res.ok) { const d = await res.json(); setOverview(d.data ?? null); }
+      if (res.ok) { const d = await res.json(); setOverview(d ?? null); }
     } catch { /* ignore */ } finally { setOverviewLoading(false); }
   }, []);
 

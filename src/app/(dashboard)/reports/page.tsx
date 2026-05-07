@@ -64,7 +64,7 @@ export default function ReportsPage() {
     { label: "Revenue MTD",      value: stats ? formatCurrency(stats.revenueMTD)    : "—", icon: "payments",       change: stats?.revenueChange,      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
     { label: "Patients MTD",     value: stats ? String(stats.patientsMTD)           : "—", icon: "person",         change: stats?.patientsChange,     iconBg: "bg-[#d6e3ff]", iconColor: "text-[#002045]" },
     { label: "Appointments MTD", value: stats ? String(stats.appointmentsMTD)       : "—", icon: "calendar_today", change: stats?.appointmentsChange, iconBg: "bg-[#ffddba]", iconColor: "text-[#633f0f]" },
-    { label: "No-Show Rate",     value: stats ? `${stats.noShowRate.toFixed(1)}%`   : "—", icon: "event_busy",     change: stats?.noShowChange,       iconBg: "bg-[#ffdad6]", iconColor: "text-[#ba1a1a]" },
+    { label: "No-Show Rate",     value: stats ? `${(stats.noShowRate ?? 0).toFixed(1)}%`   : "—", icon: "event_busy",     change: stats?.noShowChange,       iconBg: "bg-[#ffdad6]", iconColor: "text-[#ba1a1a]" },
   ];
 
   const tabs = [

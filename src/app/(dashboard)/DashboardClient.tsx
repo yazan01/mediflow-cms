@@ -1,8 +1,16 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
+} from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { DashboardStats, Appointment } from "@/types";
+
+interface RevenuePoint { month: string; revenue: number; expenses: number }
+interface DeptPoint    { department: string; count: number; pct: number }
 
 interface Props {
   stats: DashboardStats | null;
@@ -11,16 +19,31 @@ interface Props {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  SCHEDULED:      { label: "Scheduled",       className: "bg-[#e9e7eb] text-[#43474e]" },
-  CHECKED_IN:     { label: "Checked In",      className: "bg-[#d3e4ff] text-[#00477f]" },
-  IN_CONSULTATION:{ label: "In Consultation", className: "bg-[#d3e4ff] text-[#1960a3]" },
-  COMPLETED:      { label: "Completed",       className: "bg-[#ccfbf1] text-[#0d9488]" },
-  URGENT:         { label: "Urgent",          className: "bg-[#ba1a1a] text-white" },
-  NO_SHOW:        { label: "No Show",         className: "bg-[#ffdad6] text-[#93000a]" },
-  CANCELLED:      { label: "Cancelled",       className: "bg-[#e3e2e6] text-[#74777f]" },
+  SCHEDULED:        { label: "Scheduled",        className: "bg-[#e9e7eb] text-[#43474e]" },
+  CHECKED_IN:       { label: "Checked In",       className: "bg-[#d3e4ff] text-[#00477f]" },
+  IN_CONSULTATION:  { label: "In Consultation",  className: "bg-[#d3e4ff] text-[#1960a3]" },
+  COMPLETED:        { label: "Completed",        className: "bg-[#ccfbf1] text-[#0d9488]" },
+  URGENT:           { label: "Urgent",           className: "bg-[#ba1a1a] text-white" },
+  NO_SHOW:          { label: "No Show",          className: "bg-[#ffdad6] text-[#93000a]" },
+  CANCELLED:        { label: "Cancelled",        className: "bg-[#e3e2e6] text-[#74777f]" },
 };
 
 export default function DashboardClient({ stats, appointments }: Props) {
+  const [revenue, setRevenue] = useState<RevenuePoint[]>([]);
+  const [depts, setDepts]     = useState<DeptPoint[]>([]);
+  const dbOnline = stats !== null;
+
+  useEffect(() => {
+    fetch("/api/dashboard/revenue")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setRevenue)
+      .catch(() => {});
+    fetch("/api/dashboard/departments")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setDepts)
+      .catch(() => {});
+  }, []);
+
   const kpiCards = [
     {
       label: "Daily Revenue",
@@ -57,10 +80,10 @@ export default function DashboardClient({ stats, appointments }: Props) {
   ];
 
   const quickLinks = [
-    { href: "/patients/new",     icon: "person_add",    label: "Register Patient",  color: "text-[#002045]" },
-    { href: "/appointments/new", icon: "event",         label: "Book Appointment",  color: "text-[#1960a3]" },
-    { href: "/billing/new",      icon: "receipt_long",  label: "Create Invoice",    color: "text-[#319795]" },
-    { href: "/pharmacy",         icon: "medication",    label: "Dispense Meds",     color: "text-[#633f0f]" },
+    { href: "/patients/new",      icon: "person_add",   label: "Register Patient", color: "text-[#002045]" },
+    { href: "/appointments/new",  icon: "event",        label: "Book Appointment", color: "text-[#1960a3]" },
+    { href: "/billing/new",       icon: "receipt_long", label: "Create Invoice",   color: "text-[#319795]" },
+    { href: "/pharmacy",          icon: "medication",   label: "Dispense Meds",    color: "text-[#633f0f]" },
   ];
 
   return (
@@ -126,38 +149,20 @@ export default function DashboardClient({ stats, appointments }: Props) {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {stats.criticalAlerts > 0 && (
             <AlertBanner
-              icon="emergency"
-              color="text-[#ba1a1a]"
-              bg="bg-[#ffdad6]"
-              border="border-[#ba1a1a]/20"
-              label="Critical Alerts"
-              value={stats.criticalAlerts}
-              link="/reports"
-              linkLabel="Review now"
+              icon="emergency" color="text-[#ba1a1a]" bg="bg-[#ffdad6]" border="border-[#ba1a1a]/20"
+              label="Critical Alerts" value={stats.criticalAlerts} link="/reports" linkLabel="Review now"
             />
           )}
           {stats.lowStockItems > 0 && (
             <AlertBanner
-              icon="inventory_2"
-              color="text-[#d97706]"
-              bg="bg-[#fff7ed]"
-              border="border-[#d97706]/20"
-              label="Low Stock Items"
-              value={stats.lowStockItems}
-              link="/pharmacy"
-              linkLabel="View pharmacy"
+              icon="inventory_2" color="text-[#d97706]" bg="bg-[#fff7ed]" border="border-[#d97706]/20"
+              label="Low Stock Items" value={stats.lowStockItems} link="/pharmacy" linkLabel="View pharmacy"
             />
           )}
           {stats.pendingInvoices > 0 && (
             <AlertBanner
-              icon="receipt_long"
-              color="text-[#1960a3]"
-              bg="bg-[#eff6ff]"
-              border="border-[#1960a3]/20"
-              label="Pending Invoices"
-              value={stats.pendingInvoices}
-              link="/billing"
-              linkLabel="View billing"
+              icon="receipt_long" color="text-[#1960a3]" bg="bg-[#eff6ff]" border="border-[#1960a3]/20"
+              label="Pending Invoices" value={stats.pendingInvoices} link="/billing" linkLabel="View billing"
             />
           )}
         </section>
@@ -165,12 +170,12 @@ export default function DashboardClient({ stats, appointments }: Props) {
 
       {/* Main content grid */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue chart */}
+        {/* Revenue Trends chart */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-lg font-semibold text-[#1a1c1e]">Revenue Trends</h3>
-              <p className="text-xs text-[#74777f]">Monthly revenue vs expenses</p>
+              <p className="text-xs text-[#74777f]">Monthly revenue vs expenses (last 6 months)</p>
             </div>
             <Link href="/reports" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
               Full report
@@ -178,46 +183,68 @@ export default function DashboardClient({ stats, appointments }: Props) {
             </Link>
           </div>
 
-          {/* SVG bar chart placeholder — replaced by Recharts in production */}
-          <div className="flex-1 h-56 chart-grid rounded-lg relative flex items-end justify-around p-4 gap-3 border border-[#e3e2e6] bg-[#faf9fd]">
-            {stats ? (
-              <p className="absolute inset-0 flex items-center justify-center text-sm text-[#74777f]">
-                Chart renders with live data from /api/dashboard/revenue
-              </p>
+          <div className="flex-1 h-56">
+            {revenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenue} barCategoryGap="30%" barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e2e6" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#74777f" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#74777f" }} axisLine={false} tickLine={false}
+                    tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
+                  <Tooltip
+                    contentStyle={{ border: "1px solid #e3e2e6", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number) => formatCurrency(v)}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#1960a3" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="Expenses" fill="#adc7f7" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
-              <EmptyState icon="bar_chart" label="Connect your database to see revenue analytics" />
+              <div className="h-full flex flex-col items-center justify-center gap-2 border border-[#e3e2e6] rounded-lg bg-[#faf9fd]">
+                <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">bar_chart</span>
+                <p className="text-xs text-[#74777f] text-center">Loading revenue data…</p>
+              </div>
             )}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-6 mt-4">
-            <span className="flex items-center gap-2 text-xs text-[#43474e]">
-              <span className="w-3 h-3 rounded-full bg-[#1960a3]"></span> Revenue
-            </span>
-            <span className="flex items-center gap-2 text-xs text-[#43474e]">
-              <span className="w-3 h-3 rounded-full bg-[#adc7f7]"></span> Expenses
-            </span>
           </div>
         </div>
 
-        {/* Department load */}
+        {/* Department Load */}
         <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-[#1a1c1e]">Department Load</h3>
             <Link href="/reports" className="text-xs text-[#1960a3] hover:underline font-semibold">View all</Link>
           </div>
 
-          {stats ? (
-            <p className="text-sm text-[#74777f] text-center py-8">
-              Loads from /api/dashboard/departments
-            </p>
+          {depts.length > 0 ? (
+            <div className="space-y-3">
+              {depts.map((d) => (
+                <div key={d.department}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium text-[#1a1c1e] truncate max-w-[140px]">{d.department}</span>
+                    <span className="text-[#74777f] font-semibold">{d.count} appts</span>
+                  </div>
+                  <div className="w-full bg-[#e9e7eb] rounded-full h-2">
+                    <div
+                      className="bg-[#1960a3] h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${d.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <EmptyState icon="business" label="Department data will appear after DB setup" />
+            <div className="flex flex-col items-center justify-center gap-2 py-12">
+              <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">business</span>
+              <p className="text-xs text-[#74777f] text-center">
+                {dbOnline ? "No appointments today" : "No data available"}
+              </p>
+            </div>
           )}
         </div>
       </section>
 
-      {/* Schedule & Activity */}
+      {/* Schedule & Sidebar */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Today's schedule */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -230,10 +257,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
                 </span>
               )}
             </div>
-            <Link
-              href="/appointments"
-              className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1"
-            >
+            <Link href="/appointments" className="text-xs text-[#1960a3] font-semibold hover:underline flex items-center gap-1">
               View calendar
               <span className="material-symbols-outlined text-[14px]">open_in_new</span>
             </Link>
@@ -261,13 +285,15 @@ export default function DashboardClient({ stats, appointments }: Props) {
                     className={`flex items-center justify-between p-4 hover:bg-[#f4f3f7] transition-colors group ${isUrgent ? "bg-[#fff5f5]" : ""}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div
-                        className={`w-14 h-14 flex flex-col items-center justify-center rounded-xl text-center ${
-                          isUrgent ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#f4f3f7] text-[#43474e]"
-                        }`}
-                      >
-                        <span className="text-xs font-bold leading-none">{new Date(apt.scheduledAt).getHours().toString().padStart(2, "0")}</span>
-                        <span className="text-[10px]">{new Date(apt.scheduledAt).getMinutes().toString().padStart(2, "0")}</span>
+                      <div className={`w-14 h-14 flex flex-col items-center justify-center rounded-xl text-center ${
+                        isUrgent ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#f4f3f7] text-[#43474e]"
+                      }`}>
+                        <span className="text-xs font-bold leading-none">
+                          {new Date(apt.scheduledAt).getHours().toString().padStart(2, "0")}
+                        </span>
+                        <span className="text-[10px]">
+                          {new Date(apt.scheduledAt).getMinutes().toString().padStart(2, "0")}
+                        </span>
                         <span className="text-[9px] uppercase opacity-70">
                           {new Date(apt.scheduledAt).getHours() >= 12 ? "PM" : "AM"}
                         </span>
@@ -296,9 +322,8 @@ export default function DashboardClient({ stats, appointments }: Props) {
           </div>
         </div>
 
-        {/* Quick actions + activity */}
+        {/* Quick Actions + System Status */}
         <div className="space-y-4">
-          {/* Quick actions */}
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
             <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -317,24 +342,19 @@ export default function DashboardClient({ stats, appointments }: Props) {
             </div>
           </div>
 
-          {/* System status */}
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
             <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">System Status</h3>
             <div className="space-y-3">
               {[
-                { label: "Database", status: "Pending Setup", ok: false },
-                { label: "Authentication", status: "Configured", ok: true },
-                { label: "API Server", status: "Running", ok: true },
-                { label: "SMS Gateway", status: "Not configured", ok: false },
+                { label: "Database",        status: dbOnline ? "Connected"      : "Pending Setup",    ok: dbOnline },
+                { label: "Authentication",  status: "Configured",                                      ok: true },
+                { label: "API Server",      status: "Running",                                         ok: true },
+                { label: "SMS Gateway",     status: "Not configured",                                  ok: false },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className="text-sm text-[#1a1c1e]">{item.label}</span>
-                  <span
-                    className={`flex items-center gap-1 text-xs font-semibold ${
-                      item.ok ? "text-[#0d9488]" : "text-[#d97706]"
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${item.ok ? "bg-[#0d9488]" : "bg-[#d97706]"}`}></span>
+                  <span className={`flex items-center gap-1 text-xs font-semibold ${item.ok ? "text-[#0d9488]" : "text-[#d97706]"}`}>
+                    <span className={`w-2 h-2 rounded-full ${item.ok ? "bg-[#0d9488]" : "bg-[#d97706]"}`} />
                     {item.status}
                   </span>
                 </div>
@@ -357,24 +377,9 @@ function AlertBanner({
     <div className={`${bg} border ${border} rounded-xl p-4 flex items-center justify-between`}>
       <div className="flex items-center gap-3">
         <span className={`material-symbols-outlined ${color} text-[22px]`}>{icon}</span>
-        <div>
-          <p className="text-sm font-semibold text-[#1a1c1e]">
-            {value} {label}
-          </p>
-        </div>
+        <p className="text-sm font-semibold text-[#1a1c1e]">{value} {label}</p>
       </div>
-      <Link href={link} className={`text-xs font-semibold ${color} hover:underline`}>
-        {linkLabel}
-      </Link>
-    </div>
-  );
-}
-
-function EmptyState({ icon, label }: { icon: string; label: string }) {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-      <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">{icon}</span>
-      <p className="text-xs text-[#74777f] text-center max-w-[180px]">{label}</p>
+      <Link href={link} className={`text-xs font-semibold ${color} hover:underline`}>{linkLabel}</Link>
     </div>
   );
 }

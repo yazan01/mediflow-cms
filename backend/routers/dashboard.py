@@ -1,3 +1,4 @@
+import calendar
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -90,3 +91,62 @@ def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(get_current
         "lowStockItems": low_stock,
         "waitingPatients": waiting,
     }
+
+
+@router.get("/revenue")
+def get_revenue_chart(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    today = datetime.now()
+    result = []
+    for i in range(5, -1, -1):
+        year = today.year
+        month = today.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        month_start = datetime(year, month, 1)
+        last_day = calendar.monthrange(year, month)[1]
+        month_end = datetime(year, month, last_day, 23, 59, 59)
+
+        revenue = float(
+            db.query(func.sum(models.Payment.amount))
+            .filter(models.Payment.paidAt >= month_start, models.Payment.paidAt <= month_end)
+            .scalar() or 0
+        )
+        expenses = float(
+            db.query(func.sum(models.Expense.amount))
+            .filter(models.Expense.date >= month_start, models.Expense.date <= month_end)
+            .scalar() or 0
+        )
+        result.append({
+            "month": month_start.strftime("%b"),
+            "revenue": round(revenue, 2),
+            "expenses": round(expenses, 2),
+        })
+    return result
+
+
+@router.get("/departments")
+def get_department_load(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
+
+    rows = (
+        db.query(models.Department.name, func.count(models.Appointment.id).label("count"))
+        .join(models.Doctor, models.Doctor.departmentId == models.Department.id)
+        .join(models.Appointment, models.Appointment.doctorId == models.Doctor.id)
+        .filter(
+            models.Appointment.scheduledAt >= today,
+            models.Appointment.scheduledAt < tomorrow,
+            models.Appointment.status != "CANCELLED",
+        )
+        .group_by(models.Department.name)
+        .order_by(func.count(models.Appointment.id).desc())
+        .limit(6)
+        .all()
+    )
+
+    total = sum(r.count for r in rows) or 1
+    return [
+        {"department": r.name, "count": r.count, "pct": round((r.count / total) * 100)}
+        for r in rows
+    ]

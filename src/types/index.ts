@@ -304,6 +304,7 @@ export interface Employee {
 export interface LeaveRequest {
   id: string;
   employeeId: string;
+  employeeName?: string;
   employee?: {
     empCode: string;
     user: { name: string };

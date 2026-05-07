@@ -173,11 +173,8 @@ export default function HRPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/hr/employees?stats=true");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data.stats ?? null);
-      }
+      const res = await fetch("/api/hr/stats");
+      if (res.ok) setStats(await res.json());
     } catch { /* ignore */ }
   }, []);
 
@@ -568,9 +565,9 @@ export default function HRPage() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-[#002045] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              {getInitials(lr.employee?.user?.name ?? "?")}
+                              {getInitials(lr.employeeName ?? lr.employee?.user?.name ?? "?")}
                             </div>
-                            <p className="text-sm font-semibold text-[#1a1c1e] whitespace-nowrap">{lr.employee?.user?.name ?? "—"}</p>
+                            <p className="text-sm font-semibold text-[#1a1c1e] whitespace-nowrap">{lr.employeeName ?? lr.employee?.user?.name ?? "—"}</p>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-sm text-[#43474e] capitalize">{lr.type.replace("_", " ")}</td>

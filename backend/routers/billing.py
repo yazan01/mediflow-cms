@@ -3,7 +3,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from database import get_db
 from auth import get_current_user, generate_id, generate_invoice_no
@@ -93,12 +93,38 @@ def invoice_to_dict(inv: models.Invoice) -> dict:
     }
 
 
+@router.get("/stats")
+def get_billing_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    from datetime import date
+    first_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    total_revenue = db.query(func.sum(models.Payment.amount)).scalar() or 0
+    pending_amount = db.query(func.sum(models.Invoice.balance)).filter(
+        models.Invoice.status.in_(["PENDING", "PARTIAL"])
+    ).scalar() or 0
+    overdue_amount = db.query(func.sum(models.Invoice.balance)).filter(
+        models.Invoice.status == "OVERDUE"
+    ).scalar() or 0
+    paid_this_month = db.query(func.sum(models.Payment.amount)).filter(
+        models.Payment.paidAt >= first_of_month
+    ).scalar() or 0
+
+    return {
+        "totalRevenue": float(total_revenue),
+        "pendingAmount": float(pending_amount),
+        "overdueAmount": float(overdue_amount),
+        "paidThisMonth": float(paid_this_month),
+    }
+
+
 @router.get("")
 def get_invoices(
     page: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1, le=100),
     status: Optional[str] = None,
     search: str = Query(""),
+    dateFrom: Optional[str] = None,
+    dateTo: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
@@ -115,6 +141,11 @@ def get_invoices(
                 models.Patient.lastName.contains(search),
             )
         )
+
+    if dateFrom:
+        query = query.filter(models.Invoice.createdAt >= datetime.fromisoformat(dateFrom))
+    if dateTo:
+        query = query.filter(models.Invoice.createdAt <= datetime.fromisoformat(dateTo + "T23:59:59"))
 
     total = query.count()
     invoices = query.order_by(models.Invoice.createdAt.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
