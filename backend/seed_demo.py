@@ -17,8 +17,9 @@ import models
 db = SessionLocal()
 
 def d(days=0, hours=0):
-    """Return datetime offset from now."""
-    return datetime.now() + timedelta(days=days, hours=hours)
+    """Return datetime offset from today's midnight."""
+    midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight + timedelta(days=days, hours=hours)
 
 def exists(model, **kwargs):
     return db.query(model).filter_by(**kwargs).first()
