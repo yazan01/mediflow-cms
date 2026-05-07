@@ -17,6 +17,7 @@ SRS reference: `../clinic_management/clinic_management_srs.md`
 | Database | MySQL 8.4 |
 | Auth | JWT (python-jose) + bcrypt (passlib) — `mediflow_token` HttpOnly cookie |
 | UI | Tailwind CSS v4, Material Symbols Outlined (Google Fonts), Recharts |
+| Fonts | @fontsource/inter + @fontsource/cairo (self-hosted, no CDN) |
 | State | Zustand |
 | Tables | TanStack React Table |
 
@@ -86,7 +87,10 @@ mediflow-cms/
 │       ├── users.py                # GET/POST/PATCH/DELETE /api/users
 │       ├── dashboard.py            # GET /api/dashboard/stats
 │       ├── doctors.py              # GET /api/doctors
-│       └── audit.py                # GET /api/audit
+│       ├── audit.py                # GET /api/audit
+│       ├── settings.py             # GET/PATCH /api/settings (timezone, currency, etc.)
+│       ├── branches.py             # GET/POST/PATCH /api/branches
+│       └── shifts.py               # CRUD /api/shifts + /api/shifts/assignments
 │
 ├── src/
 │   ├── app/
@@ -114,6 +118,7 @@ mediflow-cms/
 │   │   └── TopBar.tsx              # Search, notifications, user menu
 │   ├── lib/
 │   │   ├── utils.ts                # cn, formatDate, formatCurrency, getInitials
+│   │   ├── TimezoneContext.tsx     # TimezoneProvider + useTimezone hook
 │   │   └── i18n/
 │   │       ├── translations.ts     # Full EN/AR translation dictionaries
 │   │       └── LanguageContext.tsx # LanguageProvider + useLanguage hook
@@ -171,6 +176,27 @@ mediflow-cms/
 - **Tab state pattern**: use static string keys (`"employees"`) as state, NOT translated strings (`t.hr.employees`) — translated strings only for display
 - Objects referencing `t.*` (TABS, STATUS_STYLES, etc.) must be defined **inside** the component so they re-render on language change
 - Logical CSS properties for RTL: `ps-` / `pe-` instead of `pl-` / `pr-`; `start-` / `end-` instead of `left-` / `right-`; `border-e` instead of `border-r`
+- Branches keys in `t.settings` are **flat** (e.g. `t.settings.addBranch`, `t.settings.branchName`) — NOT nested under `t.settings.branches`
+
+## Timezone System
+- `TimezoneProvider` in `src/lib/TimezoneContext.tsx` wraps the entire dashboard layout
+- On mount it fetches `/api/settings` and reads `timezone` — falls back to `"Asia/Amman"`
+- `useTimezone()` returns `{ timezone, formatDate, formatTime, formatDateTime }` backed by `Intl.DateTimeFormat`
+- All date/time display across the app should use these helpers instead of raw `toLocaleDateString()`
+
+## Multi-Branch System
+- `Branch` model: id, name, code (unique), address, phone, email, timezone, isActive, managerId
+- `Employee.branchId`, `Appointment.branchId`, `Invoice.branchId` — each record can be scoped to a branch
+- Branch manager FK uses `use_alter=True` to break the circular reference with `Employee`
+- Managed via **Settings → Branches** tab (full CRUD)
+- API: `GET/POST /api/branches`, `GET/PATCH /api/branches/{id}`
+
+## Work Shifts System
+- `Shift` model: id, name, startTime, endTime, daysOfWeek (JSON), color, isActive, branchId
+- `ShiftAssignment` model: links Employee ↔ Shift with startDate / endDate
+- `Employee.shiftAssignments` relationship → `ShiftAssignment.employee`
+- Managed via **HR → Shifts** tab: shift cards with duration badge, day chips, assignment modal
+- API: `GET/POST /api/shifts`, `PATCH/DELETE /api/shifts/{id}`, `GET /api/shifts/{id}/assignments`, `POST/DELETE /api/shifts/assignments`
 
 ## Development Rules
 - **No** Next.js API routes — all backend logic goes in `backend/routers/`

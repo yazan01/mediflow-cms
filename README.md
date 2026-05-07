@@ -10,11 +10,14 @@ Full-stack clinic ERP system built with Next.js 16 and FastAPI.
 - **Billing** — invoices, payments, insurance claims
 - **Pharmacy** — medication inventory, stock movements, dispensing
 - **Laboratory & Radiology** — order tracking, result entry
-- **HR** — employee management, attendance, leave requests, payroll
+- **HR** — employee management, attendance, leave requests, payroll, work shifts
 - **Accounting** — financial overview, assets, expenses, vendors, purchase orders
 - **Reports** — revenue, patient stats, department performance
 - **User Management** — role-based access control
 - **Audit Log** — full activity trail
+- **Multi-Branch** — manage multiple clinic locations, each with its own staff, appointments, and financials
+- **Work Shifts** — define shifts with time ranges, working days, color coding, and employee assignments
+- **Timezone** — clinic-wide timezone setting applied to all date/time displays
 - **Bilingual** — full Arabic / English support with RTL layout
 
 ## Tech Stack
@@ -81,6 +84,7 @@ Password: Admin@1234
 | `install.bat` | One-time setup — install deps, configure DB, seed |
 | `start.bat` | Start MySQL + Backend + Frontend |
 | `stop.bat` | Stop all services |
+| `build.bat` | Build the Next.js production bundle |
 | `backend/reset_db.py` | Wipe and rebuild the database (all data deleted) |
 
 ## Project Structure
@@ -108,7 +112,8 @@ mediflow-cms/
 │   │   └── TopBar.tsx
 │   └── lib/
 │       ├── utils.ts
-│       └── i18n/         # Bilingual system (EN/AR)
+│       ├── TimezoneContext.tsx  # Global timezone provider
+│       └── i18n/               # Bilingual system (EN/AR)
 └── next.config.ts        # Proxies /api/* → localhost:8000
 ```
 
