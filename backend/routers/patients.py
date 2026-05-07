@@ -1,59 +1,62 @@
 from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from database import get_db
-from auth import get_current_user, generate_id, generate_mrn
+from auth import get_current_user, generate_id, generate_mrn, sanitize_string
 import models
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
+VALID_GENDERS = {"MALE", "FEMALE"}
+VALID_BLOOD_TYPES = {"A_POS", "A_NEG", "B_POS", "B_NEG", "AB_POS", "AB_NEG", "O_POS", "O_NEG"}
+
 
 class PatientCreate(BaseModel):
-    firstName: str
-    lastName: str
-    dateOfBirth: str
-    gender: str
-    phone: str
-    nationality: Optional[str] = None
-    nationalId: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-    bloodType: Optional[str] = None
+    firstName: str = Field(..., min_length=1, max_length=100)
+    lastName: str = Field(..., min_length=1, max_length=100)
+    dateOfBirth: str = Field(..., max_length=30)
+    gender: str = Field(..., max_length=10)
+    phone: str = Field(..., max_length=30)
+    nationality: Optional[str] = Field(None, max_length=60)
+    nationalId: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=150)
+    address: Optional[str] = Field(None, max_length=500)
+    bloodType: Optional[str] = Field(None, max_length=10)
     allergies: Optional[List[str]] = []
     chronicConditions: Optional[List[str]] = []
-    emergencyContactName: Optional[str] = None
-    emergencyContactPhone: Optional[str] = None
-    insuranceProvider: Optional[str] = None
-    insurancePolicyNo: Optional[str] = None
-    insuranceCoverageType: Optional[str] = None
-    insuranceExpiry: Optional[str] = None
-    notes: Optional[str] = None
+    emergencyContactName: Optional[str] = Field(None, max_length=150)
+    emergencyContactPhone: Optional[str] = Field(None, max_length=30)
+    insuranceProvider: Optional[str] = Field(None, max_length=150)
+    insurancePolicyNo: Optional[str] = Field(None, max_length=60)
+    insuranceCoverageType: Optional[str] = Field(None, max_length=60)
+    insuranceExpiry: Optional[str] = Field(None, max_length=30)
+    notes: Optional[str] = Field(None, max_length=2000)
 
 
 class PatientUpdate(BaseModel):
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
-    dateOfBirth: Optional[str] = None
-    gender: Optional[str] = None
-    nationality: Optional[str] = None
-    nationalId: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-    bloodType: Optional[str] = None
+    firstName: Optional[str] = Field(None, min_length=1, max_length=100)
+    lastName: Optional[str] = Field(None, min_length=1, max_length=100)
+    dateOfBirth: Optional[str] = Field(None, max_length=30)
+    gender: Optional[str] = Field(None, max_length=10)
+    nationality: Optional[str] = Field(None, max_length=60)
+    nationalId: Optional[str] = Field(None, max_length=50)
+    phone: Optional[str] = Field(None, max_length=30)
+    email: Optional[str] = Field(None, max_length=150)
+    address: Optional[str] = Field(None, max_length=500)
+    bloodType: Optional[str] = Field(None, max_length=10)
     allergies: Optional[List[str]] = None
     chronicConditions: Optional[List[str]] = None
-    emergencyContactName: Optional[str] = None
-    emergencyContactPhone: Optional[str] = None
-    insuranceProvider: Optional[str] = None
-    insurancePolicyNo: Optional[str] = None
-    insuranceCoverageType: Optional[str] = None
-    insuranceExpiry: Optional[str] = None
-    notes: Optional[str] = None
+    emergencyContactName: Optional[str] = Field(None, max_length=150)
+    emergencyContactPhone: Optional[str] = Field(None, max_length=30)
+    insuranceProvider: Optional[str] = Field(None, max_length=150)
+    insurancePolicyNo: Optional[str] = Field(None, max_length=60)
+    insuranceCoverageType: Optional[str] = Field(None, max_length=60)
+    insuranceExpiry: Optional[str] = Field(None, max_length=30)
+    notes: Optional[str] = Field(None, max_length=2000)
     isActive: Optional[bool] = None
 
 
@@ -85,6 +88,13 @@ def patient_to_dict(p: models.Patient) -> dict:
         "notes": p.notes,
         "createdAt": p.createdAt.isoformat() if p.createdAt else None,
     }
+
+
+def _parse_date(value: str, field_name: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=422, detail=f"Invalid date format for {field_name}: {value!r}")
 
 
 @router.get("")
@@ -127,40 +137,51 @@ def get_patients(
 
 @router.post("", status_code=201)
 def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    if not all([body.firstName, body.lastName, body.dateOfBirth, body.gender, body.phone]):
-        raise HTTPException(status_code=400, detail="First name, last name, date of birth, gender, and phone are required")
+    if body.gender not in VALID_GENDERS:
+        raise HTTPException(status_code=422, detail=f"Invalid gender. Must be one of: {', '.join(VALID_GENDERS)}")
+
+    if body.bloodType and body.bloodType not in VALID_BLOOD_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid blood type: {body.bloodType!r}")
 
     if body.nationalId:
         existing = db.query(models.Patient).filter(models.Patient.nationalId == body.nationalId).first()
         if existing:
             raise HTTPException(status_code=409, detail="A patient with this national ID already exists")
 
-    patient = models.Patient(
-        id=generate_id(),
-        mrn=generate_mrn(),
-        firstName=body.firstName,
-        lastName=body.lastName,
-        dateOfBirth=datetime.fromisoformat(body.dateOfBirth),
-        gender=body.gender,
-        nationality=body.nationality,
-        nationalId=body.nationalId,
-        phone=body.phone,
-        email=body.email,
-        address=body.address,
-        bloodType=body.bloodType or None,
-        allergies=body.allergies or [],
-        chronicConditions=body.chronicConditions or [],
-        emergencyContactName=body.emergencyContactName,
-        emergencyContactPhone=body.emergencyContactPhone,
-        insuranceProvider=body.insuranceProvider,
-        insurancePolicyNo=body.insurancePolicyNo,
-        insuranceCoverageType=body.insuranceCoverageType,
-        insuranceExpiry=datetime.fromisoformat(body.insuranceExpiry) if body.insuranceExpiry else None,
-        notes=body.notes,
-    )
-    db.add(patient)
-    db.commit()
-    db.refresh(patient)
+    dob = _parse_date(body.dateOfBirth, "dateOfBirth")
+    ins_expiry = _parse_date(body.insuranceExpiry, "insuranceExpiry") if body.insuranceExpiry else None
+
+    try:
+        patient = models.Patient(
+            id=generate_id(),
+            mrn=generate_mrn(),
+            firstName=sanitize_string(body.firstName),
+            lastName=sanitize_string(body.lastName),
+            dateOfBirth=dob,
+            gender=body.gender,
+            nationality=sanitize_string(body.nationality),
+            nationalId=sanitize_string(body.nationalId),
+            phone=sanitize_string(body.phone),
+            email=sanitize_string(body.email),
+            address=sanitize_string(body.address),
+            bloodType=body.bloodType or None,
+            allergies=body.allergies or [],
+            chronicConditions=body.chronicConditions or [],
+            emergencyContactName=sanitize_string(body.emergencyContactName),
+            emergencyContactPhone=sanitize_string(body.emergencyContactPhone),
+            insuranceProvider=sanitize_string(body.insuranceProvider),
+            insurancePolicyNo=sanitize_string(body.insurancePolicyNo),
+            insuranceCoverageType=sanitize_string(body.insuranceCoverageType),
+            insuranceExpiry=ins_expiry,
+            notes=sanitize_string(body.notes),
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create patient record")
+
     return patient_to_dict(patient)
 
 
@@ -213,6 +234,15 @@ def get_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(ge
     return {**base, "appointments": appointments, "consultations": consultations, "invoices": invoices}
 
 
+# Explicit safe field list — prevents mass assignment
+_PATIENT_UPDATE_FIELDS = {
+    "firstName", "lastName", "dateOfBirth", "gender", "nationality", "nationalId",
+    "phone", "email", "address", "bloodType", "allergies", "chronicConditions",
+    "emergencyContactName", "emergencyContactPhone", "insuranceProvider",
+    "insurancePolicyNo", "insuranceCoverageType", "insuranceExpiry", "notes", "isActive",
+}
+
+
 @router.patch("/{patient_id}")
 def update_patient(
     patient_id: str,
@@ -224,13 +254,39 @@ def update_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    for field, value in body.model_dump(exclude_none=True).items():
-        if field in ("insuranceExpiry", "dateOfBirth") and value:
-            value = datetime.fromisoformat(value)
-        setattr(patient, field, value)
+    if body.gender is not None and body.gender not in VALID_GENDERS:
+        raise HTTPException(status_code=422, detail=f"Invalid gender: {body.gender!r}")
 
-    db.commit()
-    db.refresh(patient)
+    if body.bloodType is not None and body.bloodType and body.bloodType not in VALID_BLOOD_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid blood type: {body.bloodType!r}")
+
+    updates = body.model_dump(exclude_none=True)
+
+    STRING_FIELDS = {
+        "firstName", "lastName", "nationality", "nationalId", "phone", "email",
+        "address", "emergencyContactName", "emergencyContactPhone",
+        "insuranceProvider", "insurancePolicyNo", "insuranceCoverageType", "notes",
+    }
+
+    try:
+        for field, value in updates.items():
+            if field not in _PATIENT_UPDATE_FIELDS:
+                continue
+            if field == "insuranceExpiry":
+                value = _parse_date(value, "insuranceExpiry")
+            elif field == "dateOfBirth":
+                value = _parse_date(value, "dateOfBirth")
+            elif field in STRING_FIELDS and isinstance(value, str):
+                value = sanitize_string(value)
+            setattr(patient, field, value)
+        db.commit()
+        db.refresh(patient)
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update patient record")
+
     return patient_to_dict(patient)
 
 

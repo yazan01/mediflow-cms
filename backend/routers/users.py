@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user, generate_id, hash_password, generate_emp_code
+from auth import get_current_user, require_roles, generate_id, hash_password, generate_emp_code
+
+ADMIN_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER")
 import models
 
 
@@ -61,7 +63,7 @@ def get_users(
     search: str = Query(""),
     role: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*ADMIN_ROLES)),
 ):
     query = db.query(models.User)
 
@@ -72,6 +74,7 @@ def get_users(
 
     all_users = query.order_by(models.User.createdAt.desc()).all()
 
+    # Role filtering must be done in Python because roles is a JSON column
     if role and role != "ALL":
         all_users = [u for u in all_users if role in parse_roles(u.roles)]
 
@@ -87,7 +90,7 @@ def get_users(
 
 
 @router.post("", status_code=201)
-def create_user(body: UserCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_user(body: UserCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*ADMIN_ROLES))):
     if not all([body.name, body.email, body.password]) or not body.roles:
         raise HTTPException(status_code=400, detail="Name, email, password, and at least one role are required")
 
@@ -134,7 +137,7 @@ def update_user(
     user_id: str,
     body: UserUpdate,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*ADMIN_ROLES)),
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -149,7 +152,7 @@ def update_user(
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def delete_user(user_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*ADMIN_ROLES))):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

@@ -1,4 +1,5 @@
 import os
+import re
 import random
 import uuid
 import json
@@ -58,6 +59,29 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     to_encode["exp"] = datetime.now(timezone.utc) + timedelta(hours=8)
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def sanitize_string(value: Optional[str]) -> Optional[str]:
+    """Strip HTML tags to prevent stored XSS."""
+    if value is None:
+        return None
+    return _HTML_TAG_RE.sub("", value).strip()
+
+
+def require_roles(*allowed_roles: str):
+    """FastAPI dependency that enforces role-based access control."""
+    def checker(current_user: models.User = Depends(get_current_user)) -> models.User:
+        user_roles = current_user.roles if isinstance(current_user.roles, list) else []
+        if not any(r in allowed_roles for r in user_roles):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access denied. Required role: {' or '.join(allowed_roles)}",
+            )
+        return current_user
+    return checker
 
 
 def get_current_user(

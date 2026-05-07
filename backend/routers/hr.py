@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
 from database import get_db
-from auth import get_current_user, generate_id
+from auth import get_current_user, require_roles, generate_id, sanitize_string
+
+HR_ROLES = ("HR_OFFICER", "SUPER_ADMIN", "CLINIC_MANAGER")
 import models
 
 router = APIRouter(prefix="/api/hr", tags=["hr"])
@@ -163,25 +165,30 @@ def get_employees(
 
 
 @router.post("/employees", status_code=201)
-def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
     if not body.userId or not body.departmentId or not body.jobTitle:
         raise HTTPException(400, "userId, departmentId, and jobTitle are required")
     existing = db.query(models.Employee).filter(models.Employee.userId == body.userId).first()
     if existing:
         raise HTTPException(400, "An employee record already exists for this user")
     from auth import generate_emp_code, log_audit
+    try:
+        hire_date = datetime.fromisoformat(body.hireDate) if body.hireDate else datetime.now()
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Invalid hireDate format")
+
     emp = models.Employee(
         id=generate_id(),
         userId=body.userId,
         departmentId=body.departmentId,
-        jobTitle=body.jobTitle,
+        jobTitle=sanitize_string(body.jobTitle),
         empCode=generate_emp_code(),
         employmentType=body.employmentType,
         basicSalary=body.basicSalary,
         housingAllowance=body.housingAllowance or 0,
         transportAllowance=body.transportAllowance or 0,
         medicalAllowance=body.medicalAllowance or 0,
-        hireDate=datetime.fromisoformat(body.hireDate) if body.hireDate else datetime.now(),
+        hireDate=hire_date,
         annualLeaveBalance=body.annualLeaveBalance,
         sickLeaveBalance=body.sickLeaveBalance,
         branchId=body.branchId,
@@ -203,7 +210,7 @@ def get_employee(employee_id: str, db: Session = Depends(get_db), _user=Depends(
 
 
 @router.patch("/employees/{employee_id}")
-def update_employee(employee_id: str, body: EmployeeUpdate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def update_employee(employee_id: str, body: EmployeeUpdate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
     from auth import log_audit
     emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not emp:
@@ -284,7 +291,7 @@ def get_leaves(
 
 
 @router.patch("/leaves/{leave_id}")
-def update_leave(leave_id: str, body: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def update_leave(leave_id: str, body: dict, db: Session = Depends(get_db), current_user=Depends(require_roles(*HR_ROLES))):
     leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == leave_id).first()
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found")
@@ -298,14 +305,20 @@ def update_leave(leave_id: str, body: dict, db: Session = Depends(get_db), curre
 
 @router.post("/leaves", status_code=201)
 def create_leave(body: LeaveCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    try:
+        start = datetime.fromisoformat(body.startDate)
+        end = datetime.fromisoformat(body.endDate)
+    except (ValueError, TypeError):
+        raise HTTPException(422, "Invalid date format for startDate or endDate")
+
     leave = models.LeaveRequest(
         id=generate_id(),
         employeeId=body.employeeId,
         type=body.type,
-        startDate=datetime.fromisoformat(body.startDate),
-        endDate=datetime.fromisoformat(body.endDate),
+        startDate=start,
+        endDate=end,
         days=body.days,
-        reason=body.reason,
+        reason=sanitize_string(body.reason),
         status="PENDING",
     )
     db.add(leave)
@@ -367,7 +380,7 @@ def get_payroll(
 
 
 @router.post("/payroll", status_code=201)
-def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
     try:
         parts = body.month.split("-")
         yr, mo = int(parts[0]), int(parts[1])
@@ -445,12 +458,10 @@ def get_attendance(
 
     records = raw_records.order_by(models.Attendance.date.asc()).all()
 
-    emp_map: dict = {}
-    for a in records:
-        eid = a.employeeId
-        if eid not in emp_map:
-            emp = db.query(models.Employee).filter(models.Employee.id == eid).first()
-            emp_map[eid] = emp.user.name if emp and emp.user else eid
+    # Batch-load all referenced employees in one query (avoids N+1)
+    emp_ids = list({a.employeeId for a in records})
+    emps = db.query(models.Employee).filter(models.Employee.id.in_(emp_ids)).all() if emp_ids else []
+    emp_map: dict = {e.id: (e.user.name if e.user else e.id) for e in emps}
 
     if search:
         emp_map = {k: v for k, v in emp_map.items() if search.lower() in v.lower()}

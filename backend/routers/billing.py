@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
 from database import get_db
-from auth import get_current_user, generate_id, generate_invoice_no
+from auth import get_current_user, require_roles, generate_id, generate_invoice_no, sanitize_string
+
+BILLING_ROLES = ("ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER", "RECEPTIONIST")
 import models
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -143,9 +145,15 @@ def get_invoices(
         )
 
     if dateFrom:
-        query = query.filter(models.Invoice.createdAt >= datetime.fromisoformat(dateFrom))
+        try:
+            query = query.filter(models.Invoice.createdAt >= datetime.fromisoformat(dateFrom))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail=f"Invalid dateFrom format: {dateFrom!r}")
     if dateTo:
-        query = query.filter(models.Invoice.createdAt <= datetime.fromisoformat(dateTo + "T23:59:59"))
+        try:
+            query = query.filter(models.Invoice.createdAt <= datetime.fromisoformat(dateTo + "T23:59:59"))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail=f"Invalid dateTo format: {dateTo!r}")
 
     total = query.count()
     invoices = query.order_by(models.Invoice.createdAt.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
@@ -159,7 +167,7 @@ def get_invoices(
 
 
 @router.post("", status_code=201)
-def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*BILLING_ROLES))):
     if not body.patientId or not body.items:
         raise HTTPException(status_code=400, detail="Patient and at least one item are required")
 
@@ -186,9 +194,9 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Dep
         balance=total,
         status="PENDING",
         insuranceClaim=body.insuranceClaim or False,
-        insuranceProvider=body.insuranceProvider,
-        insurancePolicyNo=body.insurancePolicyNo,
-        notes=body.notes,
+        insuranceProvider=sanitize_string(body.insuranceProvider),
+        insurancePolicyNo=sanitize_string(body.insurancePolicyNo),
+        notes=sanitize_string(body.notes),
     )
     db.add(invoice)
     db.flush()
@@ -224,7 +232,7 @@ def update_invoice(
     invoice_id: str,
     body: dict,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*BILLING_ROLES)),
 ):
     inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
     if not inv:
@@ -250,6 +258,19 @@ def add_payment(
     inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if body.amount <= 0:
+        raise HTTPException(status_code=422, detail="Payment amount must be greater than zero")
+
+    remaining = float(inv.balance)
+    if body.amount > remaining + 0.01:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Payment amount ({body.amount:.3f}) exceeds remaining balance ({remaining:.3f})",
+        )
+
+    if inv.status in ("PAID", "CANCELLED", "REFUNDED"):
+        raise HTTPException(status_code=422, detail=f"Cannot add payment to a {inv.status.lower()} invoice")
 
     payment = models.Payment(
         id=generate_id(),

@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import get_db
-from auth import get_current_user, generate_id, generate_po_number
+from auth import get_current_user, require_roles, generate_id, generate_po_number, sanitize_string
+
+ACCT_ROLES = ("ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER")
 import models
 
 router = APIRouter(prefix="/api/accounting", tags=["accounting"])
@@ -163,7 +165,7 @@ def get_assets(
 
 
 @router.post("/assets", status_code=201)
-def create_asset(body: AssetCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_asset(body: AssetCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*ACCT_ROLES))):
     asset = models.Asset(
         id=generate_id(),
         name=body.name,
@@ -234,19 +236,24 @@ def get_expenses(
 
 
 @router.post("/expenses", status_code=201)
-def create_expense(body: ExpenseCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def create_expense(body: ExpenseCreate, db: Session = Depends(get_db), current_user=Depends(require_roles(*ACCT_ROLES))):
+    try:
+        expense_date = datetime.fromisoformat(body.date)
+    except (ValueError, TypeError):
+        raise HTTPException(422, f"Invalid date format: {body.date!r}")
+
     expense = models.Expense(
         id=generate_id(),
-        date=datetime.fromisoformat(body.date),
-        category=body.category,
-        description=body.description,
+        date=expense_date,
+        category=sanitize_string(body.category),
+        description=sanitize_string(body.description),
         amount=body.amount,
         vendorId=body.vendorId,
-        paymentMethod=body.paymentMethod,
-        referenceNo=body.referenceNo,
+        paymentMethod=sanitize_string(body.paymentMethod),
+        referenceNo=sanitize_string(body.referenceNo),
         isRecurring=body.isRecurring or False,
         recordedById=current_user.id,
-        notes=body.notes,
+        notes=sanitize_string(body.notes),
     )
     db.add(expense)
     db.commit()
@@ -292,17 +299,17 @@ def get_vendors(
 
 
 @router.post("/vendors", status_code=201)
-def create_vendor(body: VendorCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_vendor(body: VendorCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*ACCT_ROLES))):
     vendor = models.Vendor(
         id=generate_id(),
-        name=body.name,
-        contactPerson=body.contactPerson,
-        phone=body.phone,
-        email=body.email,
-        address=body.address,
-        taxId=body.taxId,
-        paymentTerms=body.paymentTerms,
-        notes=body.notes,
+        name=sanitize_string(body.name),
+        contactPerson=sanitize_string(body.contactPerson),
+        phone=sanitize_string(body.phone),
+        email=sanitize_string(body.email),
+        address=sanitize_string(body.address),
+        taxId=sanitize_string(body.taxId),
+        paymentTerms=sanitize_string(body.paymentTerms),
+        notes=sanitize_string(body.notes),
     )
     db.add(vendor)
     db.commit()
@@ -363,7 +370,7 @@ def get_purchase_orders(
 def create_purchase_order(
     body: PurchaseOrderCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*ACCT_ROLES)),
 ):
     if not body.items:
         raise HTTPException(status_code=400, detail="At least one item is required")

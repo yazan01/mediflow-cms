@@ -6,10 +6,26 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from database import get_db
-from auth import get_current_user, generate_id
+from auth import get_current_user, generate_id, sanitize_string
 import models
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
+
+VALID_STATUSES = {
+    "SCHEDULED", "CHECKED_IN", "IN_CONSULTATION", "COMPLETED",
+    "NO_SHOW", "CANCELLED", "RESCHEDULED", "URGENT",
+}
+VALID_TYPES = {
+    "CONSULTATION", "FOLLOW_UP", "PROCEDURE", "LAB_VISIT",
+    "IMAGING", "EMERGENCY", "DENTAL", "CHECKUP",
+}
+
+
+def _parse_dt(value: str, field: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=422, detail=f"Invalid datetime format for {field}: {value!r}")
 
 
 class AppointmentCreate(BaseModel):
@@ -71,7 +87,7 @@ def get_appointments(
         if date == "today":
             d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         else:
-            d = datetime.fromisoformat(date).replace(hour=0, minute=0, second=0, microsecond=0)
+            d = _parse_dt(date, "date").replace(hour=0, minute=0, second=0, microsecond=0)
         next_day = d + timedelta(days=1)
         query = query.filter(and_(models.Appointment.scheduledAt >= d, models.Appointment.scheduledAt < next_day))
 
@@ -101,8 +117,11 @@ def create_appointment(
     if not all([body.patientId, body.doctorId, body.scheduledAt]):
         raise HTTPException(status_code=400, detail="Patient, doctor, and scheduled time are required")
 
-    start = datetime.fromisoformat(body.scheduledAt)
-    end = datetime.fromisoformat(body.scheduledEnd) if body.scheduledEnd else start + timedelta(minutes=30)
+    if body.type and body.type not in VALID_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid appointment type: {body.type!r}")
+
+    start = _parse_dt(body.scheduledAt, "scheduledAt")
+    end = _parse_dt(body.scheduledEnd, "scheduledEnd") if body.scheduledEnd else start + timedelta(minutes=30)
 
     conflicting = (
         db.query(models.Appointment)
@@ -131,9 +150,9 @@ def create_appointment(
         scheduledAt=start,
         scheduledEnd=end,
         type=body.type or "CONSULTATION",
-        reason=body.reason,
-        room=body.room,
-        notes=body.notes,
+        reason=sanitize_string(body.reason),
+        room=sanitize_string(body.room),
+        notes=sanitize_string(body.notes),
         isUrgent=body.isUrgent or False,
         isWalkIn=body.isWalkIn or False,
     )
@@ -182,13 +201,27 @@ def update_appointment(
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    allowed = ["status", "notes", "room", "checkedInAt", "completedAt", "cancelledAt", "cancelReason"]
-    for field in allowed:
-        if field in body:
-            setattr(appt, field, body[field])
+    if "status" in body:
+        if body["status"] not in VALID_STATUSES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid status {body['status']!r}. Must be one of: {', '.join(sorted(VALID_STATUSES))}",
+            )
 
-    db.commit()
-    db.refresh(appt)
+    allowed_fields = {"status", "notes", "room", "checkedInAt", "completedAt", "cancelledAt", "cancelReason"}
+    try:
+        for field in allowed_fields:
+            if field in body:
+                value = body[field]
+                if field in {"notes", "room", "cancelReason"} and isinstance(value, str):
+                    value = sanitize_string(value)
+                setattr(appt, field, value)
+        db.commit()
+        db.refresh(appt)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update appointment")
+
     return appt_to_dict(appt)
 
 

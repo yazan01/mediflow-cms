@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_roles
 import models
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -65,7 +65,7 @@ def get_settings(db: Session = Depends(get_db), _user=Depends(get_current_user))
 def update_settings(
     body: SettingsUpdate,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER")),
 ):
     s = get_or_create(db)
     for field, val in body.model_dump(exclude_none=True).items():

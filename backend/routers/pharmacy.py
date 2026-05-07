@@ -4,7 +4,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user, generate_id
+from auth import get_current_user, require_roles, generate_id, sanitize_string
+
+PHARM_ROLES = ("PHARMACIST", "SUPER_ADMIN", "CLINIC_MANAGER")
 import models
 
 router = APIRouter(prefix="/api/pharmacy", tags=["pharmacy"])
@@ -106,15 +108,19 @@ def get_medications(
     if category and category != "ALL":
         query = query.filter(models.Medication.category == category)
 
-    all_meds = query.order_by(models.Medication.genericName.asc()).all()
-
     if status and status != "ALL":
-        filtered = [m for m in all_meds if med_to_dict(m)["stockStatus"] == status]
-    else:
-        filtered = all_meds
+        if status == "IN_STOCK":
+            query = query.filter(models.Medication.stockQuantity > models.Medication.reorderLevel)
+        elif status == "LOW_STOCK":
+            query = query.filter(
+                models.Medication.stockQuantity > 0,
+                models.Medication.stockQuantity <= models.Medication.reorderLevel,
+            )
+        elif status == "OUT_OF_STOCK":
+            query = query.filter(models.Medication.stockQuantity == 0)
 
-    total = len(filtered)
-    page_data = filtered[(page - 1) * pageSize: page * pageSize]
+    total = query.count()
+    page_data = query.order_by(models.Medication.genericName.asc()).offset((page - 1) * pageSize).limit(pageSize).all()
 
     return {
         "data": [med_to_dict(m) for m in page_data],
@@ -128,7 +134,7 @@ def get_medications(
 def create_medication(
     body: MedicationCreate,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*PHARM_ROLES)),
 ):
     if not all([body.genericName, body.category, body.unit]):
         raise HTTPException(status_code=400, detail="Generic name, category, and unit are required")
@@ -198,7 +204,7 @@ def adjust_medication_stock(
     med_id: str,
     body: dict,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*PHARM_ROLES)),
 ):
     med = db.query(models.Medication).filter(models.Medication.id == med_id).first()
     if not med:
@@ -234,7 +240,7 @@ def adjust_medication_stock(
 def create_stock_movement(
     body: StockMovementCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*PHARM_ROLES)),
 ):
     med = db.query(models.Medication).filter(models.Medication.id == body.medicationId).first()
     if not med:

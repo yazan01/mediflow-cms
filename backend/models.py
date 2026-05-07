@@ -142,6 +142,12 @@ class DoctorAvailability(Base):
 
 class Appointment(Base):
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index("ix_appt_patient", "patientId"),
+        Index("ix_appt_doctor", "doctorId"),
+        Index("ix_appt_scheduled", "scheduledAt"),
+        Index("ix_appt_status", "status"),
+    )
     id = Column(String(36), primary_key=True)
     patientId = Column(String(36), ForeignKey("patients.id"), nullable=False)
     doctorId = Column(String(36), ForeignKey("doctors.id"), nullable=False)
@@ -322,6 +328,11 @@ class RadiologyOrder(Base):
 
 class Invoice(Base):
     __tablename__ = "invoices"
+    __table_args__ = (
+        Index("ix_invoice_patient", "patientId"),
+        Index("ix_invoice_status", "status"),
+        Index("ix_invoice_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     invoiceNo = Column(String(50), unique=True, nullable=False)
     patientId = Column(String(36), ForeignKey("patients.id"), nullable=False)

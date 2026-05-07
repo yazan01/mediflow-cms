@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_roles
 import models
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
@@ -18,7 +18,7 @@ def get_audit_logs(
     entityId: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER", "AUDITOR")),
 ):
     from sqlalchemy.orm import joinedload
     from sqlalchemy import or_
