@@ -342,6 +342,21 @@ class RadiologyOrder(Base):
     orderedByDoctor = relationship("Doctor", back_populates="radiologyOrders")
 
 
+class RadiologyImage(Base):
+    __tablename__ = "radiology_images"
+    id = Column(String(36), primary_key=True)
+    orderId = Column(String(36), ForeignKey("radiology_orders.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    originalName = Column(String(255))
+    fileSize = Column(Integer)
+    mimeType = Column(String(50))
+    uploadedBy = Column(String(36), ForeignKey("users.id"))
+    uploadedAt = Column(DateTime, server_default=func.now())
+
+    order = relationship("RadiologyOrder", backref="images")
+    uploader = relationship("User", foreign_keys=[uploadedBy])
+
+
 class Invoice(Base):
     __tablename__ = "invoices"
     __table_args__ = (

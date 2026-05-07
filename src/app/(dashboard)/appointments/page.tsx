@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Appointment } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { QuickConsultationModal } from "@/components/QuickConsultationModal";
 
 interface Doctor { id: string; user: { name: string }; specialization: string }
 
@@ -37,6 +38,7 @@ export default function AppointmentsPage() {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterDoctor, setFilterDoctor] = useState("ALL");
   const [fetchError, setFetchError] = useState<Error | null>(null);
+  const [quickConsult, setQuickConsult] = useState<{ appointmentId: string; patientName: string; doctorName: string } | null>(null);
 
   // Fetch doctors for filter dropdown
   useEffect(() => {
@@ -235,43 +237,93 @@ export default function AppointmentsPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-2">
-                {appointments
-                  .slice()
-                  .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                  .map((apt) => {
-                    const st = STATUS_STYLES[apt.status] ?? STATUS_STYLES.SCHEDULED;
-                    const apptDate = parseLocal(apt.scheduledAt);
-                    return (
-                      <div
-                        key={apt.id}
-                        onClick={() => router.push(`/appointments/${apt.id}`)}
-                        className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex items-center justify-between hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-xl bg-[#f4f3f7] flex flex-col items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-bold text-[#1a1c1e]">
-                              {apptDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                            </span>
-                            <span className="text-[9px] text-[#74777f] mt-0.5">
-                              {apptDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors">
-                              {apt.patientName}
-                            </p>
-                            <p className="text-xs text-[#74777f]">{apt.type} · {apt.doctorName}</p>
-                            {apt.room && <p className="text-xs text-[#74777f]">{apt.room}</p>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
-                          <span className="material-symbols-outlined text-[18px] text-[#74777f] group-hover:text-[#1960a3]">chevron_right</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        {[
+                          t.appointments.time ?? "الوقت",
+                          t.appointments.patient ?? "المريض",
+                          t.appointments.doctor ?? "الطبيب",
+                          t.appointments.type ?? "النوع",
+                          t.common.room ?? "الغرفة",
+                          t.common.status ?? "الحالة",
+                          "إجراءات سريعة",
+                        ].map((h) => (
+                          <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-4 py-3 bg-[#f4f3f7] border-b border-[#e3e2e6] whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {appointments
+                        .slice()
+                        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                        .map((apt) => {
+                          const st = STATUS_STYLES[apt.status] ?? STATUS_STYLES.SCHEDULED;
+                          const apptDate = parseLocal(apt.scheduledAt);
+                          return (
+                            <tr
+                              key={apt.id}
+                              className="hover:bg-[#f4f3f7] transition-colors cursor-pointer group"
+                            >
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]" onClick={() => router.push(`/appointments/${apt.id}`)}>
+                                <p className="text-sm font-bold text-[#1a1c1e]">
+                                  {apptDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                </p>
+                                <p className="text-[10px] text-[#74777f] mt-0.5">
+                                  {apptDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                </p>
+                              </td>
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]" onClick={() => router.push(`/appointments/${apt.id}`)}>
+                                <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors">{apt.patientName}</p>
+                              </td>
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]" onClick={() => router.push(`/appointments/${apt.id}`)}>
+                                <p className="text-sm text-[#43474e]">{apt.doctorName ?? "—"}</p>
+                              </td>
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]" onClick={() => router.push(`/appointments/${apt.id}`)}>
+                                <p className="text-xs text-[#74777f]">{apt.type}</p>
+                              </td>
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]" onClick={() => router.push(`/appointments/${apt.id}`)}>
+                                <p className="text-xs text-[#74777f]">{apt.room ?? "—"}</p>
+                              </td>
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]" onClick={() => router.push(`/appointments/${apt.id}`)}>
+                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
+                              </td>
+                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    aria-label="فتح السجل الطبي"
+                                    title="فتح السجل الطبي"
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/emr/${apt.patientId}`); }}
+                                    className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
+                                  </button>
+                                  <button
+                                    aria-label="استشارة سريعة"
+                                    title="استشارة سريعة"
+                                    onClick={(e) => { e.stopPropagation(); setQuickConsult({ appointmentId: apt.id, patientName: apt.patientName, doctorName: apt.doctorName ?? "" }); }}
+                                    className="p-1.5 hover:bg-[#ccfbf1] rounded-lg text-[#74777f] hover:text-[#0d9488] transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">stethoscope</span>
+                                  </button>
+                                  <button
+                                    aria-label="إصدار فاتورة"
+                                    title="إصدار فاتورة"
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/billing?appointmentId=${apt.id}`); }}
+                                    className="p-1.5 hover:bg-[#ffddba] rounded-lg text-[#74777f] hover:text-[#d97706] transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -379,6 +431,17 @@ export default function AppointmentsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Quick Consultation Modal ─────────────────────────── */}
+      {quickConsult && (
+        <QuickConsultationModal
+          appointmentId={quickConsult.appointmentId}
+          patientName={quickConsult.patientName}
+          doctorName={quickConsult.doctorName}
+          onClose={() => setQuickConsult(null)}
+          onSuccess={fetchAppointments}
+        />
+      )}
 
       {/* ── Appointment detail popup ─────────────────────────── */}
       {selectedAppt && (

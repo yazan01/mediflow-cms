@@ -71,6 +71,7 @@ export default function RadiologyPage() {
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [uploadOrderId, setUploadOrderId] = useState<string | null>(null);
   const [reportModal, setReportModal] = useState<RadiologyOrder | null>(null);
   const [reportText, setReportText] = useState("");
   const [scheduleModal, setScheduleModal] = useState<RadiologyOrder | null>(null);
@@ -299,6 +300,16 @@ export default function RadiologyPage() {
                               <span className="material-symbols-outlined text-[18px]">description</span>
                             </button>
                           )}
+                          {!isCancelled && (
+                            <button
+                              aria-label="رفع الصور"
+                              title="رفع الصور"
+                              onClick={() => setUploadOrderId(order.id)}
+                              className="p-1.5 hover:bg-[#dbeafe] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                            </button>
+                          )}
                           {!isCancelled && order.status === "PENDING" && (
                             <button
                               aria-label={t.radiology.schedule}
@@ -423,7 +434,195 @@ export default function RadiologyPage() {
         </div>
       )}
 
+      {uploadOrderId && (
+        <ImageUploadModal
+          orderId={uploadOrderId}
+          onClose={() => setUploadOrderId(null)}
+        />
+      )}
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    </div>
+  );
+}
+
+// ── Image Upload Modal ───────────────────────────────────────────────────────
+
+interface UploadedImage {
+  id: string;
+  filename: string;
+  url: string;
+  uploadedAt: string;
+}
+
+function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/radiology/${orderId}/images`)
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => setImages(data.data ?? data ?? []))
+      .catch(() => setError("فشل تحميل الصور"))
+      .finally(() => setLoading(false));
+  }, [orderId]);
+
+  async function uploadFiles(files: File[]) {
+    const allowed = files.filter((f) => ["image/jpeg", "image/png", "application/pdf"].includes(f.type));
+    if (allowed.length === 0) { setError("يُسمح فقط بملفات JPEG و PNG و PDF"); return; }
+    setUploading(true);
+    setUploadProgress(0);
+    setError("");
+    let uploaded = 0;
+    for (const file of allowed) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`/api/radiology/${orderId}/images`, { method: "POST", body: formData });
+        if (!res.ok) throw new Error();
+        const newImage = await res.json();
+        setImages((prev) => [...prev, newImage]);
+      } catch {
+        setError(`فشل رفع ${file.name}`);
+      }
+      uploaded++;
+      setUploadProgress(Math.round((uploaded / allowed.length) * 100));
+    }
+    setUploading(false);
+    setUploadProgress(0);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    uploadFiles(Array.from(e.dataTransfer.files));
+  }
+
+  async function handleDelete(imageId: string) {
+    try {
+      const res = await fetch(`/api/radiology/images/${imageId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
+    } catch {
+      setError("فشل حذف الصورة");
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="img-upload-title"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
+          <h2 id="img-upload-title" className="text-base font-bold text-[#1a1c1e]">رفع الصور والملفات</h2>
+          <button onClick={onClose} aria-label="إغلاق" className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2">
+              <span className="material-symbols-outlined text-base">error</span>
+              {error}
+            </div>
+          )}
+
+          {/* Drop zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+              dragOver ? "border-[#1960a3] bg-[#d3e4ff]/30" : "border-[#c4c6cf] hover:border-[#1960a3] hover:bg-[#f4f3f7]"
+            }`}
+          >
+            <span className="material-symbols-outlined text-4xl text-[#74777f] mb-2 block">cloud_upload</span>
+            <p className="text-sm font-semibold text-[#1a1c1e]">اسحب الملفات هنا أو انقر للاختيار</p>
+            <p className="text-xs text-[#74777f] mt-1">JPEG · PNG · PDF</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,application/pdf"
+              multiple
+              className="hidden"
+              onChange={(e) => { if (e.target.files) uploadFiles(Array.from(e.target.files)); }}
+            />
+          </div>
+
+          {/* Upload progress */}
+          {uploading && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-[#74777f]">
+                <span>جارٍ الرفع...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="h-1.5 bg-[#e3e2e6] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#1960a3] rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Image list */}
+          <div className="space-y-2 max-h-52 overflow-y-auto no-scrollbar">
+            {loading && (
+              <div className="flex justify-center py-4">
+                <div className="w-6 h-6 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
+              </div>
+            )}
+            {!loading && images.length === 0 && (
+              <p className="text-center text-sm text-[#74777f] py-4">لا توجد ملفات مرفوعة</p>
+            )}
+            {images.map((img) => (
+              <div key={img.id} className="flex items-center gap-3 bg-[#f4f3f7] rounded-lg px-3 py-2">
+                <span className="material-symbols-outlined text-[20px] text-[#1960a3] flex-shrink-0">
+                  {img.filename.endsWith(".pdf") ? "picture_as_pdf" : "image"}
+                </span>
+                <a
+                  href={img.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-sm text-[#1a1c1e] font-medium truncate hover:text-[#1960a3] hover:underline"
+                >
+                  {img.filename}
+                </a>
+                <button
+                  aria-label="حذف الملف"
+                  onClick={() => handleDelete(img.id)}
+                  className="p-1 hover:bg-[#ffdad6] rounded text-[#74777f] hover:text-[#ba1a1a] transition-colors flex-shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-[#e3e2e6] flex justify-end">
+          <button onClick={onClose} className="btn-secondary">إغلاق</button>
+        </div>
+      </div>
     </div>
   );
 }

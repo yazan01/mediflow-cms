@@ -8,7 +8,15 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useSSE } from "@/lib/hooks/useSSE";
 import type { DashboardStats, Appointment } from "@/types";
+
+interface SSEDashboardPayload {
+  totalPatients: number;
+  todayAppointments: number;
+  lowStockAlerts: number;
+  timestamp: string;
+}
 
 interface RevenuePoint { month: string; revenue: number; expenses: number }
 interface DeptPoint    { department: string; count: number; pct: number }
@@ -37,6 +45,10 @@ export default function DashboardClient({ stats, appointments }: Props) {
   const [depts, setDepts]     = useState<DeptPoint[]>([]);
   const [dbOnline, setDbOnline] = useState(stats !== null);
 
+  // SSE real-time updates
+  const { data: sseData, status: sseStatus } = useSSE<SSEDashboardPayload>("/api/events/dashboard", dbOnline);
+  const liveStats = sseData ?? null;
+
   useEffect(() => {
     fetch("/api/dashboard/revenue")
       .then((r) => r.ok ? r.json() : [])
@@ -61,11 +73,14 @@ export default function DashboardClient({ stats, appointments }: Props) {
     return () => clearInterval(id);
   }, [dbOnline]);
 
+  const liveAppointments = liveStats?.todayAppointments ?? stats?.totalAppointments;
+  const liveLowStock     = liveStats?.lowStockAlerts    ?? stats?.lowStockItems;
+
   const kpiCards = [
-    { label: d.dailyRevenue,       value: stats ? formatCurrency(stats.dailyRevenue)        : "—", change: stats?.dailyRevenueChange,    icon: "payments",      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
-    { label: d.todayAppointments,  value: stats ? String(stats.totalAppointments)            : "—", change: stats?.appointmentsChange,     icon: "calendar_today",iconBg: "bg-[#d6e3ff]", iconColor: "text-[#002045]" },
-    { label: d.newPatients,        value: stats ? String(stats.newPatients)                  : "—", change: stats?.newPatientsChange,      icon: "person_add",    iconBg: "bg-[#ffddba]", iconColor: "text-[#633f0f]" },
-    { label: d.bedOccupancy,       value: stats ? `${stats.bedOccupancy}%`                   : "—", change: stats?.bedOccupancyChange,     icon: "king_bed",      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
+    { label: d.dailyRevenue,       value: stats ? formatCurrency(stats.dailyRevenue)         : "—", change: stats?.dailyRevenueChange,  icon: "payments",       iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
+    { label: d.todayAppointments,  value: liveAppointments != null ? String(liveAppointments) : "—", change: stats?.appointmentsChange, icon: "calendar_today", iconBg: "bg-[#d6e3ff]", iconColor: "text-[#002045]" },
+    { label: d.newPatients,        value: stats ? String(stats.newPatients)                   : "—", change: stats?.newPatientsChange,   icon: "person_add",     iconBg: "bg-[#ffddba]", iconColor: "text-[#633f0f]" },
+    { label: d.bedOccupancy,       value: liveLowStock != null ? String(liveLowStock)         : "—", change: null,                       icon: "medication",     iconBg: "bg-[#ffdad6]", iconColor: "text-[#ba1a1a]" },
   ];
 
   const quickLinks = [
@@ -95,6 +110,11 @@ export default function DashboardClient({ stats, appointments }: Props) {
           <p className="text-sm text-[#74777f] mt-0.5">{dateStr}</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* SSE live indicator */}
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-[#74777f]">
+            <span className={`w-2 h-2 rounded-full ${sseStatus === "connected" ? "bg-[#0d9488] animate-pulse" : "bg-[#74777f]"}`} aria-hidden="true" />
+            {sseStatus === "connected" ? "مباشر" : "غير متصل"}
+          </div>
           <Link
             href="/reports"
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"

@@ -524,3 +524,99 @@ def upsert_attendance(body: AttendanceCreate, db: Session = Depends(get_db), _us
     db.add(attendance)
     db.commit()
     return {"id": attendance.id, "created": True}
+
+
+@router.get("/payroll/{payroll_id}/payslip")
+def get_payslip(payroll_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
+    p = db.query(models.Payroll).filter(models.Payroll.id == payroll_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+
+    emp = p.employee
+    emp_name = emp.user.name if emp and emp.user else ""
+    dept_name = emp.department.name if emp and emp.department else ""
+    job_title = emp.jobTitle if emp else ""
+
+    # Calculate absence deduction from attendance
+    from calendar import monthrange
+    working_days = monthrange(p.year, p.month)[1]
+    attended = db.query(func.count(models.Attendance.id)).filter(
+        models.Attendance.employeeId == p.employeeId,
+        models.Attendance.status == "PRESENT",
+        func.year(models.Attendance.date) == p.year,
+        func.month(models.Attendance.date) == p.month,
+    ).scalar() or 0
+    absent_days = max(0, working_days - attended)
+    absence_deduction = round(float(p.basicSalary) / 30 * absent_days, 3)
+
+    return {
+        "id": p.id,
+        "employeeName": emp_name,
+        "department": dept_name,
+        "jobTitle": job_title,
+        "month": p.month,
+        "year": p.year,
+        "basicSalary": float(p.basicSalary),
+        "allowances": float(p.allowances or 0),
+        "bonus": float(p.bonus or 0),
+        "overtimePay": float(p.overtimePay or 0),
+        "deductions": float(p.deductions or 0),
+        "taxDeduction": float(p.taxDeduction or 0),
+        "absenceDays": absent_days,
+        "absenceDeduction": absence_deduction,
+        "grossSalary": float(p.grossSalary),
+        "netSalary": float(p.netSalary),
+        "status": p.status,
+        "notes": p.notes,
+    }
+
+
+@router.get("/attendance/summary/{employee_id}")
+def attendance_summary(
+    employee_id: str,
+    month: str = Query(..., description="YYYY-MM"),
+    db: Session = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    from calendar import monthrange
+    try:
+        parts = month.split("-")
+        yr, mo = int(parts[0]), int(parts[1])
+    except (ValueError, IndexError):
+        raise HTTPException(400, "month must be YYYY-MM")
+
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+
+    total_days = monthrange(yr, mo)[1]
+    start = datetime(yr, mo, 1)
+    end_mo = mo + 1 if mo < 12 else 1
+    end_yr = yr if mo < 12 else yr + 1
+    end = datetime(end_yr, end_mo, 1)
+
+    records = db.query(models.Attendance).filter(
+        models.Attendance.employeeId == employee_id,
+        models.Attendance.date >= start,
+        models.Attendance.date < end,
+    ).all()
+
+    present = sum(1 for r in records if r.status == "PRESENT")
+    absent = total_days - present
+
+    avg_checkin = None
+    checkin_times = [r.checkIn for r in records if r.checkIn]
+    if checkin_times:
+        avg_seconds = sum(t.hour * 3600 + t.minute * 60 for t in checkin_times) / len(checkin_times)
+        avg_h = int(avg_seconds // 3600)
+        avg_m = int((avg_seconds % 3600) // 60)
+        avg_checkin = f"{avg_h:02d}:{avg_m:02d}"
+
+    return {
+        "employeeId": employee_id,
+        "month": month,
+        "totalWorkingDays": total_days,
+        "presentDays": present,
+        "absentDays": absent,
+        "avgCheckIn": avg_checkin,
+    }

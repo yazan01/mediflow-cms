@@ -6,6 +6,9 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
+import { useKeyboardShortcuts, type Shortcut } from "@/lib/hooks/useKeyboardShortcuts";
 
 const COUNTDOWN_SECONDS = 5 * 60;
 const DEFAULT_SESSION_TIMEOUT_MINS = 30;
@@ -19,8 +22,20 @@ export default function DashboardShell({ user, children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showTimeout, setShowTimeout] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const router = useRouter();
   const showTimeoutRef = useRef(false);
+
+  const shortcuts: Shortcut[] = [
+    { key: "n", alt: true, action: () => router.push("/appointments/new"), description: "موعد جديد", category: "create" },
+    { key: "p", alt: true, action: () => router.push("/patients"), description: "البحث عن مريض", category: "search" },
+    { key: "b", alt: true, action: () => router.push("/billing"), description: "فاتورة جديدة", category: "create" },
+    { key: "h", alt: true, action: () => router.push("/"), description: "لوحة التحكم", category: "navigate" },
+    { key: "l", alt: true, action: () => { fetch("/api/auth/logout", { method: "POST" }).then(() => router.push("/login")); }, description: "تسجيل الخروج", category: "general" },
+    { key: "?", alt: true, action: () => setShowShortcuts(true), description: "عرض الاختصارات", category: "general" },
+  ];
+
+  useKeyboardShortcuts(shortcuts);
   const inactivityMsRef = useRef((DEFAULT_SESSION_TIMEOUT_MINS - 5) * 60 * 1000);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -120,6 +135,12 @@ export default function DashboardShell({ user, children }: Props) {
           onStay={handleStay}
           onLogout={handleLogout}
         />
+      )}
+
+      <ConnectionStatus />
+
+      {showShortcuts && (
+        <KeyboardShortcutsHelp shortcuts={shortcuts} onClose={() => setShowShortcuts(false)} />
       )}
     </>
   );

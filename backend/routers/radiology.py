@@ -1,12 +1,14 @@
+import os
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from database import get_db
-from auth import get_current_user, require_roles, log_audit
+from auth import get_current_user, require_roles, log_audit, generate_id
 
 RADIOLOGY_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RADIOLOGIST")
 import models
@@ -124,3 +126,103 @@ def update_radiology_order(
     db.refresh(order)
     log_audit(db, current_user.id, "UPDATE", "RADIOLOGY", entity_id=order_id, entity_type="RadiologyOrder")
     return order_to_dict(order)
+
+
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "radiology")
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
+
+@router.post("/{order_id}/images", status_code=201)
+async def upload_image(
+    order_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    order = db.query(models.RadiologyOrder).filter(models.RadiologyOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(422, f"Unsupported file type: {file.content_type}. Allowed: jpeg, png, pdf")
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(422, "File exceeds 20 MB limit")
+
+    image_id = generate_id()
+    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin"
+    save_name = f"{image_id}.{ext}"
+    order_dir = os.path.join(UPLOAD_DIR, order_id)
+    os.makedirs(order_dir, exist_ok=True)
+    save_path = os.path.join(order_dir, save_name)
+
+    with open(save_path, "wb") as f:
+        f.write(content)
+
+    img = models.RadiologyImage(
+        id=image_id,
+        orderId=order_id,
+        filename=save_name,
+        originalName=file.filename,
+        fileSize=len(content),
+        mimeType=file.content_type,
+        uploadedBy=current_user.id,
+    )
+    db.add(img)
+    db.commit()
+    db.refresh(img)
+
+    return {
+        "id": img.id,
+        "filename": img.filename,
+        "originalName": img.originalName,
+        "fileSize": img.fileSize,
+        "mimeType": img.mimeType,
+        "uploadedAt": img.uploadedAt.isoformat() if img.uploadedAt else None,
+    }
+
+
+@router.get("/{order_id}/images")
+def list_images(order_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    order = db.query(models.RadiologyOrder).filter(models.RadiologyOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+    return [
+        {
+            "id": img.id,
+            "filename": img.filename,
+            "originalName": img.originalName,
+            "fileSize": img.fileSize,
+            "mimeType": img.mimeType,
+            "uploadedAt": img.uploadedAt.isoformat() if img.uploadedAt else None,
+        }
+        for img in (order.images or [])
+    ]
+
+
+@router.get("/images/{image_id}")
+def download_image(image_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    img = db.query(models.RadiologyImage).filter(models.RadiologyImage.id == image_id).first()
+    if not img:
+        raise HTTPException(404, "Image not found")
+    path = os.path.join(UPLOAD_DIR, img.orderId, img.filename)
+    if not os.path.exists(path):
+        raise HTTPException(404, "File not found on disk")
+    return FileResponse(path, media_type=img.mimeType, filename=img.originalName)
+
+
+@router.delete("/images/{image_id}", status_code=204)
+def delete_image(image_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    user_roles = set(current_user.roles if isinstance(current_user.roles, list) else [])
+    if not (user_roles & {"SUPER_ADMIN", "RADIOLOGIST"}):
+        raise HTTPException(403, "Only SUPER_ADMIN or RADIOLOGIST can delete images")
+    img = db.query(models.RadiologyImage).filter(models.RadiologyImage.id == image_id).first()
+    if not img:
+        raise HTTPException(404, "Image not found")
+    path = os.path.join(UPLOAD_DIR, img.orderId, img.filename)
+    if os.path.exists(path):
+        os.remove(path)
+    db.delete(img)
+    db.commit()

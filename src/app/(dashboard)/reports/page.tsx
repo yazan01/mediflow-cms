@@ -49,20 +49,50 @@ export default function ReportsPage() {
 
   const [activeTab, setActiveTab] = useState<"overview" | "financial" | "clinical" | "hr">("overview");
   const [dateRange, setDateRange] = useState<DateRange>("this_month");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/reports/overview?range=${dateRange}`);
+      const params = new URLSearchParams({ range: dateRange });
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      const res = await fetch(`/api/reports/overview?${params}`);
       if (res.ok) setStats(await res.json());
     } catch { /* DB not configured */ }
     finally { setLoading(false); }
-  }, [dateRange]);
+  }, [dateRange, dateFrom, dateTo]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  async function handleExportCSV() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const params = new URLSearchParams({ format: "csv" });
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      const res = await fetch(`/api/reports/export?${params}`);
+      if (!res.ok) { setExportError("فشل التصدير"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report_${dateFrom || "all"}_${dateTo || "all"}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { setExportError("فشل التصدير — تحقق من الاتصال"); }
+    finally { setExporting(false); }
+  }
+
+  function handleExportPDF() {
+    window.print();
+  }
 
   const kpiCards = [
     { label: t.reports.revenueMTD,      value: stats ? formatCurrency(stats.revenueMTD)    : "—", icon: "payments",       change: stats?.revenueChange,      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
@@ -103,20 +133,46 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.reports.title}</h1>
           <p className="text-sm text-[#74777f] mt-0.5">{t.reports.subtitle}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={dateRange}
-            onChange={(e) => setDateRange(e.target.value as DateRange)}
+            onChange={(e) => { setDateRange(e.target.value as DateRange); setDateFrom(""); setDateTo(""); }}
             className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            aria-label="نطاق التاريخ"
           >
             <option value="this_month">{t.reports.thisMonth}</option>
             <option value="last_month">{t.reports.lastMonth}</option>
             <option value="last_quarter">{t.reports.lastQuarter}</option>
             <option value="last_year">{t.reports.lastYear}</option>
           </select>
-          <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
-            <span className="material-symbols-outlined text-[18px]">schedule_send</span>
-            {t.reports.scheduleReport}
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            aria-label="من تاريخ"
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            aria-label="إلى تاريخ"
+          />
+          <button
+            onClick={handleExportCSV}
+            disabled={exporting}
+            className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            {exporting ? "جارٍ التصدير..." : "Excel/CSV"}
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors print:hidden"
+          >
+            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+            PDF
           </button>
         </div>
       </div>
