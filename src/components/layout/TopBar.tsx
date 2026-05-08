@@ -136,7 +136,7 @@ export default function TopBar({ user, onMenuClick, darkMode = false, onToggleDa
 
   return (
     <>
-      <header className="flex justify-between items-center w-full h-16 px-6 sticky top-0 z-40 bg-[var(--bg)] border-b border-[var(--border)] print:hidden transition-colors duration-300">
+      <header className="flex justify-between items-center w-full h-16 px-6 sticky top-0 z-40 border-b border-[var(--border)] print:hidden transition-colors duration-300" style={{ background: "color-mix(in srgb, var(--surface) 85%, transparent)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
         <div className="flex items-center gap-4 flex-1">
           {onMenuClick && (
             <button
@@ -149,12 +149,23 @@ export default function TopBar({ user, onMenuClick, darkMode = false, onToggleDa
           )}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 w-full max-w-md bg-[var(--surface2)] rounded-full py-2 ps-4 pe-4 text-sm text-[var(--txt3)] hover:bg-[var(--surface3)] transition-colors"
+            className="flex items-center gap-2 w-full max-w-sm px-3 text-sm text-[var(--t3)] hover:border-[var(--border-2)] transition-colors"
+            style={{
+              height: 38,
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+            }}
             aria-label={t.common.searchLabel}
           >
-            <span className="material-symbols-outlined text-[18px]">search</span>
+            <span className="material-symbols-outlined text-[18px] flex-shrink-0">search</span>
             <span className="flex-1 text-start">{t.topbar.search}</span>
-            <kbd className="hidden md:inline-flex items-center rounded border border-[var(--border2)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--txt3)]">/</kbd>
+            <kbd
+              className="hidden md:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-[var(--t3)] flex-shrink-0"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4 }}
+            >
+              /
+            </kbd>
           </button>
         </div>
 
