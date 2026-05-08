@@ -96,6 +96,8 @@ class EmployeeUpdate(BaseModel):
     userName: Optional[str] = None
     userPhone: Optional[str] = None
     userRoles: Optional[List[str]] = None
+    # Link/unlink a system user account
+    userId: Optional[str] = None
 
 
 class TerminateCreate(BaseModel):
@@ -491,7 +493,22 @@ def update_employee(
         raise HTTPException(404, "Employee not found")
 
     data = body.model_dump(exclude_none=True)
-    user_fields = {"userName", "userPhone", "userRoles", "salaryChangeReason"}
+    user_fields = {"userName", "userPhone", "userRoles", "salaryChangeReason", "userId"}
+
+    # Handle linking a new system user account
+    if "userId" in data:
+        target_user = db.query(models.User).filter(models.User.id == data["userId"]).first()
+        if not target_user:
+            raise HTTPException(404, "User not found")
+        # Ensure not already linked to another employee
+        conflict = db.query(models.Employee).filter(
+            models.Employee.userId == data["userId"],
+            models.Employee.id != employee_id,
+            models.Employee.deletedAt == None,
+        ).first()
+        if conflict:
+            raise HTTPException(409, "This user is already linked to another employee")
+        emp.userId = data["userId"]
 
     if "status" in data and data["status"] not in VALID_STATUSES:
         raise HTTPException(422, f"status must be one of {sorted(VALID_STATUSES)}")
