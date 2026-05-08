@@ -4,9 +4,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth import get_current_user, require_roles, generate_id, sanitize_string
+from auth import get_current_user, require_roles, generate_id, sanitize_string, log_audit
 
 PHARM_ROLES = ("PHARMACIST", "SUPER_ADMIN", "CLINIC_MANAGER")
+PHARM_READER_ROLES = ("PHARMACIST", "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RECEPTIONIST")
 import models
 
 router = APIRouter(prefix="/api/pharmacy", tags=["pharmacy"])
@@ -67,7 +68,7 @@ def med_to_dict(m: models.Medication) -> dict:
 
 
 @router.get("/stats")
-def get_pharmacy_stats(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_pharmacy_stats(db: Session = Depends(get_db), _user=Depends(require_roles(*PHARM_READER_ROLES))):
     from sqlalchemy import func as _func
     total_skus = db.query(_func.count(models.Medication.id)).filter(models.Medication.isActive == True).scalar() or 0
     low_stock = db.query(_func.count(models.Medication.id)).filter(
@@ -95,7 +96,7 @@ def get_medications(
     category: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*PHARM_READER_ROLES)),
 ):
     query = db.query(models.Medication).filter(models.Medication.isActive == True)
 
@@ -134,7 +135,7 @@ def get_medications(
 def create_medication(
     body: MedicationCreate,
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*PHARM_ROLES)),
+    current_user=Depends(require_roles(*PHARM_ROLES)),
 ):
     if not all([body.genericName, body.category, body.unit]):
         raise HTTPException(status_code=400, detail="Generic name, category, and unit are required")
@@ -159,6 +160,9 @@ def create_medication(
     db.add(med)
     db.commit()
     db.refresh(med)
+    log_audit(db, current_user.id, "CREATE", "PHARMACY", med.id, "Medication",
+              new_values={"genericName": med.genericName, "category": med.category,
+                          "stockQuantity": med.stockQuantity})
     return med_to_dict(med)
 
 
@@ -168,7 +172,7 @@ def get_stock_movements(
     pageSize: int = Query(20, ge=1, le=100),
     medicationId: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*PHARM_READER_ROLES)),
 ):
     query = db.query(models.StockMovement)
     if medicationId:
@@ -248,7 +252,9 @@ def adjust_medication_stock(
     db.add(movement)
     med.stockQuantity = new_qty
     db.commit()
-
+    log_audit(db, current_user.id, "STOCK_ADJUST", "PHARMACY", med_id, "Medication",
+              old_values={"stockQuantity": previous_qty},
+              new_values={"stockQuantity": new_qty, "change": qty, "note": note})
     return {"id": med_id, "stockQuantity": new_qty, "previousQty": previous_qty}
 
 
@@ -286,7 +292,9 @@ def create_stock_movement(
     med.stockQuantity = new_qty
     db.commit()
     db.refresh(movement)
-
+    log_audit(db, current_user.id, "STOCK_MOVEMENT", "PHARMACY", movement.id, "StockMovement",
+              new_values={"medicationId": body.medicationId, "type": body.type,
+                          "quantity": body.quantity, "previousQty": previous_qty, "newQty": new_qty})
     return {
         "id": movement.id,
         "medicationId": movement.medicationId,

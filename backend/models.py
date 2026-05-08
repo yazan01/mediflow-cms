@@ -155,6 +155,12 @@ class Appointment(Base):
         Index("ix_appt_doctor", "doctorId"),
         Index("ix_appt_scheduled", "scheduledAt"),
         Index("ix_appt_status", "status"),
+        # Compound: conflict detection (doctorId + status + time range)
+        Index("ix_appt_doctor_status_sched", "doctorId", "status", "scheduledAt"),
+        # Compound: patient timeline queries
+        Index("ix_appt_patient_sched", "patientId", "scheduledAt"),
+        # Branch-scoped calendar views
+        Index("ix_appt_branch_sched", "branchId", "scheduledAt"),
     )
     id = Column(String(36), primary_key=True)
     patientId = Column(String(36), ForeignKey("patients.id"), nullable=False)
@@ -371,6 +377,8 @@ class Invoice(Base):
         Index("ix_invoice_patient", "patientId"),
         Index("ix_invoice_status", "status"),
         Index("ix_invoice_created", "createdAt"),
+        # Used by get_invoice_by_appointment lookup
+        Index("ix_invoice_appt", "appointmentId"),
     )
     id = Column(String(36), primary_key=True)
     invoiceNo = Column(String(50), unique=True, nullable=False)
@@ -438,6 +446,12 @@ class Payment(Base):
 
 class Medication(Base):
     __tablename__ = "medications"
+    __table_args__ = (
+        # Main list query: isActive filter + genericName sort
+        Index("ix_med_active_name", "isActive", "genericName"),
+        Index("ix_med_category", "category"),
+        Index("ix_med_stock_qty", "stockQuantity"),
+    )
     id = Column(String(36), primary_key=True)
     genericName = Column(String(300), nullable=False)
     brandName = Column(String(300))

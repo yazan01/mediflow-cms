@@ -5,19 +5,39 @@ import { usePathname } from "next/navigation";
 import { cn, getInitials } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
+// Mirrors middleware ROUTE_ROLES — null means accessible by all authenticated users
+const NAV_REQUIRED_ROLES: Record<string, string[] | null> = {
+  "/":            null,
+  "/patients":    null,
+  "/appointments":null,
+  "/emr":         null,
+  "/my-hr":       null,
+  "/billing":     ["ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER", "RECEPTIONIST"],
+  "/pharmacy":    ["PHARMACIST", "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RECEPTIONIST"],
+  "/laboratory":  ["LAB_TECHNICIAN", "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE"],
+  "/radiology":   ["RADIOLOGIST", "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE"],
+  "/hr":          ["HR_OFFICER", "SUPER_ADMIN", "CLINIC_MANAGER"],
+  "/accounting":  ["ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER"],
+  "/reports":     ["ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER", "AUDITOR", "DOCTOR"],
+  "/users":       ["SUPER_ADMIN", "CLINIC_MANAGER"],
+  "/settings":    ["SUPER_ADMIN", "CLINIC_MANAGER"],
+  "/audit":       ["SUPER_ADMIN", "CLINIC_MANAGER", "AUDITOR"],
+};
+
 interface SidebarProps {
   user?: { name: string; role: string; photo?: string };
+  roles?: string[];
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({ user, roles = [], isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t, dir } = useLanguage();
   const displayName = user?.name ?? "User";
   const displayRole = user?.role ?? "Staff";
 
-  const navItems = [
+  const allNavItems = [
     { label: t.nav.dashboard,    href: "/",            icon: "dashboard" },
     { label: t.nav.patients,     href: "/patients",    icon: "person" },
     { label: t.nav.appointments, href: "/appointments",icon: "calendar_today" },
@@ -32,6 +52,17 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
     { label: t.nav.reports,      href: "/reports",     icon: "bar_chart" },
     { label: t.nav.users,        href: "/users",       icon: "manage_accounts" },
   ];
+
+  const navItems = allNavItems.filter(({ href }) => {
+    const required = NAV_REQUIRED_ROLES[href];
+    if (!required) return true;
+    return roles.some((r) => required.includes(r));
+  });
+
+  const canAccessSettings = !NAV_REQUIRED_ROLES["/settings"] ||
+    roles.some((r) => NAV_REQUIRED_ROLES["/settings"]!.includes(r));
+  const canAccessAudit = !NAV_REQUIRED_ROLES["/audit"] ||
+    roles.some((r) => NAV_REQUIRED_ROLES["/audit"]!.includes(r));
 
   const closedTranslate = dir === "rtl" ? "translate-x-full" : "-translate-x-full";
 
@@ -101,20 +132,24 @@ export default function Sidebar({ user, isOpen = false, onClose }: SidebarProps)
 
       {/* Bottom: Settings + Audit Logs */}
       <div className="pt-3 border-t border-[#e3e2e6] space-y-0.5">
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] hover:text-[#1a1c1e] transition-all duration-150"
-        >
-          <span className="material-symbols-outlined text-[20px] text-[#74777f]">settings</span>
-          <span>{t.nav.settings}</span>
-        </Link>
-        <Link
-          href="/audit"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] hover:text-[#1a1c1e] transition-all duration-150"
-        >
-          <span className="material-symbols-outlined text-[20px] text-[#74777f]">admin_panel_settings</span>
-          <span>{t.nav.audit}</span>
-        </Link>
+        {canAccessSettings && (
+          <Link
+            href="/settings"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] hover:text-[#1a1c1e] transition-all duration-150"
+          >
+            <span className="material-symbols-outlined text-[20px] text-[#74777f]">settings</span>
+            <span>{t.nav.settings}</span>
+          </Link>
+        )}
+        {canAccessAudit && (
+          <Link
+            href="/audit"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] hover:text-[#1a1c1e] transition-all duration-150"
+          >
+            <span className="material-symbols-outlined text-[20px] text-[#74777f]">admin_panel_settings</span>
+            <span>{t.nav.audit}</span>
+          </Link>
+        )}
       </div>
 
       {/* User profile */}

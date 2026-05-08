@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     throw new Error("JWT_SECRET environment variable is required");
   }
 
-  let user = { name: "User", role: "STAFF" };
+  let user = { name: "User", role: "STAFF", roles: ["STAFF"] as string[] };
 
   try {
     const cookieStore = await cookies();
@@ -20,9 +20,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
       redirect("/login");
     }
     const decoded = jwt.verify(token, JWT_SECRET) as { name?: string; roles?: string[] };
+    const roles = decoded.roles ?? ["STAFF"];
     user = {
       name: decoded.name ?? "User",
-      role: (decoded.roles?.[0] ?? "STAFF").replace(/_/g, " "),
+      role: (roles[0] ?? "STAFF").replace(/_/g, " "),
+      roles,
     };
   } catch {
     redirect("/login");

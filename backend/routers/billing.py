@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
 from database import get_db
-from auth import get_current_user, require_roles, generate_id, generate_invoice_no, sanitize_string  # noqa: F401
+from auth import get_current_user, require_roles, generate_id, generate_invoice_no, sanitize_string, log_audit  # noqa: F401
 
 BILLING_ROLES = ("ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER", "RECEPTIONIST")
 import models
@@ -186,7 +186,7 @@ def get_invoices(
 
 
 @router.post("", status_code=201)
-def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*BILLING_ROLES))):
+def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles(*BILLING_ROLES))):
     if not body.patientId or not body.items:
         raise HTTPException(status_code=400, detail="Patient and at least one item are required")
 
@@ -235,6 +235,8 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Dep
 
     db.commit()
     db.refresh(invoice)
+    log_audit(db, current_user.id, "CREATE", "BILLING", invoice.id, "Invoice",
+              new_values={"invoiceNo": invoice.invoiceNo, "patientId": body.patientId, "totalAmount": float(total)})
     return invoice_to_dict(invoice)
 
 
@@ -288,7 +290,7 @@ def add_payment(
     invoice_id: str,
     body: PaymentIn,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*BILLING_ROLES)),
 ):
     inv = (
         db.query(models.Invoice)
@@ -340,4 +342,7 @@ def add_payment(
 
     db.commit()
     db.refresh(payment)
+    log_audit(db, current_user.id, "PAYMENT", "BILLING", invoice_id, "Invoice",
+              new_values={"paymentId": payment.id, "amount": body.amount, "method": payment.method,
+                          "invoiceNo": inv.invoiceNo, "newStatus": inv.status})
     return {"id": payment.id, "amount": float(payment.amount), "method": payment.method}

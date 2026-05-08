@@ -17,6 +17,7 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError("");
     setLoading(true);
     try {
@@ -41,6 +42,7 @@ export default function LoginPage() {
 
   async function handle2FA(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError("");
     setLoading(true);
     try {

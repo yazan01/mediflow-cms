@@ -180,8 +180,8 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
             email=sanitize_string(body.email),
             address=sanitize_string(body.address),
             bloodType=body.bloodType or None,
-            allergies=body.allergies or [],
-            chronicConditions=body.chronicConditions or [],
+            allergies=[sanitize_string(a) for a in (body.allergies or []) if a],
+            chronicConditions=[sanitize_string(c) for c in (body.chronicConditions or []) if c],
             emergencyContactName=sanitize_string(body.emergencyContactName),
             emergencyContactPhone=sanitize_string(body.emergencyContactPhone),
             insuranceProvider=sanitize_string(body.insuranceProvider),
@@ -296,6 +296,8 @@ def update_patient(
                 value = _parse_date(value, "dateOfBirth")
             elif field in STRING_FIELDS and isinstance(value, str):
                 value = sanitize_string(value)
+            elif field in ("allergies", "chronicConditions") and isinstance(value, list):
+                value = [sanitize_string(item) for item in value if item]
             setattr(patient, field, value)
         db.commit()
         db.refresh(patient)

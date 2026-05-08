@@ -14,7 +14,7 @@ const COUNTDOWN_SECONDS = 5 * 60;
 const DEFAULT_SESSION_TIMEOUT_MINS = 30;
 
 interface Props {
-  user: { name: string; role: string };
+  user: { name: string; role: string; roles?: string[] };
   children: React.ReactNode;
 }
 
@@ -121,7 +121,7 @@ export default function DashboardShell({ user, children }: Props) {
             aria-hidden="true"
           />
         )}
-        <Sidebar user={user} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar user={user} roles={user.roles} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <TopBar user={user} onMenuClick={() => setSidebarOpen((v) => !v)} />
           <main className="flex-1 overflow-y-auto p-6">

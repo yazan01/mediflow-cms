@@ -166,7 +166,7 @@ def get_appointments(
 def create_appointment(
     body: AppointmentCreate,
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*APPT_WRITER_ROLES)),
+    current_user=Depends(require_roles(*APPT_WRITER_ROLES)),
 ):
     if not all([body.patientId, body.doctorId, body.scheduledAt]):
         raise HTTPException(status_code=400, detail="Patient, doctor, and scheduled time are required")
@@ -219,6 +219,9 @@ def create_appointment(
 
     db.commit()
     db.refresh(appointment)
+    log_audit(db, current_user.id, "CREATE", "APPOINTMENTS", appointment.id, "Appointment",
+              new_values={"patientId": body.patientId, "doctorId": body.doctorId,
+                          "scheduledAt": str(start), "type": appointment.type, "isUrgent": appointment.isUrgent})
     return appt_to_dict(appointment)
 
 
@@ -260,7 +263,7 @@ def update_appointment(
     appointment_id: str,
     body: dict,
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*APPT_WRITER_ROLES)),
+    current_user=Depends(require_roles(*APPT_WRITER_ROLES)),
 ):
     appt = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appt:
@@ -274,6 +277,7 @@ def update_appointment(
             )
 
     allowed_fields = {"status", "notes", "room", "checkedInAt", "completedAt", "cancelledAt", "cancelReason"}
+    old_status = appt.status
     try:
         for field in allowed_fields:
             if field in body:
@@ -286,6 +290,13 @@ def update_appointment(
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update appointment")
+
+    changed = {k: body[k] for k in allowed_fields if k in body}
+    if changed:
+        action = f"STATUS_CHANGE" if "status" in changed else "UPDATE"
+        log_audit(db, current_user.id, action, "APPOINTMENTS", appointment_id, "Appointment",
+                  old_values={"status": old_status} if "status" in changed else None,
+                  new_values=changed)
 
     return appt_to_dict(appt)
 
