@@ -16,6 +16,7 @@ export default function NewEmployeePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [userMode, setUserMode] = useState<"existing" | "new">("existing");
 
   const [form, setForm] = useState({
     userId: "", departmentId: "", jobTitle: "", employmentType: "FULL_TIME",
@@ -23,6 +24,7 @@ export default function NewEmployeePage() {
     hireDate: "", annualLeaveBalance: "21", sickLeaveBalance: "14", branchId: "",
     bankName: "", bankAccount: "",
   });
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -38,18 +40,32 @@ export default function NewEmployeePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.userId || !form.departmentId || !form.jobTitle) {
-      setError(t.common.required);
-      return;
-    }
+    if (userMode === "existing" && !form.userId) { setError(t.common.required); return; }
+    if (userMode === "new" && (!newUser.name || !newUser.email || !newUser.password)) { setError(t.common.required); return; }
+    if (!form.departmentId || !form.jobTitle) { setError(t.common.required); return; }
     setSaving(true);
     setError("");
     try {
+      let userId = form.userId;
+      if (userMode === "new") {
+        const userRes = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newUser.name, email: newUser.email, password: newUser.password, roles: ["STAFF"] }),
+        });
+        if (!userRes.ok) {
+          const err = await userRes.json().catch(() => ({}));
+          setError(err.detail || t.hr.createEmployeeFailed);
+          return;
+        }
+        const created = await userRes.json();
+        userId = created.id;
+      }
       const res = await fetch("/api/hr/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: form.userId,
+          userId,
           departmentId: form.departmentId,
           jobTitle: form.jobTitle,
           employmentType: form.employmentType,
@@ -94,12 +110,47 @@ export default function NewEmployeePage() {
         {error && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{error}</div>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.user} *</label>
-            <select className="input-field" value={form.userId} onChange={e => set("userId", e.target.value)} required>
-              <option value="">{t.common.search}...</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name} — {u.email}</option>)}
-            </select>
+          <div className="md:col-span-2 space-y-3">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setUserMode("existing")}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors ${userMode === "existing" ? "border-[#1960a3] bg-[#d3e4ff] text-[#1960a3]" : "border-[#e3e2e6] text-[#74777f] hover:bg-[#f4f3f7]"}`}
+              >
+                {t.hr.selectExistingUser}
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserMode("new")}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors ${userMode === "new" ? "border-[#1960a3] bg-[#d3e4ff] text-[#1960a3]" : "border-[#e3e2e6] text-[#74777f] hover:bg-[#f4f3f7]"}`}
+              >
+                {t.hr.createNewUser}
+              </button>
+            </div>
+            {userMode === "existing" ? (
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.user} *</label>
+                <select className="input-field" value={form.userId} onChange={e => set("userId", e.target.value)} required>
+                  <option value="">{t.common.search}...</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name} — {u.email}</option>)}
+                </select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#f4f3f7] rounded-xl">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.newUserName} *</label>
+                  <input className="input-field" value={newUser.name} onChange={e => setNewUser(u => ({ ...u, name: e.target.value }))} placeholder="Full name" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.newUserEmail} *</label>
+                  <input type="email" className="input-field" value={newUser.email} onChange={e => setNewUser(u => ({ ...u, email: e.target.value }))} placeholder="email@clinic.com" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.newUserPassword} *</label>
+                  <input type="password" className="input-field" value={newUser.password} onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))} placeholder="Min 8 characters" />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

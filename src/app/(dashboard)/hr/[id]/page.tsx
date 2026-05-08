@@ -26,7 +26,11 @@ export default function EmployeeProfilePage() {
 
   interface LeaveRecord {
     id: string; type: string; startDate: string; endDate: string;
-    days: number; status: string; reason?: string; approverName?: string;
+    days: number; status: string; reason?: string; approverName?: string; rejectedReason?: string;
+  }
+  interface SalaryRecord {
+    id: string; basicSalary: number; housingAllowance: number; transportAllowance: number;
+    medicalAllowance: number; effectiveDate: string; reason: string; changedBy: string;
   }
 
   interface ContractRecord {
@@ -46,6 +50,8 @@ export default function EmployeeProfilePage() {
   const [contracts, setContracts] = useState<ContractRecord[]>([]);
   const [eos, setEos] = useState<EosData | null>(null);
   const [contractsLoading, setContractsLoading] = useState(false);
+  const [salaryHistory, setSalaryHistory] = useState<SalaryRecord[]>([]);
+  const [salaryLoading, setSalaryLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -61,18 +67,22 @@ export default function EmployeeProfilePage() {
     setLoading(false);
     setLeaveHistoryLoading(true);
     setContractsLoading(true);
+    setSalaryLoading(true);
     try {
-      const [lr, cr, eosRes] = await Promise.all([
+      const [lr, cr, eosRes, salRes] = await Promise.all([
         fetch(`/api/hr/leaves?employeeId=${id}`),
         fetch(`/api/hr/employees/${id}/contracts`),
         fetch(`/api/hr/employees/${id}/eos?reason=resigned`),
+        fetch(`/api/hr/salary-history/${id}`),
       ]);
       if (lr.ok) { const d = await lr.json(); setLeaveHistory(d.data ?? []); }
       if (cr.ok) setContracts(await cr.json());
       if (eosRes.ok) setEos(await eosRes.json());
+      if (salRes.ok) setSalaryHistory(await salRes.json());
     } catch { /* ignore */ } finally {
       setLeaveHistoryLoading(false);
       setContractsLoading(false);
+      setSalaryLoading(false);
     }
   }, [id]);
 
@@ -100,6 +110,10 @@ export default function EmployeeProfilePage() {
   const yearsOfService = emp.hireDate
     ? Math.floor((Date.now() - new Date(emp.hireDate as string).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
     : null;
+  const probationDaysLeft = emp.probationEndDate
+    ? Math.ceil((new Date(emp.probationEndDate as string).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    : null;
+  const probationEndingSoon = probationDaysLeft !== null && probationDaysLeft >= 0 && probationDaysLeft <= 30;
 
   const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
     ACTIVE:     { label: t.hr.activeStatus,   cls: "bg-[#ccfbf1] text-[#0d9488]" },
@@ -167,6 +181,19 @@ export default function EmployeeProfilePage() {
             <InfoItem label={t.hr.email} value={(user.email as string) ?? "—"} />
             <InfoItem label={t.hr.branch} value={branches.find(b => b.id === (emp.branchId as string))?.name ?? "—"} />
             <InfoItem label={t.hr.department} value={dept.name as string ?? "—"} />
+            {!!emp.probationEndDate && (
+              <InfoItem label={t.hr.probationEnd}>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm text-[#1a1c1e]">{formatDate(emp.probationEndDate as string)}</p>
+                  {probationEndingSoon && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#fff7ed] text-[#d97706] flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[11px]">warning</span>
+                      {probationDaysLeft}d
+                    </span>
+                  )}
+                </div>
+              </InfoItem>
+            )}
           </div>
         </div>
       </div>
@@ -291,7 +318,7 @@ export default function EmployeeProfilePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#e3e2e6]">
-                  {[t.hr.leaveType, t.hr.startDate, t.hr.endDate, t.hr.days, t.common.status].map(h => (
+                  {[t.hr.leaveType, t.hr.startDate, t.hr.endDate, t.hr.days, t.common.status, t.hr.approverName, t.hr.rejectionReason].map(h => (
                     <th key={h} className="text-left text-xs font-semibold text-[#74777f] uppercase tracking-wider pb-2 pe-4 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -305,9 +332,11 @@ export default function EmployeeProfilePage() {
                       <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{formatDate(lr.startDate)}</td>
                       <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{formatDate(lr.endDate)}</td>
                       <td className="py-2.5 pe-4 text-[#43474e]">{lr.days}</td>
-                      <td className="py-2.5">
+                      <td className="py-2.5 pe-4">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${sc.cls}`}>{sc.label}</span>
                       </td>
+                      <td className="py-2.5 pe-4 text-xs text-[#43474e]">{lr.approverName || "—"}</td>
+                      <td className="py-2.5 text-xs text-[#74777f] max-w-[180px] truncate">{lr.rejectedReason || "—"}</td>
                     </tr>
                   );
                 })}
@@ -316,6 +345,46 @@ export default function EmployeeProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Salary History */}
+      {salaryHistory.length > 0 && (
+        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+          <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1960a3] text-[18px]">trending_up</span>
+            {t.hr.salaryHistory}
+          </h3>
+          {salaryLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#e3e2e6]">
+                    {[t.hr.effectiveDate, t.hr.baseSalary, t.hr.totalComp, t.common.reason].map(h => (
+                      <th key={h} className="text-left text-xs font-semibold text-[#74777f] uppercase tracking-wider pb-2 pe-4 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {salaryHistory.map(sh => {
+                    const total = sh.basicSalary + (sh.housingAllowance || 0) + (sh.transportAllowance || 0) + (sh.medicalAllowance || 0);
+                    return (
+                      <tr key={sh.id} className="border-b border-[#f4f3f7]">
+                        <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{formatDate(sh.effectiveDate)}</td>
+                        <td className="py-2.5 pe-4 font-semibold text-[#1a1c1e]">{formatCurrency(sh.basicSalary)}</td>
+                        <td className="py-2.5 pe-4 text-[#43474e]">{formatCurrency(total)}</td>
+                        <td className="py-2.5 text-xs text-[#74777f]">{sh.reason || "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Roles */}
       <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">

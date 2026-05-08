@@ -213,6 +213,7 @@ export default function HRPage() {
   const [empPage, setEmpPage] = useState(1);
   const [empTotal, setEmpTotal] = useState(0);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedEmpIds, setSelectedEmpIds] = useState<Set<string>>(new Set());
 
   // Attendance
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -234,7 +235,7 @@ export default function HRPage() {
   const [leaveStatusFilter, setLeaveStatusFilter] = useState("ALL");
   // Leave creation modal
   const [leaveModal, setLeaveModal] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "" });
+  const [leaveForm, setLeaveForm] = useState({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "", medicalCert: false });
   const [leaveSaving, setLeaveSaving] = useState(false);
   const [leaveError, setLeaveError] = useState("");
   const [leaveSuccess, setLeaveSuccess] = useState("");
@@ -450,6 +451,7 @@ export default function HRPage() {
           endDate: leaveForm.endDate,
           days: Number(leaveForm.days),
           reason: leaveForm.reason || null,
+          ...(leaveForm.type === "SICK" && { medicalCert: leaveForm.medicalCert }),
         }),
       });
       if (!res.ok) {
@@ -458,7 +460,7 @@ export default function HRPage() {
         return;
       }
       setLeaveModal(false);
-      setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "" });
+      setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "", medicalCert: false });
       setLeaveSuccess(t.hr.leaveCreated);
       setTimeout(() => setLeaveSuccess(""), 3000);
       fetchLeaves();
@@ -539,6 +541,24 @@ export default function HRPage() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `employees-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleExportSelectedCsv() {
+    const selected = employees.filter(e => selectedEmpIds.has(e.id as string));
+    if (selected.length === 0) return;
+    const headers = ["Name", "Email", "Code", "Department", "Job Title", "Type", "Status", "Basic Salary", "Hire Date", "Annual Leave Balance"];
+    const rows = selected.map((e) => [
+      e.user.name, e.user.email, e.empCode, e.department.name, e.jobTitle,
+      e.employmentType, e.status, e.basicSalary, e.hireDate?.slice(0, 10) ?? "", e.annualLeaveBalance,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `employees-selected-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -715,6 +735,15 @@ export default function HRPage() {
                 <span className="material-symbols-outlined text-[18px]">download</span>
                 {t.hr.exportCsv}
               </button>
+              {selectedEmpIds.size > 0 && (
+                <button
+                  onClick={handleExportSelectedCsv}
+                  className="flex items-center gap-2 bg-[#1960a3] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  {t.hr.exportSelected} ({selectedEmpIds.size} {t.hr.nSelected})
+                </button>
+              )}
             </div>
           </div>
 
@@ -724,6 +753,18 @@ export default function HRPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
+                    <th className="px-5 py-3.5 w-10">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded accent-[#1960a3]"
+                        checked={employees.length > 0 && employees.every(e => selectedEmpIds.has(e.id as string))}
+                        onChange={(ev) => {
+                          if (ev.target.checked) setSelectedEmpIds(new Set(employees.map(e => e.id as string)));
+                          else setSelectedEmpIds(new Set());
+                        }}
+                        aria-label={t.hr.selectAll}
+                      />
+                    </th>
                     {[t.hr.employee, t.hr.code, t.hr.deptTitle, t.hr.type, t.hr.status, t.hr.salary, t.hr.hireDate, t.hr.leaveBal, t.common.actions].map((h) => (
                       <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
@@ -731,14 +772,29 @@ export default function HRPage() {
                 </thead>
                 <tbody>
                   {empLoading ? (
-                    <tr><td colSpan={9}><Spinner label={t.hr.loading} /></td></tr>
+                    <tr><td colSpan={10}><Spinner label={t.hr.loading} /></td></tr>
                   ) : employees.length === 0 ? (
-                    <EmptyRow cols={9} icon="badge" label={t.hr.noEmployees} sub={empSearch ? t.hr.searchPlaceholder : t.hr.addFirst} />
+                    <EmptyRow cols={10} icon="badge" label={t.hr.noEmployees} sub={empSearch ? t.hr.searchPlaceholder : t.hr.addFirst} />
                   ) : employees.map((emp) => {
                     const statusCfg = EMP_STATUS[emp.status] ?? EMP_STATUS.INACTIVE;
                     const typeCfg = EMP_TYPE[emp.employmentType] ?? EMP_TYPE.FULL_TIME;
+                    const isSelected = selectedEmpIds.has(emp.id as string);
                     return (
-                      <tr key={emp.id} className="hover:bg-[#f4f3f7] transition-colors group">
+                      <tr key={emp.id} className={`hover:bg-[#f4f3f7] transition-colors group ${isSelected ? "bg-[#eef4ff]" : ""}`}>
+                        <td className="px-5 py-4 border-b border-[#e3e2e6] w-10">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded accent-[#1960a3]"
+                            checked={isSelected}
+                            onChange={() => setSelectedEmpIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(emp.id as string)) next.delete(emp.id as string);
+                              else next.add(emp.id as string);
+                              return next;
+                            })}
+                            aria-label={`Select ${emp.user.name}`}
+                          />
+                        </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-[#002045] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
@@ -917,7 +973,7 @@ export default function HRPage() {
             </select>
             <div className="flex-1" />
             <button
-              onClick={() => { setLeaveModal(true); setLeaveError(""); setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "" }); }}
+              onClick={() => { setLeaveModal(true); setLeaveError(""); setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "", medicalCert: false }); }}
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
@@ -1404,6 +1460,12 @@ export default function HRPage() {
                 <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveReason}</label>
                 <textarea rows={3} className="input-field resize-none" placeholder={t.hr.leaveReasonPlaceholder} value={leaveForm.reason} onChange={(e) => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
               </div>
+              {leaveForm.type === "SICK" && (
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" className="w-4 h-4 rounded accent-[#1960a3]" checked={leaveForm.medicalCert} onChange={(e) => setLeaveForm(f => ({ ...f, medicalCert: e.target.checked }))} />
+                  <span className="text-sm text-[#1a1c1e]">{t.hr.medicalCertLabel}</span>
+                </label>
+              )}
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
               <button onClick={() => setLeaveModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
