@@ -1037,6 +1037,106 @@ class SettingsHistory(Base):
     ipAddress = Column(String(45))
 
 
+class WhatsAppConfig(Base):
+    """Per-branch WhatsApp Business API configuration."""
+    __tablename__ = "whatsapp_configs"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=False, unique=True)
+    phoneNumberId = Column(String(50))
+    wabaId = Column(String(50))
+    accessTokenEncrypted = Column(Text)
+    appSecretEncrypted = Column(Text)
+    webhookVerifyToken = Column(String(100))
+    phoneNumber = Column(String(20))
+    displayName = Column(String(100))
+    isVerified = Column(Boolean, default=False)
+    isActive = Column(Boolean, default=False)
+    autoReplyEnabled = Column(Boolean, default=False)
+    businessHoursOnly = Column(Boolean, default=True)
+    aiReplyEnabled = Column(Boolean, default=False)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    templates = relationship("WhatsAppTemplate", back_populates="config", cascade="all, delete-orphan")
+
+
+class WhatsAppTemplate(Base):
+    """Message templates linked to a WhatsApp Business account."""
+    __tablename__ = "whatsapp_templates"
+    __table_args__ = (Index("ix_wa_template_config", "configId"),)
+    id = Column(String(25), primary_key=True)
+    configId = Column(String(25), ForeignKey("whatsapp_configs.id"), nullable=False)
+    name = Column(String(100), nullable=False)
+    category = Column(String(30), default="APPOINTMENT_REMINDER")
+    language = Column(String(10), default="en")
+    bodyText = Column(Text)
+    isActive = Column(Boolean, default=True)
+    usageCount = Column(Integer, default=0)
+    createdAt = Column(DateTime, server_default=func.now())
+
+    config = relationship("WhatsAppConfig", back_populates="templates")
+
+
+class SmsConfig(Base):
+    """SMS gateway configuration — branchId=None means global."""
+    __tablename__ = "sms_configs"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    provider = Column(String(30), default="twilio")
+    apiKeyEncrypted = Column(Text)
+    apiSecretEncrypted = Column(Text)
+    fromNumber = Column(String(20))
+    isActive = Column(Boolean, default=False)
+    dailyLimit = Column(Integer, default=1000)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (UniqueConstraint("branchId", name="uq_sms_branch"),)
+
+
+class PaymentGatewayConfig(Base):
+    """Payment gateway configuration — branchId=None means global."""
+    __tablename__ = "payment_gateway_configs"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    provider = Column(String(30), default="stripe")
+    publicKey = Column(String(255))
+    secretKeyEncrypted = Column(Text)
+    webhookSecretEncrypted = Column(Text)
+    currency = Column(String(10), default="USD")
+    testMode = Column(Boolean, default=True)
+    isActive = Column(Boolean, default=False)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (UniqueConstraint("branchId", name="uq_payment_branch"),)
+
+
+class FeatureFlag(Base):
+    """System-wide feature toggles managed by SUPER_ADMIN."""
+    __tablename__ = "feature_flags"
+    id = Column(String(25), primary_key=True)
+    key = Column(String(100), unique=True, nullable=False)
+    description = Column(Text)
+    isEnabled = Column(Boolean, default=False)
+    updatedBy = Column(String(25), ForeignKey("users.id"), nullable=True)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class ApiKey(Base):
+    """External API keys — SHA-256 hashed, plaintext returned only at creation."""
+    __tablename__ = "api_keys"
+    __table_args__ = (Index("ix_apikey_branch", "branchId"),)
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    name = Column(String(100), nullable=False)
+    keyHashSha256 = Column(String(64), nullable=False, unique=True)
+    keyPrefix = Column(String(10))
+    scopes = Column(JSON, default=lambda: [])
+    lastUsedAt = Column(DateTime, nullable=True)
+    expiresAt = Column(DateTime, nullable=True)
+    isActive = Column(Boolean, default=True)
+    createdBy = Column(String(25), ForeignKey("users.id"), nullable=True)
+    createdAt = Column(DateTime, server_default=func.now())
+
+
 class TokenBlocklist(Base):
     """Revoked JWT tokens — checked on every authenticated request."""
     __tablename__ = "token_blocklist"

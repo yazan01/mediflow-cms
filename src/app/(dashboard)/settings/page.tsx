@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "integrations" | "history";
+type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "integrations" | "history";
 
 type Settings = {
   clinicName: string; licenseNumber: string; phone: string; email: string;
@@ -43,6 +43,36 @@ type HistoryEntry = {
   oldValue: string; newValue: string; changedAt: string; changedBy: string;
 };
 
+type WaConfig = {
+  phoneNumberId: string; wabaId: string; accessToken: string; appSecret: string;
+  webhookVerifyToken: string; phoneNumber: string; displayName: string;
+  isVerified: boolean; isActive: boolean; autoReplyEnabled: boolean;
+  businessHoursOnly: boolean; aiReplyEnabled: boolean;
+};
+
+type WaTemplate = {
+  id: string; name: string; category: string; language: string; bodyText: string; isActive: boolean;
+};
+
+type SmsConfig = {
+  provider: string; apiKey: string; apiSecret: string; fromNumber: string; dailyLimit: number; isActive: boolean;
+};
+
+type PaymentConfig = {
+  provider: string; publicKey: string; secretKeyMasked: string; webhookSecretMasked: string;
+  currency: string; testMode: boolean; isActive: boolean;
+};
+
+type FeatureFlag = {
+  id: string; key: string; description: string; isEnabled: boolean; updatedAt: string | null;
+};
+
+type ApiKey = {
+  id: string; name: string; keyPrefix: string; branchId: string | null; scopes: string[];
+  isActive: boolean; lastUsedAt: string | null; expiresAt: string | null; createdAt: string | null;
+  key?: string;
+};
+
 const DEFAULT_SETTINGS: Settings = {
   clinicName: "", licenseNumber: "", phone: "", email: "", address: "",
   taxId: "", currency: "USD", timezone: "Asia/Amman", taxRate: 7,
@@ -55,6 +85,24 @@ const DEFAULT_SETTINGS: Settings = {
 const DEFAULT_BRANCH_FORM = { name: "", code: "", description: "", country: "", city: "", address: "", phone: "", email: "", timezone: "Asia/Amman" };
 
 const DEFAULT_SMTP: SmtpForm = { host: "", port: 587, useTLS: true, username: "", password: "", fromName: "", fromEmail: "", isActive: false };
+
+const DEFAULT_WA: WaConfig = {
+  phoneNumberId: "", wabaId: "", accessToken: "", appSecret: "",
+  webhookVerifyToken: "", phoneNumber: "", displayName: "",
+  isVerified: false, isActive: false, autoReplyEnabled: false,
+  businessHoursOnly: false, aiReplyEnabled: false,
+};
+
+const DEFAULT_SMS: SmsConfig = { provider: "twilio", apiKey: "", apiSecret: "", fromNumber: "", dailyLimit: 200, isActive: false };
+
+const DEFAULT_PAYMENT: PaymentConfig = {
+  provider: "stripe", publicKey: "", secretKeyMasked: "", webhookSecretMasked: "",
+  currency: "USD", testMode: true, isActive: false,
+};
+
+const SMS_PROVIDERS = ["twilio", "vonage", "aws_sns", "infobip", "custom"];
+const PAYMENT_PROVIDERS = ["stripe", "tap", "payfort", "hesabe", "telr", "paypal", "custom"];
+const API_SCOPES = ["read:patients", "write:patients", "read:appointments", "write:appointments", "read:reports", "read:billing", "write:billing", "read:hr", "admin:full"];
 
 const DEFAULT_BRANCH_SETTING: BranchSetting = {
   currency: "USD", timezone: "Asia/Amman", taxRate: 0, invoicePrefix: "INV",
@@ -114,6 +162,45 @@ export default function SettingsPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // WhatsApp
+  const [waBranchId, setWaBranchId] = useState<string>("");
+  const [wa, setWa] = useState<WaConfig>(DEFAULT_WA);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waSaving, setWaSaving] = useState(false);
+  const [waStatus, setWaStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [waTestNumber, setWaTestNumber] = useState("");
+  const [waTestMsg, setWaTestMsg] = useState("");
+  const [waTesting, setWaTesting] = useState(false);
+  const [waTemplates, setWaTemplates] = useState<WaTemplate[]>([]);
+
+  // SMS
+  const [sms, setSms] = useState<SmsConfig>(DEFAULT_SMS);
+  const [smsLoading, setSmsLoading] = useState(false);
+  const [smsSaving, setSmsSaving] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<"idle" | "saved" | "error">("idle");
+
+  // Payment
+  const [payment, setPayment] = useState<PaymentConfig>(DEFAULT_PAYMENT);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [paymentSecretKey, setPaymentSecretKey] = useState("");
+  const [paymentWebhookSecret, setPaymentWebhookSecret] = useState("");
+
+  // Feature flags
+  const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [flagsLoading, setFlagsLoading] = useState(false);
+  const [flagToggling, setFlagToggling] = useState<string | null>(null);
+
+  // API keys
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [apiKeyModal, setApiKeyModal] = useState(false);
+  const [apiKeyForm, setApiKeyForm] = useState({ name: "", scopes: [] as string[], branchId: "", expiresAt: "" });
+  const [apiKeyCreating, setApiKeyCreating] = useState(false);
+  const [apiKeyCreated, setApiKeyCreated] = useState<ApiKey | null>(null);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
+
   // ── Loaders ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -137,14 +224,26 @@ export default function SettingsPage() {
   }, [clinicBranchId]);
 
   useEffect(() => {
-    if (activeSection === "branches" || activeSection === "clinics") loadBranches();
+    if (activeSection === "branches" || activeSection === "clinics" || activeSection === "whatsapp") loadBranches();
     if (activeSection === "smtp") loadSmtp();
     if (activeSection === "history") loadHistory();
+    if (activeSection === "sms") loadSms();
+    if (activeSection === "payment") loadPayment();
+    if (activeSection === "features") loadFlags();
+    if (activeSection === "apikeys") loadApiKeys();
   }, [activeSection]);
 
   useEffect(() => {
     if (activeSection === "clinics" && clinicBranchId) loadClinics(clinicBranchId);
   }, [activeSection, clinicBranchId]);
+
+  useEffect(() => {
+    if (activeSection === "whatsapp" && branches.length > 0 && !waBranchId) {
+      const id = branches[0].id;
+      setWaBranchId(id);
+      loadWa(id);
+    }
+  }, [activeSection, branches]);
 
   function loadSmtp() {
     setSmtpLoading(true);
@@ -180,6 +279,54 @@ export default function SettingsPage() {
       .then((d) => { if (d) setBranchSetting({ ...DEFAULT_BRANCH_SETTING, ...d }); })
       .catch(() => {})
       .finally(() => setBranchSettingLoading(false));
+  }
+
+  function loadWa(branchId: string) {
+    if (!branchId) return;
+    setWaLoading(true);
+    fetch(`/api/settings/whatsapp/${branchId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d) { setWa({ ...DEFAULT_WA, ...d }); setWaTemplates(d.templates || []); }
+      })
+      .catch(() => {})
+      .finally(() => setWaLoading(false));
+  }
+
+  function loadSms() {
+    setSmsLoading(true);
+    fetch("/api/settings/sms")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setSms({ ...DEFAULT_SMS, ...d, apiKey: "", apiSecret: "" }); })
+      .catch(() => {})
+      .finally(() => setSmsLoading(false));
+  }
+
+  function loadPayment() {
+    setPaymentLoading(true);
+    fetch("/api/settings/payment")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setPayment(d); })
+      .catch(() => {})
+      .finally(() => setPaymentLoading(false));
+  }
+
+  function loadFlags() {
+    setFlagsLoading(true);
+    fetch("/api/settings/features")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setFlags)
+      .catch(() => setFlags([]))
+      .finally(() => setFlagsLoading(false));
+  }
+
+  function loadApiKeys() {
+    setApiKeysLoading(true);
+    fetch("/api/settings/api-keys")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setApiKeys)
+      .catch(() => setApiKeys([]))
+      .finally(() => setApiKeysLoading(false));
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -296,21 +443,118 @@ export default function SettingsPage() {
     finally { setSmtpTesting(false); }
   }
 
+  async function handleWaSave() {
+    if (!waBranchId) return;
+    setWaSaving(true); setWaStatus("idle");
+    try {
+      const res = await fetch(`/api/settings/whatsapp/${waBranchId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(wa),
+      });
+      setWaStatus(res.ok ? "saved" : "error");
+      if (res.ok) setTimeout(() => setWaStatus("idle"), 3000);
+    } catch { setWaStatus("error"); }
+    finally { setWaSaving(false); }
+  }
+
+  async function handleWaTest() {
+    if (!waBranchId || !waTestNumber.trim()) return;
+    setWaTesting(true); setWaTestMsg("");
+    try {
+      const res = await fetch(`/api/settings/whatsapp/${waBranchId}/test`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toNumber: waTestNumber, message: "MediFlow test message" }),
+      });
+      setWaTestMsg(res.ok ? s.waTestSuccess : s.waTestFailed);
+    } catch { setWaTestMsg(s.waTestFailed); }
+    finally { setWaTesting(false); }
+  }
+
+  async function handleSmsSave() {
+    setSmsSaving(true); setSmsStatus("idle");
+    const body: Record<string, unknown> = { ...sms };
+    if (!body.apiKey) delete body.apiKey;
+    if (!body.apiSecret) delete body.apiSecret;
+    try {
+      const res = await fetch("/api/settings/sms", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      setSmsStatus(res.ok ? "saved" : "error");
+      if (res.ok) setTimeout(() => setSmsStatus("idle"), 3000);
+    } catch { setSmsStatus("error"); }
+    finally { setSmsSaving(false); }
+  }
+
+  async function handlePaymentSave() {
+    setPaymentSaving(true); setPaymentStatus("idle");
+    const body: Record<string, unknown> = { provider: payment.provider, publicKey: payment.publicKey, currency: payment.currency, testMode: payment.testMode, isActive: payment.isActive };
+    if (paymentSecretKey) body.secretKey = paymentSecretKey;
+    if (paymentWebhookSecret) body.webhookSecret = paymentWebhookSecret;
+    try {
+      const res = await fetch("/api/settings/payment", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      setPaymentStatus(res.ok ? "saved" : "error");
+      if (res.ok) { setTimeout(() => setPaymentStatus("idle"), 3000); setPaymentSecretKey(""); setPaymentWebhookSecret(""); }
+    } catch { setPaymentStatus("error"); }
+    finally { setPaymentSaving(false); }
+  }
+
+  async function toggleFlag(flag: FeatureFlag) {
+    setFlagToggling(flag.id);
+    try {
+      const res = await fetch(`/api/settings/features/${flag.key}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isEnabled: !flag.isEnabled }),
+      });
+      if (res.ok) setFlags((fs) => fs.map((f) => f.id === flag.id ? { ...f, isEnabled: !f.isEnabled } : f));
+    } catch { /* silent */ }
+    finally { setFlagToggling(null); }
+  }
+
+  async function createApiKey() {
+    if (!apiKeyForm.name.trim()) return;
+    setApiKeyCreating(true);
+    try {
+      const body: Record<string, unknown> = { name: apiKeyForm.name, scopes: apiKeyForm.scopes };
+      if (apiKeyForm.branchId) body.branchId = apiKeyForm.branchId;
+      if (apiKeyForm.expiresAt) body.expiresAt = apiKeyForm.expiresAt;
+      const res = await fetch("/api/settings/api-keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) {
+        const data: ApiKey = await res.json();
+        setApiKeyCreated(data);
+        setApiKeyModal(false);
+        setApiKeyForm({ name: "", scopes: [], branchId: "", expiresAt: "" });
+        loadApiKeys();
+      }
+    } catch { /* silent */ }
+    finally { setApiKeyCreating(false); }
+  }
+
+  async function revokeApiKey(id: string) {
+    await fetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
+    setApiKeys((ks) => ks.filter((k) => k.id !== id));
+  }
+
+  function copyKey(key: string) {
+    navigator.clipboard.writeText(key).then(() => { setApiKeyCopied(true); setTimeout(() => setApiKeyCopied(false), 2000); });
+  }
+
   // ── Nav sections ─────────────────────────────────────────────────────────
 
   const sections = [
-    { key: "clinic",        label: s.clinicProfile,   icon: "local_hospital" },
-    { key: "security",      label: s.securityAuth,    icon: "security" },
-    { key: "notifications", label: s.notifications,   icon: "notifications" },
-    { key: "billing",       label: s.billingConfig,   icon: "payments" },
-    { key: "branches",      label: s.branches,        icon: "account_tree" },
-    { key: "clinics",       label: s.clinics,         icon: "medical_services" },
-    { key: "smtp",          label: s.smtpConfig,      icon: "email" },
-    { key: "integrations",  label: s.integrations,    icon: "cable" },
-    { key: "history",       label: s.settingsHistory, icon: "history" },
+    { key: "clinic",        label: s.clinicProfile,       icon: "local_hospital" },
+    { key: "security",      label: s.securityAuth,        icon: "security" },
+    { key: "notifications", label: s.notifications,       icon: "notifications" },
+    { key: "billing",       label: s.billingConfig,       icon: "payments" },
+    { key: "branches",      label: s.branches,            icon: "account_tree" },
+    { key: "clinics",       label: s.clinics,             icon: "medical_services" },
+    { key: "smtp",          label: s.smtpConfig,          icon: "email" },
+    { key: "whatsapp",      label: s.whatsapp,            icon: "chat" },
+    { key: "sms",           label: s.smsGatewayConfig,    icon: "sms" },
+    { key: "payment",       label: s.paymentConfig,       icon: "credit_card" },
+    { key: "features",      label: s.featureFlags,        icon: "toggle_on" },
+    { key: "apikeys",       label: s.apiKeys,             icon: "key" },
+    { key: "integrations",  label: s.integrations,        icon: "cable" },
+    { key: "history",       label: s.settingsHistory,     icon: "history" },
   ] as const;
 
-  const showGlobalSave = !["branches", "clinics", "smtp", "integrations", "history"].includes(activeSection);
+  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "integrations", "history"].includes(activeSection);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -342,6 +586,11 @@ export default function SettingsPage() {
         {activeSection === "clinics" && (
           <button onClick={openAddClinic} disabled={!clinicBranchId} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-40">
             <span className="material-symbols-outlined text-[18px]">add</span>{s.addClinic}
+          </button>
+        )}
+        {activeSection === "apikeys" && (
+          <button onClick={() => setApiKeyModal(true)} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
+            <span className="material-symbols-outlined text-[18px]">add</span>{s.addApiKey}
           </button>
         )}
       </div>
@@ -744,6 +993,280 @@ export default function SettingsPage() {
                 </SettingsCard>
               )}
 
+              {/* ── WhatsApp ── */}
+              {activeSection === "whatsapp" && (
+                <div className="space-y-5">
+                  {/* Branch selector */}
+                  {branches.length > 0 && (
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-semibold text-[#43474e]">{s.waSelectBranch}:</label>
+                      <select className="select-field w-56" value={waBranchId} onChange={e => { setWaBranchId(e.target.value); loadWa(e.target.value); }}>
+                        <option value="">—</option>
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {!waBranchId ? (
+                    <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex flex-col items-center gap-3">
+                      <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">chat</span>
+                      <p className="text-sm text-[#74777f]">{s.waSelectBranch}</p>
+                    </div>
+                  ) : waLoading ? (
+                    <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                  ) : (
+                    <>
+                      <SettingsCard title={s.whatsappTitle} desc={s.whatsappDesc}>
+                        <div className="space-y-5">
+                          <div className="flex items-center gap-3">
+                            <Toggle label={s.waActive} checked={wa.isActive} onChange={v => setWa(f => ({ ...f, isActive: v }))} />
+                            {wa.isVerified
+                              ? <span className="badge bg-[#ccfbf1] text-[#0d9488]">{s.waVerified}</span>
+                              : <span className="badge bg-[#fff7ed] text-[#d97706]">{s.waNotVerified}</span>}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <Field label={s.waPhoneNumberId}><input className="input-field font-mono text-xs" value={wa.phoneNumberId} onChange={e => setWa(f => ({ ...f, phoneNumberId: e.target.value }))} /></Field>
+                            <Field label={s.waWabaId}><input className="input-field font-mono text-xs" value={wa.wabaId} onChange={e => setWa(f => ({ ...f, wabaId: e.target.value }))} /></Field>
+                            <Field label={s.waPhoneNumber}><input className="input-field" value={wa.phoneNumber} placeholder="+962..." onChange={e => setWa(f => ({ ...f, phoneNumber: e.target.value }))} /></Field>
+                            <Field label={s.waDisplayName}><input className="input-field" value={wa.displayName} onChange={e => setWa(f => ({ ...f, displayName: e.target.value }))} /></Field>
+                            <Field label={s.waAccessToken} full><input className="input-field font-mono text-xs" value={wa.accessToken} type="password" placeholder="EAAxxxxx..." onChange={e => setWa(f => ({ ...f, accessToken: e.target.value }))} /></Field>
+                            <Field label={s.waAppSecret}><input className="input-field font-mono text-xs" value={wa.appSecret} type="password" onChange={e => setWa(f => ({ ...f, appSecret: e.target.value }))} /></Field>
+                            <Field label={s.waWebhookToken}><input className="input-field font-mono text-xs" value={wa.webhookVerifyToken} onChange={e => setWa(f => ({ ...f, webhookVerifyToken: e.target.value }))} /></Field>
+                          </div>
+                          <div className="space-y-3 pt-2 border-t border-[#e3e2e6]">
+                            <Toggle label={s.waAutoReply} checked={wa.autoReplyEnabled} onChange={v => setWa(f => ({ ...f, autoReplyEnabled: v }))} />
+                            <Toggle label={s.waBusinessHours} checked={wa.businessHoursOnly} onChange={v => setWa(f => ({ ...f, businessHoursOnly: v }))} />
+                            <Toggle label={s.waAiReply} checked={wa.aiReplyEnabled} onChange={v => setWa(f => ({ ...f, aiReplyEnabled: v }))} />
+                          </div>
+                          <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                            <div>
+                              {waStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.waSaved}</span>}
+                              {waStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.waSaveFailed}</span>}
+                            </div>
+                            <button onClick={handleWaSave} disabled={waSaving} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
+                              {waSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}{t.common.save}
+                            </button>
+                          </div>
+                          {/* Test send */}
+                          <div className="bg-[#f8f7fb] rounded-xl p-4">
+                            <p className="text-sm font-semibold text-[#43474e] mb-3">{s.waTestSend}</p>
+                            <div className="flex gap-3">
+                              <input className="input-field flex-1" value={waTestNumber} placeholder={s.waTestNumber} onChange={e => setWaTestNumber(e.target.value)} />
+                              <button onClick={handleWaTest} disabled={waTesting || !waTestNumber.trim()} className="btn-secondary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2 whitespace-nowrap">
+                                {waTesting ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">send</span>}{s.waTestSend}
+                              </button>
+                            </div>
+                            {waTestMsg && <p className={`text-xs mt-2 font-semibold ${waTestMsg === s.waTestSuccess ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{waTestMsg}</p>}
+                          </div>
+                        </div>
+                      </SettingsCard>
+                      {/* Templates */}
+                      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                        <div className="p-5 border-b border-[#e3e2e6]">
+                          <h2 className="text-base font-semibold text-[#1a1c1e]">{s.waTemplates}</h2>
+                        </div>
+                        {waTemplates.length === 0 ? (
+                          <div className="p-8 flex flex-col items-center gap-2">
+                            <span className="material-symbols-outlined text-[36px] text-[#c4c6cf]">chat_bubble</span>
+                            <p className="text-sm text-[#74777f]">{s.waNoTemplates}</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead><tr className="bg-[#f8f7fb]">
+                                <th className="table-header">{s.waTemplateName}</th>
+                                <th className="table-header">{s.waCategory}</th>
+                                <th className="table-header">{s.waLanguage}</th>
+                                <th className="table-header">{t.common.status}</th>
+                              </tr></thead>
+                              <tbody>
+                                {waTemplates.map(tpl => (
+                                  <tr key={tpl.id} className="table-row">
+                                    <td className="table-cell font-medium">{tpl.name}</td>
+                                    <td className="table-cell text-[#74777f] text-xs">{tpl.category}</td>
+                                    <td className="table-cell text-[#74777f] text-xs">{tpl.language}</td>
+                                    <td className="table-cell"><span className={`badge ${tpl.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{tpl.isActive ? t.common.active : t.common.inactive}</span></td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── SMS Gateway ── */}
+              {activeSection === "sms" && (
+                <SettingsCard title={s.smsGatewayConfigTitle} desc={s.smsGatewayConfigDesc}>
+                  {smsLoading ? (
+                    <div className="flex items-center justify-center h-20"><div className="w-6 h-6 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                  ) : (
+                    <div className="space-y-5">
+                      <Toggle label={t.common.active} checked={sms.isActive} onChange={v => setSms(f => ({ ...f, isActive: v }))} />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <Field label={s.smsProvider}>
+                          <select className="select-field" value={sms.provider} onChange={e => setSms(f => ({ ...f, provider: e.target.value }))}>
+                            {SMS_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </Field>
+                        <Field label={s.smsDailyLimit}>
+                          <input type="number" className="input-field" value={sms.dailyLimit} min={1} onChange={e => setSms(f => ({ ...f, dailyLimit: Number(e.target.value) }))} />
+                        </Field>
+                        <Field label={s.smsCfgApiKey}>
+                          <input type="password" className="input-field" value={sms.apiKey} onChange={e => setSms(f => ({ ...f, apiKey: e.target.value }))} />
+                        </Field>
+                        <Field label={s.smsCfgApiSecret}>
+                          <input type="password" className="input-field" value={sms.apiSecret} onChange={e => setSms(f => ({ ...f, apiSecret: e.target.value }))} />
+                        </Field>
+                        <Field label={s.smsFromNumber}>
+                          <input className="input-field" value={sms.fromNumber} placeholder="+12015551234" onChange={e => setSms(f => ({ ...f, fromNumber: e.target.value }))} />
+                        </Field>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                        <div>
+                          {smsStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.smsSaved}</span>}
+                          {smsStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.smsSaveFailed}</span>}
+                        </div>
+                        <button onClick={handleSmsSave} disabled={smsSaving} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
+                          {smsSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}{t.common.save}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </SettingsCard>
+              )}
+
+              {/* ── Payment Gateway ── */}
+              {activeSection === "payment" && (
+                <SettingsCard title={s.paymentConfigTitle} desc={s.paymentConfigDesc}>
+                  {paymentLoading ? (
+                    <div className="flex items-center justify-center h-20"><div className="w-6 h-6 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                  ) : (
+                    <div className="space-y-5">
+                      <div className="flex gap-5">
+                        <Toggle label={s.paymentTestMode} checked={payment.testMode} onChange={v => setPayment(f => ({ ...f, testMode: v }))} />
+                        <Toggle label={t.common.active} checked={payment.isActive} onChange={v => setPayment(f => ({ ...f, isActive: v }))} />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <Field label={s.paymentProvider}>
+                          <select className="select-field" value={payment.provider} onChange={e => setPayment(f => ({ ...f, provider: e.target.value }))}>
+                            {PAYMENT_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </Field>
+                        <Field label={s.currency}>
+                          <select className="select-field" value={payment.currency} onChange={e => setPayment(f => ({ ...f, currency: e.target.value }))}>
+                            {["USD","JOD","SAR","AED","KWD","EGP"].map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </Field>
+                        <Field label={s.paymentPublicKey} full>
+                          <input className="input-field font-mono text-xs" value={payment.publicKey} onChange={e => setPayment(f => ({ ...f, publicKey: e.target.value }))} />
+                        </Field>
+                        <Field label={s.paymentSecretKey}>
+                          <input type="password" className="input-field" value={paymentSecretKey} placeholder={payment.secretKeyMasked || "••••"} onChange={e => setPaymentSecretKey(e.target.value)} />
+                        </Field>
+                        <Field label={s.paymentWebhookSecret}>
+                          <input type="password" className="input-field" value={paymentWebhookSecret} placeholder={payment.webhookSecretMasked || "••••"} onChange={e => setPaymentWebhookSecret(e.target.value)} />
+                        </Field>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                        <div>
+                          {paymentStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.paymentSaved}</span>}
+                          {paymentStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.paymentSaveFailed}</span>}
+                        </div>
+                        <button onClick={handlePaymentSave} disabled={paymentSaving} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
+                          {paymentSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}{t.common.save}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </SettingsCard>
+              )}
+
+              {/* ── Feature Flags ── */}
+              {activeSection === "features" && (
+                <div>
+                  <div className="mb-4">
+                    <h2 className="text-base font-semibold text-[#1a1c1e]">{s.featureFlagsTitle}</h2>
+                    <p className="text-xs text-[#74777f] mt-0.5">{s.featureFlagsDesc}</p>
+                  </div>
+                  {flagsLoading ? (
+                    <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {flags.map(flag => (
+                        <div key={flag.id} className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex items-start justify-between gap-3 shadow-[0_1px_6px_rgba(0,0,0,0.04)]">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[#1a1c1e] font-mono">{flag.key}</p>
+                            <p className="text-xs text-[#74777f] mt-0.5 leading-relaxed">{flag.description}</p>
+                            <span className={`mt-2 inline-block badge text-[10px] ${flag.isEnabled ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                              {flag.isEnabled ? s.featureEnabled : s.featureDisabled}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => toggleFlag(flag)}
+                            disabled={flagToggling === flag.id}
+                            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-1 disabled:opacity-50 ${flag.isEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flag.isEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── API Keys ── */}
+              {activeSection === "apikeys" && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                    <div className="p-5 border-b border-[#e3e2e6]">
+                      <h2 className="text-base font-semibold text-[#1a1c1e]">{s.apiKeysTitle}</h2>
+                      <p className="text-xs text-[#74777f] mt-0.5">{s.apiKeysDesc}</p>
+                    </div>
+                    {apiKeysLoading ? (
+                      <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    ) : apiKeys.length === 0 ? (
+                      <div className="p-12 flex flex-col items-center gap-3">
+                        <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">key</span>
+                        <p className="text-sm text-[#74777f]">{s.noApiKeys}</p>
+                        <button onClick={() => setApiKeyModal(true)} className="mt-2 btn-primary text-sm px-4 py-2">
+                          <span className="material-symbols-outlined text-[16px]">add</span>{s.addApiKey}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead><tr className="bg-[#f8f7fb]">
+                            <th className="table-header">{s.apiKeyName}</th>
+                            <th className="table-header">{s.apiKeyPrefix}</th>
+                            <th className="table-header">{s.apiKeyScopes}</th>
+                            <th className="table-header">{s.apiKeyLastUsed}</th>
+                            <th className="table-header">{s.apiKeyExpiry}</th>
+                            <th className="table-header">{t.common.actions}</th>
+                          </tr></thead>
+                          <tbody>
+                            {apiKeys.map(k => (
+                              <tr key={k.id} className="table-row">
+                                <td className="table-cell font-medium">{k.name}</td>
+                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{k.keyPrefix}…</span></td>
+                                <td className="table-cell"><div className="flex flex-wrap gap-1">{(k.scopes || []).map(sc => <span key={sc} className="badge bg-[#d3e4ff] text-[#1960a3] text-[10px]">{sc}</span>)}</div></td>
+                                <td className="table-cell text-[#74777f] text-xs whitespace-nowrap">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : t.common.na}</td>
+                                <td className="table-cell text-[#74777f] text-xs whitespace-nowrap">{k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : t.common.na}</td>
+                                <td className="table-cell">
+                                  <button onClick={() => revokeApiKey(k.id)} className="text-xs text-[#ba1a1a] hover:underline font-semibold">{s.apiKeyRevoke}</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* ── Integrations ── */}
               {activeSection === "integrations" && (
                 <div className="space-y-4">
@@ -882,6 +1405,83 @@ export default function SettingsPage() {
               <button onClick={saveBranch} disabled={branchSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
                 {branchSaving ? <Spinner /> : null}{t.common.save}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create API Key Modal ── */}
+      {apiKeyModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="apikey-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setApiKeyModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="apikey-modal-title" className="text-lg font-bold text-[#1a1c1e]">{s.addApiKey}</h2>
+              <button onClick={() => setApiKeyModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apiKeyName} *</label>
+                <input className="input-field" value={apiKeyForm.name} onChange={e => setApiKeyForm(f => ({ ...f, name: e.target.value }))} placeholder="My Integration Key" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apiKeyBranch}</label>
+                <select className="select-field" value={apiKeyForm.branchId} onChange={e => setApiKeyForm(f => ({ ...f, branchId: e.target.value }))}>
+                  <option value="">{t.common.all}</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apiKeyExpiry}</label>
+                <input type="date" className="input-field" value={apiKeyForm.expiresAt} onChange={e => setApiKeyForm(f => ({ ...f, expiresAt: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.apiKeyScopes}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {API_SCOPES.map(sc => {
+                    const on = apiKeyForm.scopes.includes(sc);
+                    return (
+                      <button key={sc} type="button" onClick={() => setApiKeyForm(f => ({ ...f, scopes: on ? f.scopes.filter(s => s !== sc) : [...f.scopes, sc] }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium text-start transition-colors ${on ? "border-[#1960a3] bg-[#d3e4ff] text-[#1960a3]" : "border-[#e3e2e6] text-[#43474e] hover:bg-[#f4f3f7]"}`}>
+                        <span className="material-symbols-outlined text-[14px]">{on ? "check_box" : "check_box_outline_blank"}</span>
+                        {sc}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setApiKeyModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+              <button onClick={createApiKey} disabled={apiKeyCreating || !apiKeyForm.name.trim()} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
+                {apiKeyCreating ? <Spinner /> : null}{t.common.create}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Show-once API Key Modal ── */}
+      {apiKeyCreated && (
+        <div role="dialog" aria-modal="true" aria-labelledby="apikey-created-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="apikey-created-title" className="text-lg font-bold text-[#1a1c1e]">{s.apiKeyCreated}</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-[#fff7ed] border border-[#d97706] rounded-xl p-4 text-sm text-[#d97706] font-semibold flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px]">warning</span>
+                {s.apiKeyOnce}
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-[#f4f3f7] rounded-lg px-4 py-3 text-xs font-mono text-[#1a1c1e] break-all">{apiKeyCreated.key}</code>
+                <button onClick={() => copyKey(apiKeyCreated.key!)} aria-label={s.apiKeyCopied} className="p-2.5 rounded-lg border border-[#e3e2e6] hover:bg-[#f4f3f7] transition-colors flex-shrink-0">
+                  <span className="material-symbols-outlined text-[20px] text-[#1960a3]">{apiKeyCopied ? "check" : "content_copy"}</span>
+                </button>
+              </div>
+              {apiKeyCopied && <p className="text-xs text-[#0d9488] font-semibold">{s.apiKeyCopied}</p>}
+            </div>
+            <div className="flex justify-end px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setApiKeyCreated(null)} className="btn-primary px-6 py-2 text-sm">{t.common.close}</button>
             </div>
           </div>
         </div>
