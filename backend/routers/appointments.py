@@ -66,10 +66,12 @@ def appt_to_dict(a: models.Appointment) -> dict:
 @router.get("")
 def get_appointments(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(50, ge=1, le=100),
+    pageSize: int = Query(50, ge=1, le=500),
     status: Optional[str] = None,
     doctorId: Optional[str] = None,
     date: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None,
     patientId: Optional[str] = None,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
@@ -93,6 +95,11 @@ def get_appointments(
             d = _parse_dt(date, "date").replace(hour=0, minute=0, second=0, microsecond=0)
         next_day = d + timedelta(days=1)
         query = query.filter(and_(models.Appointment.scheduledAt >= d, models.Appointment.scheduledAt < next_day))
+    elif startDate or endDate:
+        if startDate:
+            query = query.filter(models.Appointment.scheduledAt >= _parse_dt(startDate, "startDate"))
+        if endDate:
+            query = query.filter(models.Appointment.scheduledAt < _parse_dt(endDate, "endDate"))
 
     total = query.count()
     appointments = (

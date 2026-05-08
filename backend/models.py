@@ -723,6 +723,7 @@ class LeaveRequest(Base):
     approvedById = Column(String(36))
     approvedAt = Column(DateTime)
     rejectedReason = Column(Text)
+    medicalCert = Column(Boolean, default=False)
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

@@ -36,7 +36,11 @@ echo  [!!] MySQL not found - make sure it is running before continuing
 
 REM ── Backend (FastAPI) ──────────────────────────────────────────────────────
 set BACKEND=%~dp0backend
-start "MediFlow - Backend" cmd /k "cd /d %BACKEND% && .venv\Scripts\activate && uvicorn main:app --reload --port 8000"
+if exist "%BACKEND%\.venv\Scripts\python.exe" (
+    start "MediFlow - Backend" cmd /k "cd /d %BACKEND% && .venv\Scripts\python -m uvicorn main:app --reload --port 8000"
+) else (
+    start "MediFlow - Backend" cmd /k "cd /d %BACKEND% && python -m uvicorn main:app --reload --port 8000"
+)
 echo  [OK] Backend starting on http://localhost:8000
 
 REM ── Frontend (Next.js) ────────────────────────────────────────────────────

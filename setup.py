@@ -165,6 +165,10 @@ def setup_database(host, port, user, password, db_name):
     (BACKEND / ".env").write_text(env, encoding="utf-8")
     ok(".env file written")
 
+    # Next.js middleware needs JWT_SECRET in the root .env.local
+    (ROOT / ".env.local").write_text(f"JWT_SECRET={jwt_secret}\n", encoding="utf-8")
+    ok(".env.local written (Next.js JWT)")
+
 
 # ── 7. Tables + seed ─────────────────────────────────────────────────────────
 

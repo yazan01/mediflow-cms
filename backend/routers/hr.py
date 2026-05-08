@@ -81,6 +81,7 @@ class LeaveCreate(BaseModel):
     endDate: str
     days: int
     reason: Optional[str] = None
+    medicalCert: Optional[bool] = False
 
     @field_validator("type")
     @classmethod
@@ -478,6 +479,12 @@ def terminate_employee(
         models.LeaveRequest.status == "PENDING",
     ).update({"status": "CANCELLED"}, synchronize_session=False)
 
+    # F-017: End all active shift assignments
+    db.query(models.ShiftAssignment).filter(
+        models.ShiftAssignment.employeeId == employee_id,
+        (models.ShiftAssignment.endDate == None) | (models.ShiftAssignment.endDate >= datetime.now()),
+    ).update({"endDate": end_date}, synchronize_session=False)
+
     db.commit()
     log_audit(
         db, user.id, "TERMINATE", "Employee", emp.id,
@@ -738,6 +745,7 @@ def create_leave(body: LeaveCreate, db: Session = Depends(get_db), user=Depends(
         days=body.days,
         reason=sanitize_string(body.reason),
         status="PENDING",
+        medicalCert=bool(body.medicalCert),
     )
     db.add(leave)
     db.commit()
@@ -1353,6 +1361,42 @@ def get_own_attendance(
 
 # ── Phase 3 — Compliance & Regulatory ─────────────────────────────────────────
 
+# ── Probation Alerts ──────────────────────────────────────────────────────────
+
+@router.get("/employees/probation-alerts")
+def get_probation_alerts(
+    days_ahead: int = Query(30),
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*HR_ROLES)),
+):
+    """Employees whose probation ends within the next N days."""
+    cutoff = datetime.now() + timedelta(days=days_ahead)
+    employees = (
+        db.query(models.Employee)
+        .filter(
+            models.Employee.deletedAt == None,
+            models.Employee.status == "ACTIVE",
+            models.Employee.probationEndDate != None,
+            models.Employee.probationEndDate >= datetime.now(),
+            models.Employee.probationEndDate <= cutoff,
+        )
+        .options(joinedload(models.Employee.user), joinedload(models.Employee.department))
+        .all()
+    )
+    today = datetime.now().date()
+    return [
+        {
+            "id": emp.id,
+            "empCode": emp.empCode,
+            "employeeName": emp.user.name if emp.user else "",
+            "department": emp.department.name if emp.department else "",
+            "probationEndDate": emp.probationEndDate.isoformat() if emp.probationEndDate else None,
+            "daysLeft": (emp.probationEndDate.date() - today).days if emp.probationEndDate else 0,
+        }
+        for emp in employees
+    ]
+
+
 # ── End-of-Service Gratuity Calculator ────────────────────────────────────────
 
 @router.get("/employees/{employee_id}/eos")
@@ -1380,34 +1424,34 @@ def calculate_eos(
     years = (today - hire_date).days / 365.25
     basic = float(emp.basicSalary)
 
-    if years < 1:
-        gratuity = 0.0
-    elif reason.lower() == "resigned":
-        # Jordan Labor Law — resignation brackets
-        if years < 3:
-            gratuity = basic * years * (1 / 3)
-        elif years < 5:
-            gratuity = basic * years * (2 / 3)
-        else:
-            gratuity = basic * years
-    else:
-        # Termination: 1 month/year for first 5, 1.5 months/year for 6-10, 2 months/year after 10
-        if years <= 5:
-            gratuity = basic * years
-        elif years <= 10:
-            gratuity = basic * 5 + basic * 1.5 * (years - 5)
-        else:
-            gratuity = basic * 5 + basic * 1.5 * 5 + basic * 2 * (years - 10)
+    def _resignation_eos(yrs: float, b: float) -> float:
+        if yrs < 1: return 0.0
+        elif yrs < 3: return b * yrs * (1 / 3)
+        elif yrs < 5: return b * yrs * (2 / 3)
+        else: return b * yrs
+
+    def _termination_eos(yrs: float, b: float) -> float:
+        if yrs < 1: return 0.0
+        elif yrs <= 5: return b * yrs
+        elif yrs <= 10: return b * 5 + b * 1.5 * (yrs - 5)
+        else: return b * 5 + b * 1.5 * 5 + b * 2 * (yrs - 10)
+
+    resignation_eos = _resignation_eos(years, basic)
+    termination_eos = _termination_eos(years, basic)
+    gratuity = resignation_eos if reason.lower() == "resigned" else termination_eos
 
     return {
         "employeeId": employee_id,
         "employeeName": emp.user.name if emp.user else "",
         "hireDate": hire_date.isoformat(),
-        "yearsOfService": round(years, 2),
+        "yearsOfService": int(years),
+        "fractionYear": round(years % 1, 2),
+        "monthlySalary": basic,
         "basicSalary": basic,
-        "reason": reason,
+        "resignationEos": round(resignation_eos, 2),
+        "terminationEos": round(termination_eos, 2),
         "gratuity": round(gratuity, 2),
-        "monthsEntitlement": round(gratuity / basic, 2) if basic > 0 else 0,
+        "reason": reason,
     }
 
 
