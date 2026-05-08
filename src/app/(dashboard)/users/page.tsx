@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { getInitials, formatDateTime } from "@/lib/utils";
 import type { User, UserRole } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -42,6 +43,7 @@ type RolePermissionMatrix = Record<string, Record<string, boolean>>;
 
 export default function UsersPage() {
   const { t } = useLanguage();
+  const router = useRouter();
 
   const ROLE_LABELS: Record<UserRole, string> = {
     SUPER_ADMIN:    t.users.superAdmin,
@@ -240,12 +242,15 @@ export default function UsersPage() {
                     users.map((user) => (
                       <tr key={user.id} className="hover:bg-[#f4f3f7] transition-colors group">
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                          <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => router.push(`/users/${user.id}`)}
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity text-start"
+                          >
                             <div className="w-9 h-9 rounded-full bg-[#1a365d] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                               {getInitials(user.name)}
                             </div>
                             <div>
-                              <p className="text-sm font-semibold text-[#1a1c1e]">{user.name}</p>
+                              <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors">{user.name}</p>
                               {user.hasEmployee && (
                                 <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#1960a3] bg-[#d3e4ff] px-1.5 py-0.5 rounded-full mt-0.5">
                                   <span className="material-symbols-outlined text-[10px]">badge</span>
@@ -253,7 +258,7 @@ export default function UsersPage() {
                                 </span>
                               )}
                             </div>
-                          </div>
+                          </button>
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <p className="text-sm text-[#1a1c1e]">{user.email}</p>
@@ -299,7 +304,7 @@ export default function UsersPage() {
                             </button>
                             {user.hasEmployee && user.employeeId && (
                               <a
-                                href={`/hr?employee=${user.employeeId}`}
+                                href={`/hr/${user.employeeId}`}
                                 title="View Employee Profile"
                                 className="p-1.5 hover:bg-[#e9fdf4] rounded-lg transition-colors text-[#74777f] hover:text-[#0d9488]"
                               >

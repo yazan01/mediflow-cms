@@ -151,6 +151,17 @@ def get_users(
     }
 
 
+@router.get("/{user_id}")
+def get_user(user_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*ADMIN_ROLES))):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    emp = db.query(models.Employee).filter(
+        models.Employee.userId == user_id, models.Employee.deletedAt == None
+    ).first()
+    return user_to_dict(user, emp.id if emp else None)
+
+
 @router.post("", status_code=201)
 def create_user(body: UserCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*ADMIN_ROLES))):
     if not all([body.name, body.email, body.password]) or not body.roles:

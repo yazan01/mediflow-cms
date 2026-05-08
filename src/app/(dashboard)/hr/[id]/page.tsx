@@ -349,7 +349,7 @@ export default function EmployeeProfilePage() {
             <InfoItem label="System Account">
               {(user.id as string) ? (
                 <Link
-                  href={`/users?search=${encodeURIComponent(user.email as string)}`}
+                  href={`/users/${user.id as string}`}
                   className="inline-flex items-center gap-1.5 mt-0.5 px-3 py-1.5 rounded-lg bg-[#d3e4ff] hover:bg-[#b8d4ff] text-[#1960a3] text-xs font-semibold transition-colors"
                 >
                   <span className="material-symbols-outlined text-[14px]">manage_accounts</span>
