@@ -71,7 +71,7 @@ export default function Sidebar({ user, roles = [], isOpen = false, onClose }: S
       className={cn(
         "flex flex-col h-screen w-64 border-e border-[#e3e2e6] bg-[#faf9fd] py-4 px-4 flex-shrink-0",
         "fixed top-0 start-0 z-50 transition-transform duration-300 ease-in-out",
-        "md:sticky md:translate-x-0",
+        "md:sticky md:translate-x-0 print:hidden",
         isOpen ? "translate-x-0" : closedTranslate,
       )}
       aria-label={t.nav.navigation}

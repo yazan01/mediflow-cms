@@ -136,7 +136,7 @@ export default function TopBar({ user, onMenuClick }: TopBarProps) {
 
   return (
     <>
-      <header className="flex justify-between items-center w-full h-16 px-6 sticky top-0 z-40 bg-[#faf9fd] border-b border-[#e3e2e6]">
+      <header className="flex justify-between items-center w-full h-16 px-6 sticky top-0 z-40 bg-[#faf9fd] border-b border-[#e3e2e6] print:hidden">
         <div className="flex items-center gap-4 flex-1">
           {onMenuClick && (
             <button
