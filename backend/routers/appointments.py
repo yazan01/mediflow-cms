@@ -220,14 +220,24 @@ def get_appointment(appointment_id: str, db: Session = Depends(get_db), _user=De
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
     data = appt_to_dict(appt)
-    # include consultation id if exists
+    # Include consultation info
     if appt.consultation:
         data["consultationId"] = appt.consultation.id
+        data["consultationLocked"] = appt.consultation.isLocked
         data["chiefComplaint"] = appt.consultation.chiefComplaint
         data["assessment"] = appt.consultation.assessment
     else:
         data["consultationId"] = None
-    # include patient details
+        data["consultationLocked"] = False
+    # Include invoice info
+    if appt.invoice:
+        data["invoiceId"] = appt.invoice.id
+        data["invoiceNo"] = appt.invoice.invoiceNo
+        data["invoiceStatus"] = appt.invoice.status
+        data["invoiceTotal"] = float(appt.invoice.totalAmount)
+    else:
+        data["invoiceId"] = None
+    # Include full patient details
     if appt.patient:
         data["patientPhone"] = appt.patient.phone
         data["patientDob"] = appt.patient.dateOfBirth.isoformat() if appt.patient.dateOfBirth else None

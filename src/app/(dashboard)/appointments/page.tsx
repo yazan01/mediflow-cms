@@ -254,6 +254,7 @@ export default function AppointmentsPage() {
 
   // Quick book
   const [quickBook, setQuickBook]             = useState<{ date: Date; hour: number; minute: number } | null>(null);
+  const [qbTime, setQbTime]                   = useState("08:00");
   const [qbPatientSearch, setQbPatientSearch] = useState("");
   const [qbPatients, setQbPatients]           = useState<Patient[]>([]);
   const [qbSelectedPatient, setQbSelectedPatient] = useState<Patient | null>(null);
@@ -264,6 +265,12 @@ export default function AppointmentsPage() {
   const [qbSaving, setQbSaving]               = useState(false);
   const [qbError, setQbError]                 = useState("");
   const [qbDropdownOpen, setQbDropdownOpen]   = useState(false);
+
+  // Inline patient creation
+  const [createPatientModal, setCreatePatientModal] = useState(false);
+  const [cpForm, setCpForm] = useState({ firstName: "", lastName: "", phone: "", dob: "", gender: "MALE" });
+  const [cpSaving, setCpSaving] = useState(false);
+  const [cpError, setCpError] = useState("");
 
   const debouncedSearch = useDebounce(qbPatientSearch, 300);
 
@@ -420,6 +427,7 @@ export default function AppointmentsPage() {
 
   function openQuickBook(date: Date, hour: number, minute = 0) {
     setQuickBook({ date, hour, minute });
+    setQbTime(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
     setQbDoctor(filterDoctor !== "ALL" ? filterDoctor : "");
     setQbType("CONSULTATION");
     setQbRoom("");
@@ -427,6 +435,38 @@ export default function AppointmentsPage() {
     setQbSelectedPatient(null);
     setQbPatientSearch("");
     setQbError("");
+  }
+
+  async function handleCreatePatient() {
+    if (!cpForm.firstName || !cpForm.lastName || !cpForm.phone || !cpForm.dob) {
+      setCpError("First name, last name, phone, and date of birth are required");
+      return;
+    }
+    setCpSaving(true);
+    setCpError("");
+    try {
+      const res = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: cpForm.firstName,
+          lastName: cpForm.lastName,
+          phone: cpForm.phone,
+          dateOfBirth: cpForm.dob,
+          gender: cpForm.gender,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setCpError(err.detail || "Failed to create patient");
+        return;
+      }
+      const patient = await res.json();
+      setQbSelectedPatient({ id: patient.id, firstName: patient.firstName, lastName: patient.lastName, mrn: patient.mrn });
+      setCreatePatientModal(false);
+      setCpForm({ firstName: "", lastName: "", phone: "", dob: "", gender: "MALE" });
+    } catch { setCpError("Network error"); }
+    finally { setCpSaving(false); }
   }
 
   async function handleQuickBook() {
@@ -437,8 +477,9 @@ export default function AppointmentsPage() {
     setQbSaving(true);
     setQbError("");
     try {
+      const [h, m] = qbTime.split(":").map(Number);
       const d = new Date(quickBook.date);
-      d.setHours(quickBook.hour, quickBook.minute, 0, 0);
+      d.setHours(isNaN(h) ? quickBook.hour : h, isNaN(m) ? quickBook.minute : m, 0, 0);
       const end = new Date(d.getTime() + workingCfg.slotDuration * 60000);
       const body = {
         patientId: qbSelectedPatient.id,
@@ -902,7 +943,6 @@ export default function AppointmentsPage() {
                 <h3 className="text-base font-bold text-[#1a1c1e]">{a.quickBook}</h3>
                 <p className="text-xs text-[#74777f]">
                   {quickBook.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                  {" · "}{String(quickBook.hour).padStart(2,"0")}:{String(quickBook.minute).padStart(2,"0")}
                 </p>
               </div>
               <button onClick={() => setQuickBook(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
@@ -913,6 +953,17 @@ export default function AppointmentsPage() {
             {qbError && <p className="text-xs text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2 mb-3">{qbError}</p>}
 
             <div className="space-y-3">
+              {/* Time field — editable */}
+              <div>
+                <label className="text-xs font-semibold text-[#43474e] block mb-1">{a.timeLabel} *</label>
+                <input
+                  type="time"
+                  value={qbTime}
+                  onChange={e => setQbTime(e.target.value)}
+                  className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                />
+              </div>
+
               {/* Patient search */}
               <div className="relative">
                 <label className="text-xs font-semibold text-[#43474e] block mb-1">{a.patientLabel} *</label>
@@ -928,17 +979,35 @@ export default function AppointmentsPage() {
                   />
                 </div>
                 {qbDropdownOpen && !qbSelectedPatient && qbPatientSearch.length >= 2 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#e3e2e6] rounded-xl shadow-lg z-50 max-h-40 overflow-y-auto">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#e3e2e6] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
                     {qbPatients.length === 0 ? (
-                      <p className="text-xs text-[#74777f] px-3 py-3">{a.noPatients}</p>
-                    ) : qbPatients.map(p => (
-                      <button key={p.id}
-                        onClick={() => { setQbSelectedPatient(p); setQbPatientSearch(""); setQbDropdownOpen(false); }}
-                        className="w-full text-start px-3 py-2 text-sm hover:bg-[#f4f3f7] transition-colors">
-                        <span className="font-semibold text-[#1a1c1e]">{p.firstName} {p.lastName}</span>
-                        <span className="text-xs text-[#74777f] ms-2">{p.mrn}</span>
-                      </button>
-                    ))}
+                      <div>
+                        <p className="text-xs text-[#74777f] px-3 py-2">{a.noPatients}</p>
+                        <button
+                          onClick={() => { setQbDropdownOpen(false); setCreatePatientModal(true); }}
+                          className="w-full text-start px-3 py-2 text-xs font-semibold text-[#1960a3] hover:bg-[#eff6ff] border-t border-[#e3e2e6] flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px]">person_add</span>
+                          {a.createPatient}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {qbPatients.map(p => (
+                          <button key={p.id}
+                            onClick={() => { setQbSelectedPatient(p); setQbPatientSearch(""); setQbDropdownOpen(false); }}
+                            className="w-full text-start px-3 py-2 text-sm hover:bg-[#f4f3f7] transition-colors">
+                            <span className="font-semibold text-[#1a1c1e]">{p.firstName} {p.lastName}</span>
+                            <span className="text-xs text-[#74777f] ms-2">{p.mrn}</span>
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => { setQbDropdownOpen(false); setCreatePatientModal(true); }}
+                          className="w-full text-start px-3 py-2 text-xs font-semibold text-[#1960a3] hover:bg-[#eff6ff] border-t border-[#e3e2e6] flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px]">person_add</span>
+                          {a.createPatient}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1122,6 +1191,63 @@ export default function AppointmentsPage() {
           onClose={() => setQuickConsult(null)}
           onSuccess={fetchAppointments}
         />
+      )}
+
+      {/* ── Create Patient Modal ──────────────────────────────────── */}
+      {createPatientModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setCreatePatientModal(false)}>
+          <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()} role="dialog" aria-labelledby="cp-title">
+            <div className="flex items-center justify-between mb-4">
+              <h3 id="cp-title" className="text-base font-bold text-[#1a1c1e]">{a.createPatient}</h3>
+              <button onClick={() => setCreatePatientModal(false)} aria-label={t.common.close} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg">
+                <span className="material-symbols-outlined text-[20px] text-[#74777f]">close</span>
+              </button>
+            </div>
+            {cpError && <p className="text-xs text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2 mb-3">{cpError}</p>}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.firstName} *</label>
+                  <input value={cpForm.firstName} onChange={e => setCpForm(f => ({ ...f, firstName: e.target.value }))}
+                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.lastName} *</label>
+                  <input value={cpForm.lastName} onChange={e => setCpForm(f => ({ ...f, lastName: e.target.value }))}
+                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.common.phone} *</label>
+                <input type="tel" value={cpForm.phone} onChange={e => setCpForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.dob} *</label>
+                  <input type="date" value={cpForm.dob} onChange={e => setCpForm(f => ({ ...f, dob: e.target.value }))}
+                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.gender}</label>
+                  <select value={cpForm.gender} onChange={e => setCpForm(f => ({ ...f, gender: e.target.value }))}
+                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
+                    <option value="MALE">{t.patients.male}</option>
+                    <option value="FEMALE">{t.patients.female}</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setCreatePatientModal(false)} className="flex-1 border border-[#c4c6cf] py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7]">{t.common.cancel}</button>
+                <button onClick={handleCreatePatient} disabled={cpSaving}
+                  className="flex-1 bg-[#002045] text-white py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {cpSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                  {cpSaving ? t.common.saving : t.common.create || "Create"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

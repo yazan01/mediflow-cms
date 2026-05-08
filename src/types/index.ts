@@ -142,9 +142,10 @@ export interface Appointment {
 
 export interface Consultation {
   id: string;
-  appointmentId: string;
-  patientId: string;
-  doctorId: string;
+  appointmentId?: string;
+  patientId?: string;
+  doctorId?: string;
+  doctorName?: string;
   chiefComplaint?: string;
   subjective?: string;
   objective?: string;
@@ -159,6 +160,7 @@ export interface Consultation {
   vitals?: Vitals;
   followUpDate?: string;
   isLocked: boolean;
+  lockedAt?: string;
   createdAt: string;
 }
 

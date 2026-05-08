@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
 from database import get_db
-from auth import get_current_user, require_roles, generate_id, generate_invoice_no, sanitize_string
+from auth import get_current_user, require_roles, generate_id, generate_invoice_no, sanitize_string  # noqa: F401
 
 BILLING_ROLES = ("ACCOUNTANT", "SUPER_ADMIN", "CLINIC_MANAGER", "RECEPTIONIST")
 import models
@@ -236,6 +236,18 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), _user=Dep
     db.commit()
     db.refresh(invoice)
     return invoice_to_dict(invoice)
+
+
+@router.get("/by-appointment/{appointment_id}")
+def get_invoice_by_appointment(
+    appointment_id: str,
+    db: Session = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    inv = db.query(models.Invoice).filter(models.Invoice.appointmentId == appointment_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="No invoice for this appointment")
+    return invoice_to_dict(inv)
 
 
 @router.get("/{invoice_id}")

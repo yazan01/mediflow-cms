@@ -90,9 +90,12 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(requir
     consultations_data = [
         {
             "id": c.id,
+            "appointmentId": c.appointmentId,
             "chiefComplaint": c.chiefComplaint,
+            "hpi": c.hpi,
             "subjective": c.subjective,
             "objective": c.objective,
+            "examination": c.examination,
             "assessment": c.assessment,
             "plan": c.plan,
             "followUpDate": c.followUpDate.isoformat() if c.followUpDate else None,
@@ -116,7 +119,7 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(requir
                 }
                 for rx in c.prescriptions
             ],
-            "doctor": {"name": c.doctor.user.name if c.doctor and c.doctor.user else ""},
+            "doctorName": c.doctor.user.name if c.doctor and c.doctor.user else "",
             "appointment": {
                 "scheduledAt": c.appointment.scheduledAt.isoformat() if c.appointment and c.appointment.scheduledAt else None,
                 "type": c.appointment.type if c.appointment else None,

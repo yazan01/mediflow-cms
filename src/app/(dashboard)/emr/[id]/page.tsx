@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { formatDate, formatDateTime, getInitials } from "@/lib/utils";
 import type { Patient, Consultation, LabOrder, Vitals, Prescription } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -43,7 +43,9 @@ type Tab = "consultations" | "vitals" | "labs" | "radiology" | "documents" | "pr
 export default function EMRPage() {
   const { t } = useLanguage();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const focusConsultationId = searchParams.get("consultation");
 
   const [emr, setEmr] = useState<EMRData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +84,14 @@ export default function EMRPage() {
   useEffect(() => {
     fetchEMR();
   }, [fetchEMR]);
+
+  // Auto-expand consultation from URL param
+  useEffect(() => {
+    if (focusConsultationId) {
+      setExpandedConsult(focusConsultationId);
+      setActiveTab("consultations");
+    }
+  }, [focusConsultationId]);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "consultations",  label: t.emr.consultations,     icon: "clinical_notes" },
@@ -214,8 +224,17 @@ export default function EMRPage() {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Visit count + Actions */}
           <div className="flex items-center gap-2 lg:flex-col lg:items-end flex-shrink-0">
+            {/* Visit count badge */}
+            {consultations.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-[#eff6ff] border border-[#1960a3]/20 px-3 py-1.5 rounded-full">
+                <span className="material-symbols-outlined text-[14px] text-[#1960a3]">history</span>
+                <span className="text-xs font-bold text-[#1960a3]">
+                  {consultations.length} {t.emr.visitCount}
+                </span>
+              </div>
+            )}
             <Link
               href={`/emr/${id}/new-consultation`}
               className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
@@ -282,22 +301,46 @@ export default function EMRPage() {
                   {/* Consultation header */}
                   <button
                     onClick={() => setExpandedConsult(isOpen ? null : c.id)}
-                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#faf9fd] transition-colors text-left"
+                    className={`w-full flex items-center justify-between px-5 py-4 hover:bg-[#faf9fd] transition-colors text-left ${
+                      focusConsultationId === c.id ? "bg-[#eff6ff]" : ""
+                    }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-[#eff6ff] rounded-xl flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-[#1960a3] text-[20px]">clinical_notes</span>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        focusConsultationId === c.id ? "bg-[#1960a3]" : "bg-[#eff6ff]"
+                      }`}>
+                        <span className={`material-symbols-outlined text-[20px] ${
+                          focusConsultationId === c.id ? "text-white" : "text-[#1960a3]"
+                        }`}>clinical_notes</span>
                       </div>
                       <div>
                         <p className="text-sm font-bold text-[#1a1c1e]">
                           {c.chiefComplaint ?? t.appointments.consultation}
                         </p>
-                        <p className="text-xs text-[#74777f] mt-0.5">
-                          {formatDateTime(c.createdAt)}
-                          {c.diagnoses.length > 0 && (
-                            <> &middot; {c.diagnoses.length} {c.diagnoses.length > 1 ? t.emr.diagnoses_ : t.emr.diagnosis}</>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <p className="text-xs text-[#74777f]">
+                            {formatDateTime(c.createdAt)}
+                            {c.diagnoses.length > 0 && (
+                              <> &middot; {c.diagnoses.length} {c.diagnoses.length > 1 ? t.emr.diagnoses_ : t.emr.diagnosis}</>
+                            )}
+                          </p>
+                          {c.appointmentId && (
+                            <Link
+                              href={`/appointments/${c.appointmentId}`}
+                              onClick={e => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1960a3] bg-[#eff6ff] px-2 py-0.5 rounded-full hover:underline"
+                            >
+                              <span className="material-symbols-outlined text-[11px]">event</span>
+                              {t.emr.linkedAppointment}
+                            </Link>
                           )}
-                        </p>
+                          {c.isLocked && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#002045] bg-[#d3e4ff] px-2 py-0.5 rounded-full">
+                              <span className="material-symbols-outlined text-[11px]">lock</span>
+                              {t.emr.locked}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -323,6 +366,24 @@ export default function EMRPage() {
                   {/* SOAP notes expanded */}
                   {isOpen && (
                     <div className="border-t border-[#e3e2e6] p-5 space-y-5">
+                      {/* Doctor attribution + action buttons */}
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[16px] text-[#74777f]">stethoscope</span>
+                          <span className="text-xs font-semibold text-[#74777f]">
+                            {t.emr.doctor}: <span className="text-[#1a1c1e]">{c.doctorName || "—"}</span>
+                          </span>
+                        </div>
+                        {!c.isLocked && (
+                          <Link
+                            href={`/emr/${id}/new-consultation?consultation=${c.id}&appointment=${c.appointmentId ?? ""}`}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-[#1960a3] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[#eff6ff] transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                            Edit
+                          </Link>
+                        )}
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {/* Chief Complaint */}
                         {c.chiefComplaint && (
