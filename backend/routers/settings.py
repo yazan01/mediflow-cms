@@ -1,3 +1,5 @@
+import json as _json
+import os
 import time
 import zoneinfo
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,13 +13,71 @@ import models
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
-# ─── In-process cache (invalidated on every PATCH) ──────────────────────────
+_CACHE_TTL = 60  # seconds
+_CACHE_KEY = "mediflow:settings"
+
+# ─── Redis cache (distributed) with in-process fallback ──────────────────────
+_redis_client = None
+_redis_checked = False
+
+def _get_redis():
+    global _redis_client, _redis_checked
+    if _redis_checked:
+        return _redis_client
+    _redis_checked = True
+    url = os.getenv("REDIS_URL")
+    if not url:
+        return None
+    try:
+        import redis as _redis  # type: ignore
+        client = _redis.from_url(url, decode_responses=True, socket_connect_timeout=2)
+        client.ping()
+        _redis_client = client
+    except Exception:
+        _redis_client = None
+    return _redis_client
+
+# In-process fallback
 _cache: dict = {}
 _cache_expires: float = 0.0
-_CACHE_TTL = 60.0  # seconds
+
+
+def _get_cached() -> Optional[dict]:
+    r = _get_redis()
+    if r:
+        try:
+            raw = r.get(_CACHE_KEY)
+            if raw:
+                return _json.loads(raw)
+        except Exception:
+            pass
+        return None
+    # In-process fallback
+    if time.monotonic() < _cache_expires and _cache:
+        return _cache
+    return None
+
+
+def _set_cached(data: dict):
+    r = _get_redis()
+    if r:
+        try:
+            r.setex(_CACHE_KEY, _CACHE_TTL, _json.dumps(data))
+        except Exception:
+            pass
+        return
+    global _cache, _cache_expires
+    _cache = data
+    _cache_expires = time.monotonic() + _CACHE_TTL
 
 
 def _invalidate_cache():
+    r = _get_redis()
+    if r:
+        try:
+            r.delete(_CACHE_KEY)
+        except Exception:
+            pass
     global _cache, _cache_expires
     _cache = {}
     _cache_expires = 0.0
@@ -107,12 +167,11 @@ def _record_changes(db: Session, user_id: str, old: dict, new: dict, request: Re
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db), _user=Depends(get_current_user)):
-    global _cache, _cache_expires
-    if time.monotonic() < _cache_expires and _cache:
-        return _cache
+    cached = _get_cached()
+    if cached:
+        return cached
     result = settings_to_dict(get_or_create(db))
-    _cache = result
-    _cache_expires = time.monotonic() + _CACHE_TTL
+    _set_cached(result)
     return result
 
 

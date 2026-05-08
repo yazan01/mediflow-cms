@@ -113,3 +113,27 @@ def revoke_api_key(
     api_key.isActive = False
     db.commit()
     log_audit(db, user.id, "DELETE", "ApiKey", key_id, {"name": api_key.name})
+
+
+@router.post("/{key_id}/rotate", status_code=200)
+def rotate_api_key(
+    key_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*KEY_ADMIN_ROLES)),
+):
+    """Replace the key material for an active API key. Returns the new plaintext key once."""
+    api_key = db.query(models.ApiKey).filter(models.ApiKey.id == key_id).with_for_update().first()
+    if not api_key:
+        raise HTTPException(404, "API key not found")
+    if not api_key.isActive:
+        raise HTTPException(400, "Cannot rotate a revoked key — create a new one instead")
+
+    raw_key = "mf_" + secrets.token_hex(32)
+    api_key.keyHashSha256 = hashlib.sha256(raw_key.encode()).hexdigest()
+    api_key.keyPrefix = raw_key[:10]
+    api_key.lastUsedAt = None
+    db.commit()
+    db.refresh(api_key)
+
+    log_audit(db, user.id, "ROTATE", "ApiKey", key_id, {"name": api_key.name})
+    return key_to_dict(api_key, plaintext=raw_key)

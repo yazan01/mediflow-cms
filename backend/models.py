@@ -1110,10 +1110,15 @@ class PaymentGatewayConfig(Base):
 
 
 class FeatureFlag(Base):
-    """System-wide feature toggles managed by SUPER_ADMIN."""
+    """Feature toggles — global (branchId=None) or per-branch override."""
     __tablename__ = "feature_flags"
+    __table_args__ = (
+        UniqueConstraint("key", "branchId", name="uq_feature_flag_key_branch"),
+        Index("ix_feature_flag_branch", "branchId"),
+    )
     id = Column(String(25), primary_key=True)
-    key = Column(String(100), unique=True, nullable=False)
+    key = Column(String(100), nullable=False)
+    branchId = Column(String(25), ForeignKey("branches.id", ondelete="CASCADE"), nullable=True)
     description = Column(Text)
     isEnabled = Column(Boolean, default=False)
     updatedBy = Column(String(25), ForeignKey("users.id"), nullable=True)
@@ -1163,6 +1168,7 @@ class WebhookEvent(Base):
     __tablename__ = "webhook_events"
     __table_args__ = (
         Index("ix_webhook_events_branch_created", "branchId", "createdAt"),
+        Index("ix_webhook_events_processed", "processed"),
     )
     id = Column(String(25), primary_key=True)
     branchId = Column(String(25), ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)

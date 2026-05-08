@@ -96,6 +96,14 @@ def _get_fernet() -> Fernet:
     """Return a Fernet instance keyed from SETTINGS_ENCRYPTION_KEY or derived from JWT_SECRET."""
     key = os.getenv("SETTINGS_ENCRYPTION_KEY")
     if not key:
+        import logging
+        logging.getLogger("mediflow.security").critical(
+            "SECURITY: SETTINGS_ENCRYPTION_KEY is not set. Encrypted secrets (SMTP passwords, "
+            "WhatsApp tokens, API keys) are protected by a key derived from JWT_SECRET — changing "
+            "JWT_SECRET will make all secrets unreadable. Generate a dedicated key with:\n"
+            '  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"\n'
+            "then add  SETTINGS_ENCRYPTION_KEY=<key>  to backend/.env"
+        )
         raw = hashlib.sha256(JWT_SECRET.encode()).digest()
         key = base64.urlsafe_b64encode(raw).decode()
     return Fernet(key.encode())
@@ -190,6 +198,8 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Account is disabled")
     if user.lockedUntil and user.lockedUntil > datetime.utcnow():
         raise HTTPException(status_code=401, detail="Account is temporarily locked")
+    # Inject branchId from JWT claim so routers can scope queries without an extra DB hit
+    user._jwt_branch_id = payload.get("branchId")
     return user
 
 

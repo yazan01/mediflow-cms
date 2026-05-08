@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as jose from "jose";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/verify-otp"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/auth/verify-otp",
+  "/api/auth/2fa/verify",
+  "/api/auth/csrf",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

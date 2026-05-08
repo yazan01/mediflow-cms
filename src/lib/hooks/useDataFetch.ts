@@ -40,8 +40,27 @@ export class ApiError extends Error {
   }
 }
 
+function _getCsrfToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)mediflow_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+const _MUTATION_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
+
 export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
+  const method = (options?.method ?? "GET").toUpperCase();
+  const headers = new Headers(options?.headers);
+
+  if (_MUTATION_METHODS.has(method)) {
+    const csrf = _getCsrfToken();
+    if (csrf) headers.set("X-CSRF-Token", csrf);
+    if (!headers.has("Content-Type") && !(options?.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
+  }
+
+  const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
@@ -50,5 +69,6 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
     } catch { /* ignore parse error */ }
     throw new ApiError(res.status, message);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }

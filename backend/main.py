@@ -1,3 +1,5 @@
+import hmac
+import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -17,9 +19,28 @@ from routers import notification_templates
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
+_log = logging.getLogger("mediflow")
+
+# Paths exempt from CSRF check (no browser session involved)
+_CSRF_EXEMPT = {"/api/auth/login", "/api/auth/logout", "/api/auth/2fa/verify"}
+_CSRF_EXEMPT_PREFIX = "/api/webhooks/"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Security startup checks ───────────────────────────────────────────────
+    if not os.getenv("SETTINGS_ENCRYPTION_KEY"):
+        _log.critical(
+            "SECURITY: SETTINGS_ENCRYPTION_KEY not set — encrypted secrets fall back to a "
+            "JWT_SECRET-derived key. Generate a dedicated Fernet key and add it to backend/.env:\n"
+            '  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+        )
+    if not os.getenv("REDIS_URL"):
+        _log.warning(
+            "PERFORMANCE: REDIS_URL not set — settings cache is in-process (single-worker only). "
+            "Set REDIS_URL=redis://localhost:6379/0 for distributed caching."
+        )
+
     from database import engine, Base
     import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
@@ -39,6 +60,21 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
+# ── CSRF double-submit cookie middleware ──────────────────────────────────────
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    if request.method in ("POST", "PATCH", "DELETE", "PUT"):
+        path = request.url.path
+        if path not in _CSRF_EXEMPT and not path.startswith(_CSRF_EXEMPT_PREFIX):
+            csrf_cookie = request.cookies.get("mediflow_csrf", "")
+            csrf_header = request.headers.get("x-csrf-token", "")
+            if not csrf_cookie or not csrf_header:
+                return JSONResponse({"detail": "CSRF token missing"}, status_code=403)
+            if not hmac.compare_digest(csrf_cookie, csrf_header):
+                return JSONResponse({"detail": "CSRF token invalid"}, status_code=403)
+    return await call_next(request)
+
+
 app.add_middleware(SlowAPIMiddleware)
 
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
@@ -49,7 +85,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-Token"],
 )
 
 app.include_router(auth.router)
