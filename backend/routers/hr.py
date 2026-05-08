@@ -217,6 +217,7 @@ def employee_to_dict(e: models.Employee, mask_bank: bool = True) -> dict:
         "annualLeaveBalance": e.annualLeaveBalance,
         "sickLeaveBalance": e.sickLeaveBalance,
         "branchId": e.branchId,
+        "branchName": e.branch.name if hasattr(e, "branch") and e.branch else None,
         "reportsToId": e.reportsToId,
         "bankName": e.bankName,
         "bankAccount": mask_account(e.bankAccount) if mask_bank else e.bankAccount,
@@ -240,14 +241,25 @@ def employee_to_dict(e: models.Employee, mask_bank: bool = True) -> dict:
 # ── Stats ──────────────────────────────────────────────────────────────────────
 
 @router.get("/stats")
-def get_hr_stats(db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
+def get_hr_stats(
+    branch_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*HR_ROLES)),
+):
     base = db.query(models.Employee).filter(models.Employee.deletedAt == None)
+    # Scope to JWT branch for CLINIC_MANAGER
+    effective_branch = branch_id or getattr(_user, "_jwt_branch_id", None)
+    if effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []):
+        base = base.filter(models.Employee.branchId == effective_branch)
     total = base.count()
     active = base.filter(models.Employee.status == "ACTIVE").count()
     on_leave = base.filter(models.Employee.status == "ON_LEAVE").count()
-    pending_leaves = db.query(func.count(models.LeaveRequest.id)).filter(
-        models.LeaveRequest.status == "PENDING"
-    ).scalar() or 0
+    leave_q = db.query(func.count(models.LeaveRequest.id)).filter(models.LeaveRequest.status == "PENDING")
+    if effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []):
+        leave_q = leave_q.join(models.Employee, models.LeaveRequest.employeeId == models.Employee.id).filter(
+            models.Employee.branchId == effective_branch
+        )
+    pending_leaves = leave_q.scalar() or 0
     return {
         "totalEmployees": total,
         "activeEmployees": active,
@@ -273,10 +285,18 @@ def get_employees(
     search: str = Query(""),
     status: Optional[str] = None,
     department: Optional[str] = None,
+    branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*HR_ROLES)),   # SEC-001 fix
+    _user=Depends(require_roles(*HR_ROLES)),
 ):
     query = db.query(models.Employee).filter(models.Employee.deletedAt == None)
+
+    # Scope to branch: explicit param overrides JWT; CLINIC_MANAGER always scoped to their branch
+    effective_branch = branch_id or getattr(_user, "_jwt_branch_id", None)
+    if effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []):
+        query = query.filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        query = query.filter(models.Employee.branchId == branch_id)
 
     if search:
         query = query.join(models.User, models.Employee.userId == models.User.id).filter(
@@ -294,7 +314,11 @@ def get_employees(
     total = query.count()
     employees = (
         query
-        .options(joinedload(models.Employee.user), joinedload(models.Employee.department))
+        .options(
+            joinedload(models.Employee.user),
+            joinedload(models.Employee.department),
+            joinedload(models.Employee.branch),
+        )
         .order_by(models.Employee.empCode.asc())
         .offset((page - 1) * pageSize)
         .limit(pageSize)
@@ -560,10 +584,22 @@ def get_leaves(
     pageSize: int = Query(20, ge=1, le=100),
     status: Optional[str] = None,
     employeeId: Optional[str] = None,
+    branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*HR_ROLES)),   # SEC-001 fix
+    _user=Depends(require_roles(*HR_ROLES)),
 ):
     query = db.query(models.LeaveRequest)
+
+    # Branch scoping
+    effective_branch = branch_id or getattr(_user, "_jwt_branch_id", None)
+    if effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []):
+        query = query.join(models.Employee, models.LeaveRequest.employeeId == models.Employee.id).filter(
+            models.Employee.branchId == effective_branch
+        )
+    elif branch_id:
+        query = query.join(models.Employee, models.LeaveRequest.employeeId == models.Employee.id).filter(
+            models.Employee.branchId == branch_id
+        )
 
     if status and status != "ALL":
         query = query.filter(models.LeaveRequest.status == status)
@@ -777,8 +813,9 @@ def get_payroll(
     page: int = Query(1, ge=1),
     pageSize: int = Query(100, ge=1, le=500),
     month: Optional[str] = None,
+    branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*HR_ROLES)),   # SEC-001 fix
+    _user=Depends(require_roles(*HR_ROLES)),
 ):
     yr, mo = None, None
     if month:
@@ -788,9 +825,18 @@ def get_payroll(
         except (ValueError, IndexError):
             pass
 
-    all_emps = (
+    emp_q = (
         db.query(models.Employee)
         .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
+    )
+    effective_branch = branch_id or getattr(_user, "_jwt_branch_id", None)
+    if effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []):
+        emp_q = emp_q.filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        emp_q = emp_q.filter(models.Employee.branchId == branch_id)
+
+    all_emps = (
+        emp_q
         .options(joinedload(models.Employee.user), joinedload(models.Employee.department))
         .order_by(models.Employee.empCode.asc())
         .all()
@@ -895,12 +941,20 @@ def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), user=Depe
     )
     allowances = body.allowances if body.allowances is not None else auto_allowances
     gross = base + allowances + (body.bonus or 0) + (body.overtimePay or 0)
-    # Tax engine: use ClinicSetting.taxRate when taxDeduction not manually provided
+    # Tax engine: prefer per-branch BranchSetting.taxRate, fall back to global ClinicSetting
     if body.taxDeduction is not None:
         tax_deduction = body.taxDeduction
     else:
-        setting = db.query(models.ClinicSetting).filter(models.ClinicSetting.id == 1).first()
-        tax_rate = float(setting.taxRate) if setting and setting.taxRate is not None else 0.0
+        branch_setting = None
+        if employee.branchId:
+            branch_setting = db.query(models.BranchSetting).filter(
+                models.BranchSetting.branchId == employee.branchId
+            ).first()
+        if branch_setting and branch_setting.taxRate is not None:
+            tax_rate = float(branch_setting.taxRate)
+        else:
+            setting = db.query(models.ClinicSetting).filter(models.ClinicSetting.id == 1).first()
+            tax_rate = float(setting.taxRate) if setting and setting.taxRate is not None else 0.0
         tax_deduction = round(gross * tax_rate / 100, 3)
     net = gross - (body.deductions or 0) - tax_deduction
 
@@ -958,12 +1012,17 @@ def bulk_process_payroll(
     except (ValueError, IndexError, AttributeError):
         raise HTTPException(400, "month must be in YYYY-MM format")
 
-    active_employees = (
+    emp_q = (
         db.query(models.Employee)
         .filter(models.Employee.deletedAt == None, models.Employee.status == "ACTIVE")
         .options(joinedload(models.Employee.user))
-        .all()
     )
+    # Scope bulk run to CLINIC_MANAGER's branch
+    effective_branch = getattr(user, "_jwt_branch_id", None)
+    if effective_branch and "SUPER_ADMIN" not in (getattr(user, "roles", None) or []):
+        emp_q = emp_q.filter(models.Employee.branchId == effective_branch)
+
+    active_employees = emp_q.all()
 
     already_processed_ids = {
         row.employeeId
@@ -972,9 +1031,12 @@ def bulk_process_payroll(
         ).all()
     }
 
-    # Tax engine: fetch clinic tax rate once for the whole bulk run
+    # Preload global clinic tax rate as fallback
     setting = db.query(models.ClinicSetting).filter(models.ClinicSetting.id == 1).first()
-    clinic_tax_rate = float(setting.taxRate) if setting and setting.taxRate is not None else 0.0
+    global_tax_rate = float(setting.taxRate) if setting and setting.taxRate is not None else 0.0
+
+    # Preload all branch settings keyed by branchId
+    branch_settings = {bs.branchId: bs for bs in db.query(models.BranchSetting).all()}
 
     created = []
     skipped = []
@@ -989,7 +1051,10 @@ def bulk_process_payroll(
             + float(emp.medicalAllowance or 0)
         )
         gross = float(emp.basicSalary) + allowances
-        tax_deduction = round(gross * clinic_tax_rate / 100, 3)
+        # Use per-branch tax rate if available
+        bs = branch_settings.get(emp.branchId) if emp.branchId else None
+        tax_rate = float(bs.taxRate) if bs and bs.taxRate is not None else global_tax_rate
+        tax_deduction = round(gross * tax_rate / 100, 3)
         net = gross - tax_deduction
 
         payroll = models.Payroll(
@@ -1131,10 +1196,22 @@ def get_attendance(
     month: Optional[str] = None,
     employeeId: Optional[str] = None,
     search: Optional[str] = None,
+    branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _user=Depends(require_roles(*HR_ROLES)),   # SEC-005 fix
+    _user=Depends(require_roles(*HR_ROLES)),
 ):
     raw_records = db.query(models.Attendance)
+
+    # Branch scoping: join Employee and filter by branchId
+    effective_branch = branch_id or getattr(_user, "_jwt_branch_id", None)
+    if effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []):
+        raw_records = raw_records.join(
+            models.Employee, models.Attendance.employeeId == models.Employee.id
+        ).filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        raw_records = raw_records.join(
+            models.Employee, models.Attendance.employeeId == models.Employee.id
+        ).filter(models.Employee.branchId == branch_id)
 
     if employeeId:
         raw_records = raw_records.filter(models.Attendance.employeeId == employeeId)
@@ -1713,6 +1790,7 @@ def create_contract(
 
 @router.get("/reports/analytics")
 def get_analytics(
+    branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _user=Depends(require_roles(*HR_ROLES)),
 ):
@@ -1721,46 +1799,74 @@ def get_analytics(
     first_of_month = datetime(now.year, now.month, 1)
     start_of_year = datetime(now.year, 1, 1)
 
+    effective_branch = branch_id or getattr(_user, "_jwt_branch_id", None)
+    is_scoped = bool(effective_branch and "SUPER_ADMIN" not in (getattr(_user, "roles", None) or []))
+
     # Headcount
     base = db.query(models.Employee).filter(models.Employee.deletedAt == None)
+    if is_scoped:
+        base = base.filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        base = base.filter(models.Employee.branchId == branch_id)
     total = base.count()
     active = base.filter(models.Employee.status == "ACTIVE").count()
     on_leave = base.filter(models.Employee.status == "ON_LEAVE").count()
 
     # Attrition this year
-    attrition_this_year = db.query(func.count(models.Employee.id)).filter(
+    attrition_q = db.query(func.count(models.Employee.id)).filter(
         models.Employee.deletedAt == None,
         models.Employee.status == "TERMINATED",
         models.Employee.endDate >= start_of_year,
-    ).scalar() or 0
+    )
+    if is_scoped:
+        attrition_q = attrition_q.filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        attrition_q = attrition_q.filter(models.Employee.branchId == branch_id)
+    attrition_this_year = attrition_q.scalar() or 0
 
     # By department
-    dept_rows = (
+    dept_q = (
         db.query(models.Department.name, func.count(models.Employee.id).label("count"))
         .join(models.Employee, models.Employee.departmentId == models.Department.id)
         .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
-        .group_by(models.Department.name)
-        .order_by(func.count(models.Employee.id).desc())
-        .all()
     )
+    if is_scoped:
+        dept_q = dept_q.filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        dept_q = dept_q.filter(models.Employee.branchId == branch_id)
+    dept_rows = dept_q.group_by(models.Department.name).order_by(func.count(models.Employee.id).desc()).all()
 
     # By employment type
-    type_rows = (
+    type_q = (
         db.query(models.Employee.employmentType, func.count(models.Employee.id).label("count"))
         .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
-        .group_by(models.Employee.employmentType)
-        .all()
     )
+    if is_scoped:
+        type_q = type_q.filter(models.Employee.branchId == effective_branch)
+    elif branch_id:
+        type_q = type_q.filter(models.Employee.branchId == branch_id)
+    type_rows = type_q.group_by(models.Employee.employmentType).all()
 
     # Leave stats
-    pending_leaves = db.query(func.count(models.LeaveRequest.id)).filter(
-        models.LeaveRequest.status == "PENDING"
-    ).scalar() or 0
+    leave_join_needed = is_scoped or bool(branch_id)
+    pending_q = db.query(func.count(models.LeaveRequest.id)).filter(models.LeaveRequest.status == "PENDING")
+    if leave_join_needed:
+        _branch = effective_branch if is_scoped else branch_id
+        pending_q = pending_q.join(models.Employee, models.LeaveRequest.employeeId == models.Employee.id).filter(
+            models.Employee.branchId == _branch
+        )
+    pending_leaves = pending_q.scalar() or 0
 
-    approved_this_month = db.query(func.count(models.LeaveRequest.id)).filter(
+    approved_q = db.query(func.count(models.LeaveRequest.id)).filter(
         models.LeaveRequest.status == "APPROVED",
         models.LeaveRequest.approvedAt >= first_of_month,
-    ).scalar() or 0
+    )
+    if leave_join_needed:
+        _branch = effective_branch if is_scoped else branch_id
+        approved_q = approved_q.join(models.Employee, models.LeaveRequest.employeeId == models.Employee.id).filter(
+            models.Employee.branchId == _branch
+        )
+    approved_this_month = approved_q.scalar() or 0
 
     leave_by_type = (
         db.query(models.LeaveRequest.type, func.count(models.LeaveRequest.id).label("count"))

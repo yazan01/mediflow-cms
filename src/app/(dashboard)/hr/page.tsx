@@ -292,6 +292,7 @@ export default function HRPage() {
   const [empSearch, setEmpSearch] = useState("");
   const [empDeptFilter, setEmpDeptFilter] = useState("ALL");
   const [empStatusFilter, setEmpStatusFilter] = useState("ALL");
+  const [empBranchFilter, setEmpBranchFilter] = useState("ALL");
   const [empPage, setEmpPage] = useState(1);
   const [empTotal, setEmpTotal] = useState(0);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -332,6 +333,7 @@ export default function HRPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
+  const [payrollBranchFilter, setPayrollBranchFilter] = useState("ALL");
   const [payslipPayrollId, setPayslipPayrollId] = useState<string | null>(null);
   const [processAllLoading, setProcessAllLoading] = useState(false);
 
@@ -341,6 +343,7 @@ export default function HRPage() {
   // Analytics
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsBranchFilter, setAnalyticsBranchFilter] = useState("ALL");
 
   // Leave Policies
   interface LeavePolicy { id: string; leaveType: string; maxDaysPerYear: number; carryForwardMax: number; requiresMedicalCert: boolean; probationAllowed: boolean; minServiceDays: number; encashmentAllowed: boolean; }
@@ -391,6 +394,7 @@ export default function HRPage() {
         ...(empSearch && { search: empSearch }),
         ...(empDeptFilter !== "ALL" && { department: empDeptFilter }),
         ...(empStatusFilter !== "ALL" && { status: empStatusFilter }),
+        ...(empBranchFilter !== "ALL" && { branch_id: empBranchFilter }),
       });
       const res = await fetch(`/api/hr/employees?${p}`);
       if (!res.ok) throw Object.assign(new Error("API error"), { status: res.status });
@@ -402,7 +406,7 @@ export default function HRPage() {
     } finally {
       setEmpLoading(false);
     }
-  }, [empPage, empSearch, empDeptFilter, empStatusFilter]);
+  }, [empPage, empSearch, empDeptFilter, empStatusFilter, empBranchFilter]);
 
   const fetchDepartments = useCallback(async () => {
     try {
@@ -454,7 +458,10 @@ export default function HRPage() {
   const fetchPayroll = useCallback(async () => {
     setPayrollLoading(true);
     try {
-      const p = new URLSearchParams({ month: payrollMonth });
+      const p = new URLSearchParams({
+        month: payrollMonth,
+        ...(payrollBranchFilter !== "ALL" && { branch_id: payrollBranchFilter }),
+      });
       const res = await fetch(`/api/hr/payroll?${p}`);
       if (res.ok) {
         const data = await res.json();
@@ -463,7 +470,7 @@ export default function HRPage() {
     } catch { /* ignore */ } finally {
       setPayrollLoading(false);
     }
-  }, [payrollMonth]);
+  }, [payrollMonth, payrollBranchFilter]);
 
   const fetchShifts = useCallback(async () => {
     setShiftsLoading(true);
@@ -493,10 +500,11 @@ export default function HRPage() {
   const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
-      const res = await fetch("/api/hr/reports/analytics");
+      const p = analyticsBranchFilter !== "ALL" ? `?branch_id=${analyticsBranchFilter}` : "";
+      const res = await fetch(`/api/hr/reports/analytics${p}`);
       if (res.ok) setAnalytics(await res.json());
     } catch { /* ignore */ } finally { setAnalyticsLoading(false); }
-  }, []);
+  }, [analyticsBranchFilter]);
 
   const fetchLeavePolicies = useCallback(async () => {
     setPoliciesLoading(true);
@@ -519,10 +527,11 @@ export default function HRPage() {
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
+  useEffect(() => { fetchBranches(); }, [fetchBranches]);
   useEffect(() => { if (activeTab === "attendance") fetchAttendance(); }, [activeTab, fetchAttendance]);
   useEffect(() => { if (activeTab === "leaveRequests") fetchLeaves(); }, [activeTab, fetchLeaves]);
   useEffect(() => { if (activeTab === "payroll") fetchPayroll(); }, [activeTab, fetchPayroll]);
-  useEffect(() => { if (activeTab === "shifts") { fetchShifts(); fetchBranches(); } }, [activeTab, fetchShifts, fetchBranches]);
+  useEffect(() => { if (activeTab === "shifts") fetchShifts(); }, [activeTab, fetchShifts]);
   useEffect(() => { if (activeTab === "analytics") fetchAnalytics(); }, [activeTab, fetchAnalytics]);
   useEffect(() => { if (activeTab === "leavePolicies") fetchLeavePolicies(); }, [activeTab, fetchLeavePolicies]);
   useEffect(() => { if (activeTab === "orgChart") fetchOrgChart(); }, [activeTab, fetchOrgChart]);
@@ -863,6 +872,18 @@ export default function HRPage() {
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
+              {branches.length > 0 && (
+                <select
+                  className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                  value={empBranchFilter}
+                  onChange={(e) => { setEmpBranchFilter(e.target.value); setEmpPage(1); }}
+                >
+                  <option value="ALL">{t.hr.allBranches ?? "All Branches"}</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              )}
               <button
                 onClick={handleExportCsv}
                 className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors"
@@ -947,6 +968,12 @@ export default function HRPage() {
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <p className="text-sm text-[#1a1c1e]">{emp.department.name}</p>
                           <p className="text-xs text-[#74777f]">{emp.jobTitle}</p>
+                          {emp.branchName && (
+                            <p className="text-[10px] text-[#1960a3] mt-0.5 flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[12px]">location_on</span>
+                              {emp.branchName}
+                            </p>
+                          )}
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${typeCfg.cls}`}>{typeCfg.label}</span>
@@ -1207,6 +1234,18 @@ export default function HRPage() {
               max={new Date().toISOString().slice(0, 7)}
               onChange={(e) => setPayrollMonth(e.target.value)}
             />
+            {branches.length > 0 && (
+              <select
+                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                value={payrollBranchFilter}
+                onChange={(e) => setPayrollBranchFilter(e.target.value)}
+              >
+                <option value="ALL">{t.hr.allBranches ?? "All Branches"}</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            )}
             <div className="flex-1" />
             {pendingPayrollCount > 0 && (
               <button
@@ -1406,7 +1445,19 @@ export default function HRPage() {
       {/* ── Tab: Analytics ── */}
       {activeTab === "analytics" && (
         <div className="space-y-6">
-          <div className="flex justify-end">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            {branches.length > 0 && (
+              <select
+                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                value={analyticsBranchFilter}
+                onChange={(e) => setAnalyticsBranchFilter(e.target.value)}
+              >
+                <option value="ALL">{t.hr.allBranches ?? "All Branches"}</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={async () => {
                 if (!confirm(t.hr.carryForwardConfirm)) return;

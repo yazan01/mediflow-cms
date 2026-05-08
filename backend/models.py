@@ -679,6 +679,7 @@ class Employee(Base):
 
     user = relationship("User", back_populates="employee")
     department = relationship("Department", back_populates="employees")
+    branch = relationship("Branch", foreign_keys=[branchId], lazy="select")
     attendance = relationship("Attendance", back_populates="employee")
     leaveRequests = relationship("LeaveRequest", back_populates="employee")
     payrollRecords = relationship("Payroll", back_populates="employee")

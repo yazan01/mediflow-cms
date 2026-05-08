@@ -289,7 +289,7 @@ export interface Employee {
   id: string;
   empCode: string;
   userId: string;
-  user: { name: string; email: string; phone?: string; photo?: string; isActive: boolean };
+  user: { name: string; email: string; phone?: string; photo?: string; isActive: boolean; roles?: string[] };
   department: { id: string; name: string };
   departmentId: string;
   jobTitle: string;
@@ -300,6 +300,9 @@ export interface Employee {
   status: EmployeeStatus;
   annualLeaveBalance: number;
   sickLeaveBalance: number;
+  branchId?: string | null;
+  branchName?: string | null;
+  reportsToId?: string | null;
 }
 
 export interface LeaveRequest {
