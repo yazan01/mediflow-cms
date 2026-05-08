@@ -249,10 +249,10 @@ export default function LaboratoryPage() {
                       </td>
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">
                         <div className="flex flex-wrap gap-1 max-w-xs">
-                          {order.tests.slice(0, 3).map((t, i) => (
-                            <span key={i} className="text-[10px] font-semibold bg-[#d3e4ff] text-[#00477f] px-2 py-0.5 rounded-full">{t}</span>
+                          {order.tests.slice(0, 3).map((testName, i) => (
+                            <span key={i} className="text-[10px] font-semibold bg-[#d3e4ff] text-[#00477f] px-2 py-0.5 rounded-full">{testName}</span>
                           ))}
-                          {order.tests.length > 3 && <span className="text-[10px] text-[#74777f] font-semibold">+{order.tests.length - 3} more</span>}
+                          {order.tests.length > 3 && <span className="text-[10px] text-[#74777f] font-semibold">{t.common.nMoreItems.replace("{count}", String(order.tests.length - 3))}</span>}
                         </div>
                       </td>
                       <td className="px-5 py-4 border-b border-[#e3e2e6]">

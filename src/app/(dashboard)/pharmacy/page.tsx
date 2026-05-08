@@ -171,7 +171,7 @@ export default function PharmacyPage() {
             <p className="text-xs text-[#7c4a00] mt-0.5">
               {expiryAlert.length} {t.pharmacy.expiryAlertDesc}:&nbsp;
               {expiryAlert.slice(0, 4).map((m) => m.brandName ?? m.genericName).join(", ")}
-              {expiryAlert.length > 4 && ` and ${expiryAlert.length - 4} more`}.
+              {expiryAlert.length > 4 && ` ${t.common.andMore.replace("{count}", String(expiryAlert.length - 4))}`}.
             </p>
           </div>
           <button

@@ -38,6 +38,9 @@ const en = {
     clear: "Clear", yrs: "yrs", today: "Today",
     noResults: "No results found",
     confirmDelete: "Are you sure you want to delete this? This action cannot be undone.",
+    andMore: "and {count} more",
+    nMoreItems: "+{count} more",
+    networkError: "Network error. Please try again.",
   },
 
   nav: {
@@ -242,6 +245,8 @@ const en = {
     bookBtn: "Book Appointment",
     saving: "Saving...",
     requiredFields: "Patient, doctor, and date/time are required.",
+    patientRequiredFields: "First name, last name, phone, and date of birth are required.",
+    createPatientFailed: "Failed to create patient",
     createFailed: "Failed to create appointment",
     networkError: "Network error. Please try again.",
     noPatients: "No patients found",
@@ -1744,6 +1749,9 @@ export const ar: T = {
     clear: "مسح", yrs: "سنة", today: "اليوم",
     noResults: "لا توجد نتائج",
     confirmDelete: "هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.",
+    andMore: "و{count} أخرى",
+    nMoreItems: "+{count} أكثر",
+    networkError: "خطأ في الشبكة. يرجى المحاولة مجدداً.",
   },
 
   nav: {
@@ -1948,6 +1956,8 @@ export const ar: T = {
     bookBtn: "حجز الموعد",
     saving: "جاري الحفظ...",
     requiredFields: "المريض والطبيب والوقت مطلوبون.",
+    patientRequiredFields: "الاسم الأول والاسم الأخير والهاتف وتاريخ الميلاد مطلوبة.",
+    createPatientFailed: "فشل إنشاء سجل المريض",
     createFailed: "فشل إنشاء الموعد",
     networkError: "خطأ في الشبكة. حاول مرة أخرى.",
     noPatients: "لا يوجد مرضى",

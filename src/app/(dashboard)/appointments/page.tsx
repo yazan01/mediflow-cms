@@ -439,7 +439,7 @@ export default function AppointmentsPage() {
 
   async function handleCreatePatient() {
     if (!cpForm.firstName || !cpForm.lastName || !cpForm.phone || !cpForm.dob) {
-      setCpError("First name, last name, phone, and date of birth are required");
+      setCpError(t.appointments.patientRequiredFields);
       return;
     }
     setCpSaving(true);
@@ -458,14 +458,14 @@ export default function AppointmentsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setCpError(err.detail || "Failed to create patient");
+        setCpError(err.detail || t.appointments.createPatientFailed);
         return;
       }
       const patient = await res.json();
       setQbSelectedPatient({ id: patient.id, firstName: patient.firstName, lastName: patient.lastName, mrn: patient.mrn });
       setCreatePatientModal(false);
       setCpForm({ firstName: "", lastName: "", phone: "", dob: "", gender: "MALE" });
-    } catch { setCpError("Network error"); }
+    } catch { setCpError(t.common.networkError); }
     finally { setCpSaving(false); }
   }
 
