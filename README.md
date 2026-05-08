@@ -9,7 +9,7 @@
 - **إدارة المرضى** — تسجيل، تاريخ طبي، حساسيات، أمراض مزمنة
 - **المواعيد** — جدولة، تسجيل الحضور، تتبع الحالة، تعيين الأطباء
 - **السجل الطبي الإلكتروني (EMR)** — استشارات، علامات حيوية، نتائج مختبر وأشعة
-- **الفواتير** — فواتير، مدفوعات، مطالبات تأمين
+- **الفواتير** — فواتير، مدفوعات، مطالبات تأمين، نسبة التحمّل (co-pay)
 - **الصيدلية** — مخزون الأدوية، حركة المخزون، صرف الوصفات
 - **المختبر والأشعة** — تتبع الطلبات، إدخال النتائج
 - **الموارد البشرية** — موظفون، حضور، إجازات، رواتب، مناوبات
@@ -22,42 +22,76 @@
 
 ---
 
+## الـ Tech Stack
+
+| الطبقة | التقنية |
+|---|---|
+| Frontend | Next.js 16 (App Router) + TypeScript |
+| Backend | FastAPI (Python 3.11) — المنفذ 8000 |
+| قاعدة البيانات | MySQL 8.4 |
+| ORM | SQLAlchemy 2.0 + PyMySQL |
+| Migrations | Alembic 1.14 |
+| المصادقة | JWT (python-jose) + bcrypt (passlib) |
+| واجهة المستخدم | Tailwind CSS v4، Material Symbols، Recharts |
+| Rate Limiting | slowapi |
+| Edge JWT | jose (Next.js middleware) |
+
+---
+
+## المعمارية
+
+```
+المتصفح → Nginx :443 → Next.js :3000 (frontend)
+                     → FastAPI :8000 (api/*)
+                            ↓
+                          MySQL
+```
+
+> **dev فقط:** المتصفح → Next.js :3000 → (proxy rewrite) → FastAPI :8000 → MySQL
+
+---
+
 ## المتطلبات الأساسية
 
 | البرنامج | الإصدار المطلوب |
 |---|---|
 | Python | 3.11 أو أحدث |
 | Node.js | 20 أو أحدث |
-| npm | 10 أو أحدث (يأتي مع Node.js) |
 | MySQL | 8.4 |
 
 ---
 
-## التثبيت على Windows — بيئة محلية
+## التشغيل المحلي (Windows — بيئة تطوير)
 
-### الطريقة السريعة (نقرة واحدة)
-
-انقر مزدوجاً على `install.bat` أو شغّله من `cmd`:
+### التثبيت الأول
 
 ```cmd
 install.bat
 ```
 
-يقوم تلقائياً بـ:
-- التحقق من إصدارات Python وNode.js
-- إنشاء Python virtual environment في `backend/.venv`
-- تثبيت جميع مكتبات Python وNode.js
-- طلب بيانات اتصال MySQL
-- إنشاء قاعدة البيانات `mediflow` وجميع الجداول
-- إضافة المستخدم الافتراضي
-- توليد ملف `backend/.env` تلقائياً
+يقوم تلقائياً بتثبيت المكتبات، إنشاء قاعدة البيانات، وإضافة المستخدم الافتراضي.
 
 ### التشغيل اليومي
 
 ```cmd
-start.bat    # يشغّل MySQL + Backend + Frontend ويفتح المتصفح
+start.bat    # يشغّل MySQL + Backend + Frontend
 stop.bat     # يوقف جميع الخدمات
 ```
+
+### التشغيل اليدوي (للتطوير)
+
+**Terminal 1 — Backend:**
+```cmd
+cd backend
+python -m uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 — Frontend:**
+```cmd
+npm run dev
+```
+
+> يستخدم `--webpack`. لا تستخدم Turbopack — يفشل مع مسارات تحتوي مسافات.
 
 ### بيانات الدخول الافتراضية
 
@@ -71,272 +105,115 @@ URL:       http://localhost:3000
 
 ---
 
-## التثبيت على Linux Server — بيئة إنتاج
+## النشر على Ubuntu Server (بيئة إنتاج)
 
-> مُختبَر على **Ubuntu 22.04 / 24.04**. يعمل كذلك على Debian وRocky Linux مع تعديل مدير الحزم فقط.
+> مُختبَر على **Ubuntu 22.04 / 24.04**.
 
----
-
-### الخطوة 1 — تحديث النظام
+### الطريقة السريعة — سكريبت تلقائي
 
 ```bash
-sudo apt update && sudo apt upgrade -y
+# 1. استنساخ المشروع
+git clone https://github.com/YOUR_USERNAME/mediflow-cms.git /opt/mediflow
+
+# 2. تشغيل سكريبت النشر (يثبّت كل شيء)
+sudo bash /opt/mediflow/deploy/deploy.sh
 ```
 
----
+السكريبت سيوقف في منتصفه ويطلب منك تعبئة ملفات `.env`. بعد التعبئة شغّله مرة ثانية.
 
-### الخطوة 2 — تثبيت Python 3.11
+### إعداد ملفات البيئة يدوياً
 
-```bash
-sudo apt install -y python3.11 python3.11-venv python3.11-dev python3-pip
-python3.11 --version   # يجب أن يظهر: Python 3.11.x
-```
-
----
-
-### الخطوة 3 — تثبيت Node.js 20
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-node --version   # v20.x.x
-npm --version    # 10.x.x
-```
-
----
-
-### الخطوة 4 — تثبيت MySQL 8.4
-
-```bash
-sudo apt install -y mysql-server
-sudo systemctl start mysql
-sudo systemctl enable mysql
-```
-
-تأمين التثبيت:
-
-```bash
-sudo mysql_secure_installation
-```
-
-إنشاء قاعدة البيانات والمستخدم المخصص:
-
-```bash
-sudo mysql -u root -p
-```
-
-```sql
-CREATE DATABASE mediflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'mediflow_user'@'localhost' IDENTIFIED BY 'ضع_كلمة_مرور_قوية_هنا';
-GRANT ALL PRIVILEGES ON mediflow.* TO 'mediflow_user'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
-```
-
----
-
-### الخطوة 5 — نقل ملفات المشروع للسيرفر
-
-```bash
-# عبر Git
-git clone https://github.com/your-org/mediflow-cms.git /opt/mediflow
-
-# أو عبر SCP من جهازك المحلي
-scp -r ./mediflow-cms user@your-server:/opt/mediflow
-```
-
-```bash
-cd /opt/mediflow
-```
-
----
-
-### الخطوة 6 — إعداد Backend
-
-```bash
-cd /opt/mediflow/backend
-
-# إنشاء virtual environment
-python3.11 -m venv .venv
-source .venv/bin/activate
-
-# تثبيت المكتبات
-pip install -r requirements.txt
-```
-
-إنشاء ملف `.env`:
-
-```bash
-nano /opt/mediflow/backend/.env
-```
+**`/opt/mediflow/backend/.env`** (انسخ من `.env.example`):
 
 ```env
-DATABASE_URL=mysql+pymysql://mediflow_user:كلمة_المرور@localhost:3306/mediflow
-JWT_SECRET=ضع_هنا_سلسلة_عشوائية_طويلة_64_حرف_على_الأقل
-ALLOWED_ORIGINS=https://your-domain.com
+DATABASE_URL=mysql+pymysql://mediflow:STRONG_PASSWORD@localhost:3306/mediflow_db
+JWT_SECRET=سلسلة_عشوائية_64_حرف_على_الأقل
+SETTINGS_ENCRYPTION_KEY=مفتاح_Fernet
+ALLOWED_ORIGINS=https://yourdomain.com
+COOKIE_SECURE=true
 ```
 
-توليد `JWT_SECRET` عشوائي:
+**`/opt/mediflow/.env.local`** (انسخ من `.env.example`):
+
+```env
+BACKEND_URL=http://localhost:8000
+JWT_SECRET=نفس_القيمة_الموجودة_في_backend
+```
+
+### توليد المفاتيح السرية
 
 ```bash
+# JWT_SECRET
 python3 -c "import secrets; print(secrets.token_hex(64))"
+
+# SETTINGS_ENCRYPTION_KEY
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-> **مهم:** `JWT_SECRET` يجب أن يكون نفس القيمة في الـ backend وفي الـ frontend.
-
-إنشاء الجداول وإضافة البيانات الأولية:
+### تفعيل HTTPS
 
 ```bash
-cd /opt/mediflow/backend
-source .venv/bin/activate
+sudo certbot --nginx -d yourdomain.com
+```
+
+---
+
+## تحديث النظام (بعد كل push)
+
+```bash
+sudo bash /opt/mediflow/deploy/update.sh
+```
+
+يقوم تلقائياً بـ: `git pull` → تحديث مكتبات Python → تطبيق migrations → بناء Next.js → إعادة تشغيل الخدمات.
+
+---
+
+## إدارة قاعدة البيانات
+
+### Migrations — Alembic (موصى به للإنتاج)
+
+```bash
+cd backend
+source .venv/bin/activate   # Linux
+# أو: .venv\Scripts\activate  (Windows)
+
+# إنشاء migration جديد بعد تعديل models.py
+alembic revision --autogenerate -m "وصف التعديل"
+
+# تطبيق جميع الـ migrations المعلّقة
+alembic upgrade head
+
+# التراجع عن آخر migration
+alembic downgrade -1
+
+# عرض الحالة الحالية
+alembic current
+```
+
+### إعادة تعيين قاعدة البيانات (للتطوير فقط — يحذف كل البيانات)
+
+```bash
+cd backend
 python reset_db.py --confirm
 ```
 
----
-
-### الخطوة 7 — إعداد Frontend
-
-```bash
-cd /opt/mediflow
-
-# تثبيت المكتبات
-npm install
-
-# إنشاء ملف المتغيرات البيئية
-nano .env.local
-```
-
-```env
-JWT_SECRET=نفس_القيمة_الموجودة_في_backend_env
-BACKEND_URL=http://127.0.0.1:8000
-```
-
-بناء النسخة الإنتاجية:
-
-```bash
-npm run build
-```
+> **تحذير:** لا تشغّل هذا على الإنتاج.
 
 ---
 
-### الخطوة 8 — تشغيل Backend كخدمة نظام (systemd)
+## مراقبة الخدمات (Ubuntu)
 
 ```bash
-sudo nano /etc/systemd/system/mediflow-backend.service
-```
+# حالة الخدمات
+sudo systemctl status mediflow-backend mediflow-frontend nginx mysql
 
-```ini
-[Unit]
-Description=MediFlow FastAPI Backend
-After=network.target mysql.service
+# متابعة logs مباشرة
+sudo journalctl -u mediflow-backend -f
+sudo journalctl -u mediflow-frontend -f
 
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/mediflow/backend
-Environment="PATH=/opt/mediflow/backend/.venv/bin"
-ExecStart=/opt/mediflow/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 4
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable mediflow-backend
-sudo systemctl start mediflow-backend
-sudo systemctl status mediflow-backend   # تأكد أنه يعمل
-```
-
----
-
-### الخطوة 9 — تشغيل Frontend كخدمة نظام (systemd)
-
-```bash
-sudo nano /etc/systemd/system/mediflow-frontend.service
-```
-
-```ini
-[Unit]
-Description=MediFlow Next.js Frontend
-After=network.target mediflow-backend.service
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/mediflow
-Environment="NODE_ENV=production"
-Environment="PORT=3000"
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable mediflow-frontend
-sudo systemctl start mediflow-frontend
-sudo systemctl status mediflow-frontend   # تأكد أنه يعمل
-```
-
----
-
-### الخطوة 10 — إعداد Nginx كـ Reverse Proxy
-
-```bash
-sudo apt install -y nginx
-sudo nano /etc/nginx/sites-available/mediflow
-```
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com www.your-domain.com;
-
-    client_max_body_size 20M;
-
-    location / {
-        proxy_pass         http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade $http_upgrade;
-        proxy_set_header   Connection 'upgrade';
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-```bash
-sudo ln -s /etc/nginx/sites-available/mediflow /etc/nginx/sites-enabled/
-sudo nginx -t           # تحقق من صحة الإعداد
-sudo systemctl reload nginx
-```
-
----
-
-### الخطوة 11 — تفعيل HTTPS بـ SSL (Certbot)
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-```
-
-يُحدِّث certbot ملف Nginx تلقائياً ليضيف HTTPS. للتجديد التلقائي:
-
-```bash
-sudo systemctl enable certbot.timer
-sudo systemctl start certbot.timer
-
-# اختبار التجديد
-sudo certbot renew --dry-run
+# إعادة تشغيل خدمة
+sudo systemctl restart mediflow-backend
+sudo systemctl restart mediflow-frontend
 ```
 
 ---
@@ -345,52 +222,21 @@ sudo certbot renew --dry-run
 
 ### `backend/.env`
 
-| المتغير | مثال | الوصف |
+| المتغير | الوصف | مثال |
 |---|---|---|
-| `DATABASE_URL` | `mysql+pymysql://user:pass@localhost:3306/mediflow` | رابط الاتصال بقاعدة البيانات |
-| `JWT_SECRET` | سلسلة عشوائية 64+ حرف | مفتاح توقيع JWT — **يجب تغييره في الإنتاج** |
-| `ALLOWED_ORIGINS` | `https://your-domain.com` | نطاقات CORS (افصل بفاصلة لأكثر من نطاق) |
+| `DATABASE_URL` | رابط قاعدة البيانات | `mysql+pymysql://user:pass@localhost:3306/mediflow_db` |
+| `JWT_SECRET` | مفتاح توقيع JWT — **لا تشاركه** | سلسلة hex طولها 64+ حرف |
+| `SETTINGS_ENCRYPTION_KEY` | مفتاح تشفير Fernet (أسرار 2FA وAPI keys) | مفتاح Fernet base64 |
+| `ALLOWED_ORIGINS` | نطاقات CORS مفصولة بفاصلة | `https://yourdomain.com` |
+| `COOKIE_SECURE` | `true` في الإنتاج (HTTPS)، `false` محلياً | `true` |
+| `REDIS_URL` | اختياري — cache موزّع للإعدادات | `redis://localhost:6379/0` |
 
 ### `.env.local` (Frontend)
 
 | المتغير | الوصف |
 |---|---|
-| `JWT_SECRET` | **نفس القيمة** الموجودة في backend — لفك تشفير الكوكي |
+| `JWT_SECRET` | **نفس القيمة** في backend — لفك تشفير الكوكي |
 | `BACKEND_URL` | عنوان الـ backend الداخلي (افتراضي: `http://localhost:8000`) |
-
----
-
-## أوامر مفيدة بعد التشغيل
-
-```bash
-# متابعة logs الـ backend
-sudo journalctl -u mediflow-backend -f
-
-# متابعة logs الـ frontend
-sudo journalctl -u mediflow-frontend -f
-
-# حالة جميع الخدمات دفعة واحدة
-sudo systemctl status mediflow-backend mediflow-frontend nginx mysql
-
-# تحديث الكود وإعادة النشر
-cd /opt/mediflow
-git pull
-npm run build
-sudo systemctl restart mediflow-frontend
-sudo systemctl restart mediflow-backend
-```
-
----
-
-## إعادة تعيين قاعدة البيانات
-
-```bash
-cd /opt/mediflow/backend
-source .venv/bin/activate
-python reset_db.py --confirm
-```
-
-> **تحذير:** يحذف جميع البيانات. تُعطيك 3 ثوانٍ للإلغاء بـ `Ctrl+C`.
 
 ---
 
@@ -398,72 +244,60 @@ python reset_db.py --confirm
 
 ```
 mediflow-cms/
-├── install.bat                   # مثبّت Windows بنقرة واحدة
-├── start.bat / stop.bat          # تشغيل/إيقاف (Windows)
-├── public/
-│   └── robots.txt               # يمنع فهرسة محركات البحث
+├── install.bat / start.bat / stop.bat   # أدوات Windows
+├── .env.example                         # قالب متغيرات Frontend
+├── next.config.ts                       # Proxy + security headers
+├── deploy/                              # ملفات Ubuntu production
+│   ├── deploy.sh                        # نشر أول مرة
+│   ├── update.sh                        # تحديث النظام
+│   ├── nginx.conf                       # Nginx reverse proxy + HTTPS
+│   ├── mediflow-backend.service         # systemd — FastAPI
+│   └── mediflow-frontend.service        # systemd — Next.js
 ├── backend/
-│   ├── main.py                  # FastAPI app + CORS + rate limiting
-│   ├── models.py                # جميع نماذج SQLAlchemy
-│   ├── auth.py                  # JWT، bcrypt، token blocklist
-│   ├── seed.py                  # بيانات أولية (admin user)
-│   ├── reset_db.py              # مسح وإعادة بناء قاعدة البيانات
+│   ├── main.py                          # FastAPI app + CORS + rate limiting
+│   ├── models.py                        # جميع نماذج SQLAlchemy
+│   ├── auth.py                          # JWT، bcrypt، token blocklist
+│   ├── database.py                      # SQLAlchemy engine + connection pool
+│   ├── seed.py                          # بيانات أولية (admin user)
+│   ├── reset_db.py                      # مسح وإعادة بناء (dev only)
 │   ├── requirements.txt
-│   ├── .env                     # ← لا ترفعه على Git
-│   ├── .venv/                   # Python virtual environment
-│   └── routers/                 # router لكل وحدة
+│   ├── alembic.ini                      # إعداد Alembic migrations
+│   ├── .env.example                     # قالب المتغيرات البيئية
+│   ├── .env                             # ← لا ترفعه على Git
+│   ├── .venv/                           # Python virtual environment
+│   ├── migrations/
+│   │   ├── env.py                       # Alembic env — يقرأ .env تلقائياً
+│   │   ├── script.py.mako               # قالب migration
+│   │   └── versions/                   # ملفات migrations المولّدة
+│   └── routers/                         # router لكل وحدة
 ├── src/
-│   ├── middleware.ts             # حماية routes بـ JWT (Edge Runtime)
-│   ├── app/(dashboard)/         # صفحات النظام المحمية
-│   ├── app/(auth)/login/        # صفحة الدخول
+│   ├── middleware.ts                    # حماية routes بـ JWT (Edge Runtime)
+│   ├── app/(dashboard)/                 # صفحات النظام المحمية
+│   ├── app/(auth)/login/                # صفحة الدخول
 │   ├── components/
-│   │   ├── layout/
-│   │   │   ├── DashboardShell.tsx  # session timeout + mobile sidebar
-│   │   │   ├── Sidebar.tsx
-│   │   │   └── TopBar.tsx
+│   │   ├── layout/DashboardShell.tsx    # session timeout + mobile sidebar
+│   │   ├── layout/Sidebar.tsx
+│   │   ├── layout/TopBar.tsx
 │   │   ├── ErrorBoundary.tsx
 │   │   └── ErrorBanner.tsx
 │   └── lib/
+│       ├── utils.ts
+│       ├── TimezoneContext.tsx
 │       ├── hooks/useDebounce.ts
 │       ├── hooks/useDataFetch.ts
-│       ├── TimezoneContext.tsx
-│       └── i18n/translations.ts  # قاموس عربي/إنجليزي
-├── .env.local                   # ← لا ترفعه على Git
-└── next.config.ts               # proxy + security headers
+│       └── i18n/translations.ts        # قاموس عربي/إنجليزي
+└── .env.local                          # ← لا ترفعه على Git
 ```
 
 ---
 
 ## ملاحظات الأمان للإنتاج
 
-- `JWT_SECRET` يجب أن يكون **مختلفاً** في كل بيئة — لا تستخدم القيمة الافتراضية
+- `COOKIE_SECURE=true` إلزامي مع HTTPS — يمنع إرسال الكوكي عبر HTTP
+- `JWT_SECRET` يجب أن يكون مختلفاً في كل عميل — لا تكرر نفس القيمة
 - لا ترفع `.env` أو `.env.local` على Git — مضافان في `.gitignore`
-- الجلسة تنتهي تلقائياً بعد **30 دقيقة من عدم النشاط** (تحذير + countdown تلقائي)
-- JWT token يُبطَل فور تسجيل الخروج عبر token blocklist في قاعدة البيانات
+- الجلسة تنتهي تلقائياً بعد **30 دقيقة من عدم النشاط**
+- JWT token يُبطَل فور تسجيل الخروج عبر token blocklist
 - Rate limiting: 10 محاولات دخول في الدقيقة لكل IP
-- Cookie مُعيَّن كـ `HttpOnly` + `SameSite=Strict` — لا يمكن للـ JavaScript قراءته
-
----
-
-## الـ Tech Stack
-
-| الطبقة | التقنية |
-|---|---|
-| Frontend | Next.js 16 (App Router) + TypeScript |
-| Backend | FastAPI (Python 3.11) — المنفذ 8000 |
-| قاعدة البيانات | MySQL 8.4 |
-| ORM | SQLAlchemy 2.0 + PyMySQL |
-| المصادقة | JWT (python-jose) + bcrypt (passlib) |
-| واجهة المستخدم | Tailwind CSS v4، Material Symbols، Recharts |
-| Rate Limiting | slowapi |
-| Edge JWT | jose (Next.js middleware) |
-
----
-
-## المعمارية
-
-```
-المتصفح → Next.js :3000 → (proxy rewrite) → FastAPI :8000 → MySQL
-```
-
-جميع طلبات `/api/*` تمر عبر Next.js proxy — لا توجد Next.js API routes.
+- Cookie مُعيَّن كـ `HttpOnly` + `SameSite=Strict`
+- CSRF protection: double-submit cookie على جميع طلبات POST/PATCH/DELETE
