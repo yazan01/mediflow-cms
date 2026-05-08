@@ -165,6 +165,38 @@ export default function BranchDetailPage() {
   const [waSyncing, setWaSyncing] = useState(false);
   const [waSyncMsg, setWaSyncMsg] = useState("");
 
+  // Webhook event cursor pagination
+  const [waNextCursor, setWaNextCursor] = useState<string | null>(null);
+  const [waLoadingMore, setWaLoadingMore] = useState(false);
+
+  // Auto-save draft
+  const [profileDirty, setProfileDirty] = useState(false);
+  const [draftBanner, setDraftBanner] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<typeof profileForm | null>(null);
+
+  // ── Auto-save draft ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!branchId || loading) return;
+    const key = `draft_${branchId}_profile`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setPendingDraft(draft);
+        setDraftBanner(true);
+      } catch { localStorage.removeItem(key); }
+    }
+  }, [branchId, loading]);
+
+  useEffect(() => {
+    if (!profileDirty || !branchId) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(`draft_${branchId}_profile`, JSON.stringify(profileForm));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [profileForm, profileDirty, branchId]);
+
   // ── Load branch ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -229,11 +261,22 @@ export default function BranchDetailPage() {
 
   function loadWaEvents() {
     setWaEventsLoading(true);
-    fetch(`/api/settings/whatsapp/${branchId}/webhook-events`)
-      .then((r) => r.ok ? r.json() : [])
-      .then(setWaEvents)
+    setWaNextCursor(null);
+    fetch(`/api/settings/whatsapp/${branchId}/webhook-events?limit=20`)
+      .then((r) => r.ok ? r.json() : { items: [], nextCursor: null })
+      .then((d) => { setWaEvents(d.items || []); setWaNextCursor(d.nextCursor || null); })
       .catch(() => setWaEvents([]))
       .finally(() => setWaEventsLoading(false));
+  }
+
+  function loadMoreWaEvents() {
+    if (!waNextCursor || waLoadingMore) return;
+    setWaLoadingMore(true);
+    fetch(`/api/settings/whatsapp/${branchId}/webhook-events?limit=20&cursor=${encodeURIComponent(waNextCursor)}`)
+      .then((r) => r.ok ? r.json() : { items: [], nextCursor: null })
+      .then((d) => { setWaEvents(prev => [...prev, ...(d.items || [])]); setWaNextCursor(d.nextCursor || null); })
+      .catch(() => {})
+      .finally(() => setWaLoadingMore(false));
   }
 
   function loadSms() {
@@ -283,6 +326,20 @@ export default function BranchDetailPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
+  async function exportBranch() {
+    try {
+      const res = await fetch(`/api/branches/${branchId}/export`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `branch_${branch?.code || branchId}_config.json`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch { /* silent */ }
+  }
+
   async function saveProfile() {
     setProfileSaving(true); setProfileStatus("idle");
     try {
@@ -293,6 +350,8 @@ export default function BranchDetailPage() {
       if (res.ok) {
         const updated: Branch = await res.json();
         setBranch(updated);
+        setProfileDirty(false);
+        localStorage.removeItem(`draft_${branchId}_profile`);
         setTimeout(() => setProfileStatus("idle"), 3000);
       }
     } catch { setProfileStatus("error"); }
@@ -473,8 +532,29 @@ export default function BranchDetailPage() {
             </div>
           </div>
         </div>
-        <p className="text-xs text-[#74777f] self-center">{s.branchDetailTitle}</p>
+        <div className="flex items-center gap-2 self-center flex-shrink-0">
+          <p className="text-xs text-[#74777f] hidden sm:block">{s.branchDetailTitle}</p>
+          <button onClick={exportBranch} className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5" title={s.exportBranchDesc}>
+            <span className="material-symbols-outlined text-[16px]">download</span>{s.exportBranch}
+          </button>
+        </div>
       </div>
+
+      {/* Draft restore banner */}
+      {draftBanner && pendingDraft && activeTab === "profile" && (
+        <div className="bg-[#fff7ed] border border-[#d97706]/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#d97706] text-[18px]">edit_note</span>
+            <span className="text-sm text-[#92400e]">{s.draftRestored}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setProfileForm(pendingDraft); setProfileDirty(true); setDraftBanner(false); setPendingDraft(null); }}
+              className="text-xs font-semibold text-[#1960a3] hover:underline">{s.restoreDraft}</button>
+            <button onClick={() => { localStorage.removeItem(`draft_${branchId}_profile`); setDraftBanner(false); setPendingDraft(null); }}
+              className="text-xs font-semibold text-[#74777f] hover:underline">{s.discardDraft}</button>
+          </div>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="bg-white rounded-xl border border-[#e3e2e6] overflow-x-auto no-scrollbar">
@@ -500,7 +580,7 @@ export default function BranchDetailPage() {
         }>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label={`${s.branchName} *`}>
-              <input className="input-field" value={profileForm.name} onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))} />
+              <input className="input-field" value={profileForm.name} onChange={e => { setProfileForm(f => ({ ...f, name: e.target.value })); setProfileDirty(true); }} />
             </Field>
             <Field label={`${s.branchCode} *`}>
               <input className="input-field font-mono" value={profileForm.code} onChange={e => setProfileForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
@@ -751,6 +831,18 @@ export default function BranchDetailPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {!waEventsLoading && waEvents.length > 0 && (
+              <div className="p-4 border-t border-[#e3e2e6] flex justify-center">
+                {waNextCursor ? (
+                  <button onClick={loadMoreWaEvents} disabled={waLoadingMore}
+                    className="btn-secondary text-xs px-4 py-2 disabled:opacity-60 flex items-center gap-2">
+                    {waLoadingMore ? <SpinnerDark /> : <span className="material-symbols-outlined text-[16px]">expand_more</span>}{s.loadMore}
+                  </button>
+                ) : (
+                  <p className="text-xs text-[#74777f]">{s.noMoreEvents}</p>
+                )}
               </div>
             )}
           </div>

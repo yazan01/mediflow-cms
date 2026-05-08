@@ -264,6 +264,7 @@ def webhook_verify(
 
 def _process_webhook_event(event_id: str):
     """Background task: mark event processed; trigger auto-reply if enabled."""
+    import os
     from database import SessionLocal
     db = SessionLocal()
     try:
@@ -272,16 +273,46 @@ def _process_webhook_event(event_id: str):
             return
         cfg = db.query(models.WhatsAppConfig).filter(models.WhatsAppConfig.branchId == evt.branchId).first()
         if cfg and cfg.autoReplyEnabled and cfg.isActive and evt.fromNumber:
-            # Simple auto-reply: send a "received your message" acknowledgement
             token = decrypt_secret(cfg.accessTokenEncrypted or "")
             if token and cfg.phoneNumberId:
+                reply_text = "Thank you for your message. Our team will get back to you shortly."
+                if cfg.aiReplyEnabled:
+                    api_key = os.getenv("ANTHROPIC_API_KEY")
+                    if api_key:
+                        try:
+                            import anthropic as _anthropic
+                            msg_text = ""
+                            try:
+                                payload = evt.payload or {}
+                                entry = payload.get("entry", [{}])[0]
+                                value = entry.get("changes", [{}])[0].get("value", {})
+                                messages = value.get("messages", [])
+                                if messages:
+                                    msg_text = messages[0].get("text", {}).get("body", "")
+                            except Exception:
+                                pass
+                            client = _anthropic.Anthropic(api_key=api_key)
+                            resp = client.messages.create(
+                                model="claude-haiku-4-5-20251001",
+                                max_tokens=200,
+                                system=(
+                                    "You are a friendly medical clinic receptionist assistant. "
+                                    "Reply concisely in 1-2 sentences. Help with appointment inquiries, "
+                                    "direct patients to call for urgent needs, and be warm and professional. "
+                                    "Never provide medical diagnoses or advice."
+                                ),
+                                messages=[{"role": "user", "content": msg_text or "Hello"}],
+                            )
+                            reply_text = resp.content[0].text if resp.content else reply_text
+                        except Exception:
+                            pass
                 try:
                     import urllib.request, json as _j
                     payload = _j.dumps({
                         "messaging_product": "whatsapp",
                         "to": evt.fromNumber,
                         "type": "text",
-                        "text": {"body": "Thank you for your message. Our team will get back to you shortly."},
+                        "text": {"body": reply_text},
                     }).encode()
                     req = urllib.request.Request(
                         f"https://graph.facebook.com/v19.0/{cfg.phoneNumberId}/messages",
@@ -361,28 +392,41 @@ async def webhook_receive(branch_id: str, request: Request, background_tasks: Ba
 @router.get("/{branch_id}/webhook-events")
 def list_webhook_events(
     branch_id: str,
-    limit: int = Query(50, le=200),
+    cursor: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _user=Depends(require_roles(*WA_ADMIN_ROLES)),
 ):
     _check_branch(branch_id, db)
-    events = (
+    q = (
         db.query(models.WebhookEvent)
         .filter(models.WebhookEvent.branchId == branch_id, models.WebhookEvent.source == "whatsapp")
         .order_by(models.WebhookEvent.createdAt.desc())
-        .limit(limit)
-        .all()
     )
-    return [
-        {
-            "id": e.id,
-            "eventType": e.eventType,
-            "fromNumber": e.fromNumber,
-            "processed": bool(e.processed),
-            "createdAt": e.createdAt.isoformat() if e.createdAt else None,
-        }
-        for e in events
-    ]
+    if cursor:
+        from datetime import datetime as _dt
+        try:
+            cursor_dt = _dt.fromisoformat(cursor)
+            q = q.filter(models.WebhookEvent.createdAt < cursor_dt)
+        except ValueError:
+            pass
+    events = q.limit(limit + 1).all()
+    has_more = len(events) > limit
+    events = events[:limit]
+    next_cursor = events[-1].createdAt.isoformat() if (has_more and events) else None
+    return {
+        "items": [
+            {
+                "id": e.id,
+                "eventType": e.eventType,
+                "fromNumber": e.fromNumber,
+                "processed": bool(e.processed),
+                "createdAt": e.createdAt.isoformat() if e.createdAt else None,
+            }
+            for e in events
+        ],
+        "nextCursor": next_cursor,
+    }
 
 
 # ─── Meta template sync ──────────────────────────────────────────────────────

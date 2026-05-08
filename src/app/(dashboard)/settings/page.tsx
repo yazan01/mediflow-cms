@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history";
+type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history" | "health";
 
 type Settings = {
   clinicName: string; licenseNumber: string; phone: string; email: string;
@@ -215,6 +215,22 @@ export default function SettingsPage() {
   const [tplFilter, setTplFilter] = useState({ eventType: "", channel: "" });
   const [tplEditing, setTplEditing] = useState<NotifTemplate | null>(null);
   const [tplSaving, setTplSaving] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGenerateMsg, setAiGenerateMsg] = useState("");
+
+  // Branch health
+  type HealthRow = { branchId: string; branchName: string; branchCode: string; staffCount: number; appointmentsLast30d: number; openInvoices: number; whatsappActive: boolean; smsActive: boolean; paymentActive: boolean; healthScore: number };
+  const [healthData, setHealthData] = useState<HealthRow[]>([]);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  // Audit retention
+  const [retentionStats, setRetentionStats] = useState<{ totalLogs: number; oldestLog: string | null } | null>(null);
+  const [retentionDays, setRetentionDays] = useState(90);
+  const [purging, setPurging] = useState(false);
+  const [purgedCount, setPurgedCount] = useState<number | null>(null);
+
+  // Nav accordion
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // ── Loaders ──────────────────────────────────────────────────────────────
 
@@ -241,12 +257,13 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeSection === "branches" || activeSection === "clinics" || activeSection === "whatsapp") loadBranches();
     if (activeSection === "smtp") loadSmtp();
-    if (activeSection === "history") loadHistory();
+    if (activeSection === "history") { loadHistory(); loadRetentionStats(); }
     if (activeSection === "sms") loadSms();
     if (activeSection === "payment") loadPayment();
     if (activeSection === "features") loadFlags();
     if (activeSection === "apikeys") loadApiKeys();
     if (activeSection === "templates") loadTemplates();
+    if (activeSection === "health") loadHealth();
   }, [activeSection]);
 
   useEffect(() => {
@@ -343,6 +360,59 @@ export default function SettingsPage() {
       .then(setApiKeys)
       .catch(() => setApiKeys([]))
       .finally(() => setApiKeysLoading(false));
+  }
+
+  function loadHealth() {
+    setHealthLoading(true);
+    fetch("/api/branches/health")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setHealthData)
+      .catch(() => setHealthData([]))
+      .finally(() => setHealthLoading(false));
+  }
+
+  function loadRetentionStats() {
+    fetch("/api/audit/retention-stats")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setRetentionStats(d); })
+      .catch(() => {});
+  }
+
+  async function handlePurge() {
+    if (!confirm(s.purgeConfirm)) return;
+    setPurging(true); setPurgedCount(null);
+    try {
+      const res = await fetch("/api/audit/archive", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ olderThanDays: retentionDays }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setPurgedCount(d.deleted);
+        loadRetentionStats();
+      }
+    } catch { /* silent */ }
+    finally { setPurging(false); }
+  }
+
+  async function handleAiGenerate() {
+    if (!tplEditing) return;
+    setAiGenerating(true); setAiGenerateMsg("");
+    try {
+      const res = await fetch("/api/settings/notification-templates/generate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventType: tplEditing.eventType, channel: tplEditing.channel, language: tplEditing.language }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setTplEditing(tpl => tpl ? ({ ...tpl, body: d.body || tpl.body, subject: d.subject ?? tpl.subject }) : tpl);
+        setAiGenerateMsg(s.aiGenerateSuccess);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAiGenerateMsg(err.detail || s.aiGenerateFailed);
+      }
+    } catch { setAiGenerateMsg(s.aiGenerateFailed); }
+    finally { setAiGenerating(false); }
   }
 
   function loadTemplates(overrides?: { eventType?: string; channel?: string }) {
@@ -579,27 +649,38 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(key).then(() => { setApiKeyCopied(true); setTimeout(() => setApiKeyCopied(false), 2000); });
   }
 
-  // ── Nav sections ─────────────────────────────────────────────────────────
+  // ── Nav sections (grouped accordion) ─────────────────────────────────────
 
-  const sections = [
-    { key: "clinic",        label: s.clinicProfile,       icon: "local_hospital" },
-    { key: "security",      label: s.securityAuth,        icon: "security" },
-    { key: "notifications", label: s.notifications,       icon: "notifications" },
-    { key: "billing",       label: s.billingConfig,       icon: "payments" },
-    { key: "branches",      label: s.branches,            icon: "account_tree" },
-    { key: "clinics",       label: s.clinics,             icon: "medical_services" },
-    { key: "smtp",          label: s.smtpConfig,          icon: "email" },
-    { key: "whatsapp",      label: s.whatsapp,            icon: "chat" },
-    { key: "sms",           label: s.smsGatewayConfig,    icon: "sms" },
-    { key: "payment",       label: s.paymentConfig,       icon: "credit_card" },
-    { key: "features",      label: s.featureFlags,        icon: "toggle_on" },
-    { key: "apikeys",       label: s.apiKeys,             icon: "key" },
-    { key: "templates",     label: s.notifTemplates,      icon: "mail_outline" },
-    { key: "integrations",  label: s.integrations,        icon: "cable" },
-    { key: "history",       label: s.settingsHistory,     icon: "history" },
+  const navGroups = [
+    { key: "general",       label: s.navGeneral,       items: [
+      { key: "clinic",        label: s.clinicProfile,     icon: "local_hospital" },
+      { key: "notifications", label: s.notifications,     icon: "notifications" },
+      { key: "billing",       label: s.billingConfig,     icon: "payments" },
+    ]},
+    { key: "security",      label: s.navSecurity,      items: [
+      { key: "security",      label: s.securityAuth,      icon: "security" },
+      { key: "apikeys",       label: s.apiKeys,           icon: "key" },
+    ]},
+    { key: "organization",  label: s.navOrganization,  items: [
+      { key: "branches",      label: s.branches,          icon: "account_tree" },
+      { key: "clinics",       label: s.clinics,           icon: "medical_services" },
+      { key: "health",        label: s.branchHealth,      icon: "monitor_heart" },
+    ]},
+    { key: "integrations",  label: s.navIntegrations,  items: [
+      { key: "smtp",          label: s.smtpConfig,        icon: "email" },
+      { key: "whatsapp",      label: s.whatsapp,          icon: "chat" },
+      { key: "sms",           label: s.smsGatewayConfig,  icon: "sms" },
+      { key: "payment",       label: s.paymentConfig,     icon: "credit_card" },
+      { key: "integrations",  label: s.integrations,      icon: "cable" },
+    ]},
+    { key: "system",        label: s.navSystem,        items: [
+      { key: "features",      label: s.featureFlags,      icon: "toggle_on" },
+      { key: "templates",     label: s.notifTemplates,    icon: "mail_outline" },
+      { key: "history",       label: s.settingsHistory,   icon: "history" },
+    ]},
   ] as const;
 
-  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history"].includes(activeSection);
+  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history", "health"].includes(activeSection);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -641,20 +722,37 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex gap-6">
-        {/* Sidebar nav */}
+        {/* Sidebar nav — accordion groups */}
         <div className="w-56 flex-shrink-0">
           <nav className="bg-white rounded-xl border border-[#e3e2e6] overflow-hidden">
-            {sections.map((sec) => (
-              <button key={sec.key} onClick={() => setActiveSection(sec.key as Section)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors border-b border-[#e3e2e6] last:border-b-0 ${
-                  activeSection === sec.key
-                    ? "bg-[#d3e4ff]/30 text-[#1960a3] font-semibold border-s-4 border-s-[#1960a3]"
-                    : "text-[#43474e] hover:bg-[#f4f3f7]"
-                }`}>
-                <span className={`material-symbols-outlined text-[20px] ${activeSection === sec.key ? "text-[#1960a3]" : "text-[#74777f]"}`}>{sec.icon}</span>
-                {sec.label}
-              </button>
-            ))}
+            {navGroups.map((group, gi) => {
+              const collapsed = collapsedGroups.has(group.key);
+              return (
+                <div key={group.key} className={gi > 0 ? "border-t border-[#e3e2e6]" : ""}>
+                  <button
+                    onClick={() => setCollapsedGroups(prev => {
+                      const next = new Set(prev);
+                      next.has(group.key) ? next.delete(group.key) : next.add(group.key);
+                      return next;
+                    })}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#f8f7fb] transition-colors">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#74777f]">{group.label}</span>
+                    <span className={`material-symbols-outlined text-[16px] text-[#c4c6cf] transition-transform ${collapsed ? "" : "rotate-180"}`}>expand_less</span>
+                  </button>
+                  {!collapsed && group.items.map((sec) => (
+                    <button key={sec.key} onClick={() => setActiveSection(sec.key as Section)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
+                        activeSection === sec.key
+                          ? "bg-[#d3e4ff]/30 text-[#1960a3] font-semibold border-s-4 border-s-[#1960a3]"
+                          : "text-[#43474e] hover:bg-[#f4f3f7]"
+                      }`}>
+                      <span className={`material-symbols-outlined text-[18px] ${activeSection === sec.key ? "text-[#1960a3]" : "text-[#74777f]"}`}>{sec.icon}</span>
+                      {sec.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </nav>
         </div>
 
@@ -1390,6 +1488,81 @@ export default function SettingsPage() {
                 </div>
               )}
 
+              {/* ── Branch Health ── */}
+              {activeSection === "health" && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                    <div className="p-5 border-b border-[#e3e2e6] flex items-center justify-between">
+                      <div>
+                        <h2 className="text-base font-semibold text-[#1a1c1e]">{s.branchHealth}</h2>
+                        <p className="text-xs text-[#74777f] mt-0.5">{s.branchHealthDesc}</p>
+                      </div>
+                      <button onClick={loadHealth} className="p-2 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.retry}>
+                        <span className="material-symbols-outlined text-[#74777f] text-[18px]">refresh</span>
+                      </button>
+                    </div>
+                    {healthLoading ? (
+                      <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    ) : healthData.length === 0 ? (
+                      <div className="p-12 flex flex-col items-center gap-3">
+                        <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">monitor_heart</span>
+                        <p className="text-sm text-[#74777f]">{s.noBranchHealthData}</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead><tr className="bg-[#f8f7fb]">
+                            <th className="table-header">{s.branchName}</th>
+                            <th className="table-header">{s.staffCount}</th>
+                            <th className="table-header">{s.appointmentsLast30d}</th>
+                            <th className="table-header">{s.openInvoices}</th>
+                            <th className="table-header">WhatsApp</th>
+                            <th className="table-header">SMS</th>
+                            <th className="table-header">{s.paymentConfig}</th>
+                            <th className="table-header">{s.healthScore}</th>
+                          </tr></thead>
+                          <tbody>
+                            {healthData.map(row => (
+                              <tr key={row.branchId} className="table-row">
+                                <td className="table-cell">
+                                  <p className="font-semibold text-[#1a1c1e]">{row.branchName}</p>
+                                  <p className="text-[10px] font-mono text-[#74777f]">{row.branchCode}</p>
+                                </td>
+                                <td className="table-cell text-center text-[#74777f]">{row.staffCount}</td>
+                                <td className="table-cell text-center text-[#74777f]">{row.appointmentsLast30d}</td>
+                                <td className="table-cell text-center">
+                                  <span className={row.openInvoices > 0 ? "text-[#d97706] font-semibold" : "text-[#74777f]"}>{row.openInvoices}</span>
+                                </td>
+                                <td className="table-cell text-center">
+                                  <span className={`material-symbols-outlined text-[18px] ${row.whatsappActive ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{row.whatsappActive ? "check_circle" : "cancel"}</span>
+                                </td>
+                                <td className="table-cell text-center">
+                                  <span className={`material-symbols-outlined text-[18px] ${row.smsActive ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{row.smsActive ? "check_circle" : "cancel"}</span>
+                                </td>
+                                <td className="table-cell text-center">
+                                  <span className={`material-symbols-outlined text-[18px] ${row.paymentActive ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{row.paymentActive ? "check_circle" : "cancel"}</span>
+                                </td>
+                                <td className="table-cell">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-[#f4f3f7] rounded-full h-2">
+                                      <div className="h-2 rounded-full transition-all" style={{
+                                        width: `${row.healthScore}%`,
+                                        backgroundColor: row.healthScore >= 70 ? "#0d9488" : row.healthScore >= 40 ? "#d97706" : "#ba1a1a",
+                                      }} />
+                                    </div>
+                                    <span className="text-xs font-bold text-[#1a1c1e] w-8 text-end">{row.healthScore}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* ── Integrations ── */}
               {activeSection === "integrations" && (
                 <div className="space-y-4">
@@ -1421,6 +1594,30 @@ export default function SettingsPage() {
 
               {/* ── History ── */}
               {activeSection === "history" && (
+                <div className="space-y-4">
+                {/* Retention panel */}
+                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                  <h2 className="text-base font-semibold text-[#1a1c1e] mb-1">{s.auditRetention}</h2>
+                  <p className="text-xs text-[#74777f] mb-4">{s.auditRetentionDesc}</p>
+                  {retentionStats && (
+                    <div className="flex gap-6 mb-4">
+                      <div><p className="text-[10px] text-[#74777f] uppercase tracking-wide">{s.totalLogs}</p><p className="text-xl font-bold text-[#1a1c1e]">{retentionStats.totalLogs.toLocaleString()}</p></div>
+                      <div><p className="text-[10px] text-[#74777f] uppercase tracking-wide">{s.oldestLog}</p><p className="text-sm font-medium text-[#43474e]">{retentionStats.oldestLog ? new Date(retentionStats.oldestLog).toLocaleDateString() : "—"}</p></div>
+                    </div>
+                  )}
+                  {purgedCount !== null && <p className="text-xs text-[#0d9488] font-semibold mb-3">{purgedCount} {s.purgedCount}</p>}
+                  <div className="flex items-end gap-3 flex-wrap">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.purgeOlderThan}</label>
+                      <input type="number" className="input-field w-32" value={retentionDays} min={30} max={3650}
+                        onChange={e => setRetentionDays(Number(e.target.value))} />
+                    </div>
+                    <button onClick={handlePurge} disabled={purging}
+                      className="btn-danger text-sm px-4 py-2 flex items-center gap-2 disabled:opacity-60 min-h-[44px]">
+                      {purging ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">delete_forever</span>}{s.purgeNow}
+                    </button>
+                  </div>
+                </div>
                 <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
                   <div className="p-5 border-b border-[#e3e2e6]">
                     <h2 className="text-base font-semibold text-[#1a1c1e]">{s.settingsHistory}</h2>
@@ -1457,6 +1654,7 @@ export default function SettingsPage() {
                       </table>
                     </div>
                   )}
+                </div>
                 </div>
               )}
             </>
@@ -1546,9 +1744,21 @@ export default function SettingsPage() {
                   <span className="text-xs text-[#74777f]">{tplEditing.language}</span>
                 </div>
               </div>
-              <button onClick={() => setTplEditing(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+              <button onClick={() => { setTplEditing(null); setAiGenerateMsg(""); }} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* AI Generate */}
+              <div className="bg-[#f8f7fb] rounded-xl p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-[#43474e]">{s.aiGenerate}</p>
+                  <p className="text-[11px] text-[#74777f]">{s.aiGenerateHint}</p>
+                  {aiGenerateMsg && <p className={`text-[11px] mt-1 font-semibold ${aiGenerateMsg === s.aiGenerateSuccess ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{aiGenerateMsg}</p>}
+                </div>
+                <button onClick={handleAiGenerate} disabled={aiGenerating}
+                  className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 whitespace-nowrap disabled:opacity-60 flex-shrink-0 min-h-[44px]">
+                  {aiGenerating ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">auto_awesome</span>}{aiGenerating ? s.aiGenerating : s.aiGenerate}
+                </button>
+              </div>
               {tplEditing.channel === "email" && (
                 <div>
                   <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.tplSubject}</label>

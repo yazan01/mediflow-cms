@@ -116,6 +116,13 @@ class TemplatePreviewRequest(BaseModel):
     variables: dict = Field(default_factory=dict)
 
 
+class TemplateGenerate(BaseModel):
+    eventType: str
+    channel: str
+    language: str = "en"
+    context: Optional[str] = Field(None, max_length=500)
+
+
 import re as _re
 _VAR_RE = _re.compile(r"\{\{(\w+)\}\}")
 
@@ -173,6 +180,62 @@ def _seed_defaults(db: Session):
                 isDefault=True,
             ))
     db.commit()
+
+
+@router.post("/generate")
+def generate_template_ai(
+    body: TemplateGenerate,
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER")),
+):
+    import os, json as _j
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(400, "ANTHROPIC_API_KEY is not configured on this server")
+    if body.eventType not in VALID_EVENT_TYPES:
+        raise HTTPException(422, f"Invalid eventType")
+    if body.channel not in VALID_CHANNELS:
+        raise HTTPException(422, "Invalid channel")
+    if body.language not in VALID_LANGUAGES:
+        raise HTTPException(422, "Invalid language")
+
+    lang_label = "Arabic" if body.language == "ar" else "English"
+    channel_hints = {
+        "email": "email message (include a subject line; can be multiple paragraphs)",
+        "sms": "SMS (max 160 characters; plain text only; no subject)",
+        "whatsapp": "WhatsApp message (can use emoji and *bold* formatting; no subject)",
+    }
+    prompt = (
+        f"Generate a medical clinic notification template.\n"
+        f"Event: {body.eventType.replace('_', ' ')}\n"
+        f"Channel: {channel_hints[body.channel]}\n"
+        f"Language: {lang_label}\n"
+        + (f"Extra context: {body.context}\n" if body.context else "")
+        + "\nAvailable placeholders: {{patient_name}}, {{clinic_name}}, {{date}}, {{time}}, "
+        "{{appointment_id}}, {{doctor_name}}, {{invoice_no}}, {{amount}}, {{currency}}\n"
+        "Use only the placeholders that are relevant to the event type.\n\n"
+        'Return ONLY valid JSON (no markdown code fences) in this exact shape:\n'
+        '{"subject": "..." or null, "body": "...", "variables": ["var1", "var2"]}'
+    )
+    try:
+        import anthropic as _anthropic
+        client = _anthropic.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        result = _j.loads(raw)
+        return {
+            "subject": result.get("subject"),
+            "body": result.get("body", ""),
+            "variables": result.get("variables", []),
+        }
+    except _j.JSONDecodeError:
+        raise HTTPException(502, "AI returned invalid JSON — try again")
+    except Exception as e:
+        raise HTTPException(502, f"AI generation failed: {str(e)[:200]}")
 
 
 @router.get("")

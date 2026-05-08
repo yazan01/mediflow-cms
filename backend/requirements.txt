@@ -10,3 +10,4 @@ python-dotenv==1.0.1
 slowapi==0.1.9
 pyotp==2.9.0
 redis==5.2.1
+anthropic>=0.30.0

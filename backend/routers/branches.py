@@ -180,6 +180,48 @@ def create_branch(
     return branch_to_dict(branch, manager_name)
 
 
+@router.get("/health")
+def get_branch_health(
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*BRANCH_ADMIN_ROLES)),
+):
+    """Per-branch health score based on staff, integrations, and activity."""
+    from datetime import datetime as _dt, timedelta as _td
+    from sqlalchemy import func as _f
+    thirty_days_ago = _dt.now() - _td(days=30)
+    branches = db.query(models.Branch).filter(models.Branch.isActive == True).order_by(models.Branch.name).all()
+    result = []
+    for b in branches:
+        staff_count = db.query(_f.count(models.Employee.id)).filter(
+            models.Employee.branchId == b.id, models.Employee.deletedAt == None,
+        ).scalar() or 0
+        appt_count = db.query(_f.count(models.Appointment.id)).filter(
+            models.Appointment.branchId == b.id, models.Appointment.createdAt >= thirty_days_ago,
+        ).scalar() or 0
+        open_invoices = db.query(_f.count(models.Invoice.id)).filter(
+            models.Invoice.branchId == b.id, models.Invoice.status.in_(["draft", "sent"]),
+        ).scalar() or 0
+        wa = db.query(models.WhatsAppConfig).filter(models.WhatsAppConfig.branchId == b.id).first()
+        sms = db.query(models.SmsConfig).filter(models.SmsConfig.branchId == b.id).first()
+        pg = db.query(models.PaymentGatewayConfig).filter(models.PaymentGatewayConfig.branchId == b.id).first()
+        wa_ok = bool(wa and wa.isActive and wa.phoneNumberId)
+        sms_ok = bool(sms and sms.isActive)
+        pay_ok = bool(pg and pg.isActive)
+        # Score: 30 pts staff (2/each, max 30), 30 pts integrations (10 each), 20 pts appts (1 each, max 20), 20 pts open invoices
+        score = min(staff_count * 2, 30)
+        score += (10 if wa_ok else 0) + (10 if sms_ok else 0) + (10 if pay_ok else 0)
+        score += min(appt_count, 20)
+        score += max(0, 20 - open_invoices * 2)
+        score = min(score, 100)
+        result.append({
+            "branchId": b.id, "branchName": b.name, "branchCode": b.code,
+            "staffCount": staff_count, "appointmentsLast30d": appt_count, "openInvoices": open_invoices,
+            "whatsappActive": wa_ok, "smsActive": sms_ok, "paymentActive": pay_ok,
+            "healthScore": score,
+        })
+    return result
+
+
 @router.get("/{branch_id}")
 def get_branch(branch_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
     branch = db.query(models.Branch).filter(models.Branch.id == branch_id).first()
@@ -408,6 +450,54 @@ def clone_branch(
     db.refresh(clone)
     log_audit(db, user.id, "CLONE", "Branch", new_id, {"source": branch_id, "name": body.name})
     return branch_to_dict(clone)
+
+
+@router.get("/{branch_id}/export")
+def export_branch_config(
+    branch_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*BRANCH_ADMIN_ROLES)),
+):
+    """Export full branch configuration as JSON (no secrets)."""
+    branch = db.query(models.Branch).filter(models.Branch.id == branch_id).first()
+    if not branch:
+        raise HTTPException(404, "Branch not found")
+    allowed = _get_user_branch_ids(user, db)
+    if "SUPER_ADMIN" not in (user.roles or []) and allowed is not None and branch_id not in allowed:
+        raise HTTPException(403, "Access restricted to your assigned branch")
+
+    from datetime import datetime as _dt
+    bs = db.query(models.BranchSetting).filter(models.BranchSetting.branchId == branch_id).first()
+    ac = db.query(models.AppointmentConfig).filter(models.AppointmentConfig.branchId == branch_id).first()
+    flags = db.query(models.FeatureFlag).filter(models.FeatureFlag.branchId == branch_id).all()
+    tpls = db.query(models.NotificationTemplate).filter(models.NotificationTemplate.branchId == branch_id).all()
+    shifts = db.query(models.Shift).filter(models.Shift.branchId == branch_id).all()
+
+    log_audit(db, user.id, "EXPORT", "Branch", branch_id, {})
+    return {
+        "exportedAt": _dt.now().isoformat(),
+        "exportedBy": user.id,
+        "version": "1.0",
+        "branch": branch_to_dict(branch),
+        "settings": branch_setting_to_dict(bs) if bs else None,
+        "appointmentConfig": {
+            "workingDays": ac.workingDays, "startTime": ac.startTime, "endTime": ac.endTime,
+            "slotDurationMin": ac.slotDurationMin, "bufferMin": ac.bufferMin,
+            "maxDailyAppointments": ac.maxDailyAppointments, "bookingWindowDays": ac.bookingWindowDays,
+            "autoConfirm": ac.autoConfirm,
+        } if ac else None,
+        "featureFlags": [{"key": f.key, "isEnabled": f.isEnabled} for f in flags],
+        "notificationTemplates": [
+            {"eventType": t.eventType, "channel": t.channel, "language": t.language,
+             "subject": t.subject, "body": t.body, "variables": t.variables}
+            for t in tpls
+        ],
+        "shifts": [
+            {"name": sh.name, "startTime": sh.startTime, "endTime": sh.endTime,
+             "daysOfWeek": sh.daysOfWeek, "color": sh.color}
+            for sh in shifts
+        ],
+    }
 
 
 @router.get("/{branch_id}/settings/history")

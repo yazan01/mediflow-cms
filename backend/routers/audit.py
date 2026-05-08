@@ -1,12 +1,45 @@
+from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import func as _func
 
 from database import get_db
-from auth import get_current_user, require_roles
+from auth import get_current_user, require_roles, log_audit
 import models
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
+
+
+class ArchiveRequest(BaseModel):
+    olderThanDays: int = Field(90, ge=30, le=3650)
+
+
+@router.get("/retention-stats")
+def get_retention_stats(
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("SUPER_ADMIN", "AUDITOR")),
+):
+    total = db.query(_func.count(models.AuditLog.id)).scalar() or 0
+    oldest = db.query(_func.min(models.AuditLog.timestamp)).scalar()
+    return {
+        "totalLogs": total,
+        "oldestLog": oldest.isoformat() if oldest else None,
+    }
+
+
+@router.post("/archive")
+def archive_audit_logs(
+    body: ArchiveRequest,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("SUPER_ADMIN")),
+):
+    cutoff = datetime.now() - timedelta(days=body.olderThanDays)
+    deleted = db.query(models.AuditLog).filter(models.AuditLog.timestamp < cutoff).delete(synchronize_session=False)
+    db.commit()
+    log_audit(db, user.id, "ARCHIVE", "AuditLog", None, {"olderThanDays": body.olderThanDays, "deleted": deleted})
+    return {"deleted": deleted, "cutoffDate": cutoff.isoformat()}
 
 
 @router.get("")
