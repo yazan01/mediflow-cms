@@ -1061,6 +1061,57 @@ def get_payslip(payroll_id: str, db: Session = Depends(get_db), user=Depends(req
     }
 
 
+@router.patch("/payroll/{payroll_id}/reverse", status_code=200)
+def reverse_payroll(payroll_id: str, db: Session = Depends(get_db), user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER"))):
+    p = db.query(models.Payroll).filter(models.Payroll.id == payroll_id).first()
+    if not p:
+        raise HTTPException(404, "Payroll record not found")
+    if p.status != "PROCESSED":
+        raise HTTPException(409, "Only PROCESSED payroll records can be reversed")
+    p.status = "REVERSED"
+    db.commit()
+    log_audit(db, user.id, "REVERSE", "Payroll", p.id, {"employeeId": p.employeeId, "month": p.month, "year": p.year})
+    return {"id": p.id, "status": p.status}
+
+
+# ── Leave Policies CRUD ────────────────────────────────────────────────────────
+
+class LeavePolicyUpdate(BaseModel):
+    maxDaysPerYear: Optional[int] = None
+    carryForwardMax: Optional[int] = None
+    requiresMedicalCert: Optional[bool] = None
+    probationAllowed: Optional[bool] = None
+    minServiceDays: Optional[int] = None
+    encashmentAllowed: Optional[bool] = None
+
+
+@router.patch("/leave-policies/{policy_id}")
+def update_leave_policy(
+    policy_id: str,
+    body: LeavePolicyUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*HR_ROLES)),
+):
+    policy = db.query(models.LeavePolicy).filter(models.LeavePolicy.id == policy_id).first()
+    if not policy:
+        raise HTTPException(404, "Leave policy not found")
+    for field, val in body.model_dump(exclude_none=True).items():
+        setattr(policy, field, val)
+    db.commit()
+    db.refresh(policy)
+    log_audit(db, user.id, "UPDATE", "LeavePolicy", policy_id, {"leaveType": policy.leaveType})
+    return {
+        "id": policy.id,
+        "leaveType": policy.leaveType,
+        "maxDaysPerYear": policy.maxDaysPerYear,
+        "carryForwardMax": policy.carryForwardMax,
+        "requiresMedicalCert": policy.requiresMedicalCert,
+        "probationAllowed": policy.probationAllowed,
+        "minServiceDays": policy.minServiceDays,
+        "encashmentAllowed": policy.encashmentAllowed,
+    }
+
+
 # ── Attendance ─────────────────────────────────────────────────────────────────
 
 @router.get("/attendance")

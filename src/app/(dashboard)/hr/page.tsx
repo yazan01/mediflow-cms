@@ -191,7 +191,7 @@ export default function HRPage() {
     return LEAVE_TYPE_LABEL[type?.toUpperCase()] ?? type?.replace(/_/g, " ");
   }
 
-  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts" | "analytics";
+  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts" | "analytics" | "leavePolicies";
   const TABS: { key: Tab; label: string }[] = [
     { key: "employees",     label: t.hr.employees },
     { key: "attendance",    label: t.hr.attendance },
@@ -199,6 +199,7 @@ export default function HRPage() {
     { key: "payroll",       label: t.hr.payroll },
     { key: "shifts",        label: t.hr.shifts },
     { key: "analytics",     label: t.hr.analytics },
+    { key: "leavePolicies", label: t.hr.leavePolicies },
   ];
 
   const [activeTab, setActiveTab] = useState<Tab>("employees");
@@ -259,6 +260,14 @@ export default function HRPage() {
   // Analytics
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // Leave Policies
+  interface LeavePolicy { id: string; leaveType: string; maxDaysPerYear: number; carryForwardMax: number; requiresMedicalCert: boolean; probationAllowed: boolean; minServiceDays: number; encashmentAllowed: boolean; }
+  const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
+  const [policyEditing, setPolicyEditing] = useState<string | null>(null);
+  const [policyForm, setPolicyForm] = useState<Partial<LeavePolicy>>({});
+  const [policySaving, setPolicySaving] = useState(false);
 
   // Reject leave modal
   const [rejectModal, setRejectModal] = useState<{ leaveId: string; employeeName: string } | null>(null);
@@ -402,6 +411,14 @@ export default function HRPage() {
     } catch { /* ignore */ } finally { setAnalyticsLoading(false); }
   }, []);
 
+  const fetchLeavePolicies = useCallback(async () => {
+    setPoliciesLoading(true);
+    try {
+      const res = await fetch("/api/hr/leave-policies");
+      if (res.ok) setLeavePolicies(await res.json());
+    } catch { /* ignore */ } finally { setPoliciesLoading(false); }
+  }, []);
+
   // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
@@ -412,6 +429,23 @@ export default function HRPage() {
   useEffect(() => { if (activeTab === "payroll") fetchPayroll(); }, [activeTab, fetchPayroll]);
   useEffect(() => { if (activeTab === "shifts") { fetchShifts(); fetchBranches(); } }, [activeTab, fetchShifts, fetchBranches]);
   useEffect(() => { if (activeTab === "analytics") fetchAnalytics(); }, [activeTab, fetchAnalytics]);
+  useEffect(() => { if (activeTab === "leavePolicies") fetchLeavePolicies(); }, [activeTab, fetchLeavePolicies]);
+
+  async function handleSavePolicy(policyId: string) {
+    setPolicySaving(true);
+    try {
+      const res = await fetch(`/api/hr/leave-policies/${policyId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policyForm),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setLeavePolicies(ps => ps.map(p => p.id === policyId ? { ...p, ...updated } : p));
+        setPolicyEditing(null);
+      }
+    } catch { /* ignore */ } finally { setPolicySaving(false); }
+  }
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -1134,23 +1168,39 @@ export default function HRPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        {pr.status === "PENDING" ? (
-                          <button
-                            onClick={() => handleProcessPayroll(pr.employeeId)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-[#002045] text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">payments</span>
-                            {t.hr.process}
-                          </button>
-                        ) : pr.id ? (
-                          <button
-                            onClick={() => setPayslipPayrollId(pr.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 border border-[#c4c6cf] text-[#43474e] text-xs font-semibold rounded-lg hover:bg-[#f4f3f7] transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-                            {t.hr.payslip}
-                          </button>
-                        ) : null}
+                        <div className="flex items-center gap-2">
+                          {pr.status === "PENDING" ? (
+                            <button
+                              onClick={() => handleProcessPayroll(pr.employeeId)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-[#002045] text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">payments</span>
+                              {t.hr.process}
+                            </button>
+                          ) : pr.status === "PROCESSED" && pr.id ? (
+                            <>
+                              <button
+                                onClick={() => setPayslipPayrollId(pr.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 border border-[#c4c6cf] text-[#43474e] text-xs font-semibold rounded-lg hover:bg-[#f4f3f7] transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                                {t.hr.payslip}
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(t.hr.reverseConfirm)) return;
+                                  const res = await fetch(`/api/hr/payroll/${pr.id}/reverse`, { method: "PATCH" });
+                                  if (res.ok) fetchPayroll();
+                                }}
+                                className="flex items-center gap-1 px-3 py-1.5 border border-[#ffdad6] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6]/30 transition-colors"
+                                title={t.hr.reversePayroll}
+                              >
+                                <span className="material-symbols-outlined text-[14px]">undo</span>
+                                {t.hr.reverse}
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1382,6 +1432,74 @@ export default function HRPage() {
             <div className="bg-white rounded-xl border border-[#e3e2e6] p-16 flex flex-col items-center gap-3">
               <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">analytics</span>
               <p className="text-sm text-[#74777f]">{t.common.noData}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Leave Policies ── */}
+      {activeTab === "leavePolicies" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.leavePolicies}</h2>
+              <p className="text-sm text-[#74777f] mt-0.5">{t.hr.leavePoliciesDesc}</p>
+            </div>
+          </div>
+          {policiesLoading ? (
+            <Spinner label={t.hr.loading} />
+          ) : leavePolicies.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 text-center">
+              <span className="material-symbols-outlined text-4xl text-[#c4c6cf] block mb-2">policy</span>
+              <p className="text-sm text-[#74777f]">{t.hr.noPolicies}</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
+                    {[t.hr.leaveType, t.hr.maxDays, t.hr.carryForwardMax, t.hr.medicalCertLabel, t.hr.probationAllowed, t.hr.minService, ""].map((h, i) => (
+                      <th key={i} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e3e2e6]">
+                  {leavePolicies.map(p => (
+                    <tr key={p.id} className="hover:bg-[#f4f3f7] transition-colors">
+                      {policyEditing === p.id ? (
+                        <>
+                          <td className="px-5 py-3 font-semibold text-[#1a1c1e]">{leaveTypeLabel(p.leaveType)}</td>
+                          <td className="px-5 py-3"><input type="number" className="input-field w-20 text-sm" min={0} value={policyForm.maxDaysPerYear ?? p.maxDaysPerYear} onChange={e => setPolicyForm(f => ({ ...f, maxDaysPerYear: Number(e.target.value) }))} /></td>
+                          <td className="px-5 py-3"><input type="number" className="input-field w-20 text-sm" min={0} value={policyForm.carryForwardMax ?? p.carryForwardMax} onChange={e => setPolicyForm(f => ({ ...f, carryForwardMax: Number(e.target.value) }))} /></td>
+                          <td className="px-5 py-3"><input type="checkbox" checked={policyForm.requiresMedicalCert ?? p.requiresMedicalCert} onChange={e => setPolicyForm(f => ({ ...f, requiresMedicalCert: e.target.checked }))} className="w-4 h-4 accent-[#1960a3]" /></td>
+                          <td className="px-5 py-3"><input type="checkbox" checked={policyForm.probationAllowed ?? p.probationAllowed} onChange={e => setPolicyForm(f => ({ ...f, probationAllowed: e.target.checked }))} className="w-4 h-4 accent-[#1960a3]" /></td>
+                          <td className="px-5 py-3"><input type="number" className="input-field w-20 text-sm" min={0} value={policyForm.minServiceDays ?? p.minServiceDays} onChange={e => setPolicyForm(f => ({ ...f, minServiceDays: Number(e.target.value) }))} /></td>
+                          <td className="px-5 py-3">
+                            <div className="flex gap-2">
+                              <button onClick={() => handleSavePolicy(p.id)} disabled={policySaving} className="btn-primary px-3 py-1 text-xs disabled:opacity-60">{policySaving ? "…" : t.common.save}</button>
+                              <button onClick={() => setPolicyEditing(null)} className="btn-secondary px-3 py-1 text-xs">{t.common.cancel}</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-5 py-3.5 font-semibold text-[#1a1c1e]">{leaveTypeLabel(p.leaveType)}</td>
+                          <td className="px-5 py-3.5 text-[#43474e]">{p.maxDaysPerYear} {t.hr.daysUnit}</td>
+                          <td className="px-5 py-3.5 text-[#43474e]">{p.carryForwardMax} {t.hr.daysUnit}</td>
+                          <td className="px-5 py-3.5"><span className={`badge ${p.requiresMedicalCert ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{p.requiresMedicalCert ? t.common.yes : t.common.no}</span></td>
+                          <td className="px-5 py-3.5"><span className={`badge ${p.probationAllowed ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{p.probationAllowed ? t.common.yes : t.common.no}</span></td>
+                          <td className="px-5 py-3.5 text-[#43474e]">{p.minServiceDays} {t.hr.daysUnit}</td>
+                          <td className="px-5 py-3.5">
+                            <button onClick={() => { setPolicyEditing(p.id); setPolicyForm({}); }} className="text-xs text-[#1960a3] hover:underline font-semibold">
+                              {t.common.edit}
+                            </button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

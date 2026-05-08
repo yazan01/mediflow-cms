@@ -54,6 +54,42 @@ export default function EmployeeProfilePage() {
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [contractModal, setContractModal] = useState(false);
+  const [contractForm, setContractForm] = useState({ contractType: "PERMANENT", startDate: "", endDate: "", notes: "" });
+  const [contractSaving, setContractSaving] = useState(false);
+  const [contractError, setContractError] = useState("");
+
+  async function handleAddContract(e: React.FormEvent) {
+    e.preventDefault();
+    if (!contractForm.startDate) { setContractError(t.common.required); return; }
+    setContractSaving(true);
+    setContractError("");
+    try {
+      const res = await fetch(`/api/hr/employees/${id}/contracts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractType: contractForm.contractType,
+          startDate: contractForm.startDate,
+          endDate: contractForm.endDate || undefined,
+          notes: contractForm.notes || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setContractError(err.detail || t.hr.contractFailed);
+        return;
+      }
+      setContractModal(false);
+      setContractForm({ contractType: "PERMANENT", startDate: "", endDate: "", notes: "" });
+      const cr = await fetch(`/api/hr/employees/${id}/contracts`);
+      if (cr.ok) setContracts(await cr.json());
+    } catch {
+      setContractError(t.hr.contractFailed);
+    } finally {
+      setContractSaving(false);
+    }
+  }
 
   const load = useCallback(async () => {
     const [empRes, deptRes, branchRes] = await Promise.all([
@@ -247,10 +283,19 @@ export default function EmployeeProfilePage() {
 
       {/* Contracts */}
       <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-        <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#1960a3] text-[18px]">description</span>
-          {t.hr.contractType}
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-[#1a1c1e] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1960a3] text-[18px]">description</span>
+            {t.hr.contractType}
+          </h3>
+          <button
+            onClick={() => { setContractModal(true); setContractError(""); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1960a3] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            {t.hr.addContract}
+          </button>
+        </div>
         {contractsLoading ? (
           <div className="flex justify-center py-4">
             <div className="w-5 h-5 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
@@ -264,6 +309,7 @@ export default function EmployeeProfilePage() {
                 <div>
                   <p className="text-sm font-semibold text-[#1a1c1e]">{c.contractType.replace(/_/g, " ")}</p>
                   <p className="text-xs text-[#74777f]">{c.startDate?.slice(0, 10)}{c.endDate ? ` → ${c.endDate.slice(0, 10)}` : ""}</p>
+                  {c.notes && <p className="text-xs text-[#74777f] mt-0.5 italic">{c.notes}</p>}
                 </div>
                 {c.isExpiringSoon && (
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#fff7ed] text-[#d97706] flex items-center gap-1">
@@ -415,6 +461,51 @@ export default function EmployeeProfilePage() {
           onClose={() => setEditOpen(false)}
           onSaved={(updated) => { setEmp(updated); setEditOpen(false); }}
         />
+      )}
+
+      {/* Add Contract Modal */}
+      {contractModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="contract-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setContractModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="contract-modal-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.addContract}</h2>
+              <button onClick={() => setContractModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleAddContract} className="p-6 space-y-4">
+              {contractError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{contractError}</div>}
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.contractType} *</label>
+                <select className="input-field" value={contractForm.contractType} onChange={e => setContractForm(f => ({ ...f, contractType: e.target.value }))} required>
+                  {["PERMANENT", "FIXED_TERM", "PART_TIME", "PROBATION", "INTERNSHIP"].map(ct => (
+                    <option key={ct} value={ct}>{ct.replace(/_/g, " ")}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.contractStart} *</label>
+                  <input type="date" className="input-field" value={contractForm.startDate} onChange={e => setContractForm(f => ({ ...f, startDate: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.contractEnd}</label>
+                  <input type="date" className="input-field" value={contractForm.endDate} onChange={e => setContractForm(f => ({ ...f, endDate: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.common.notes}</label>
+                <textarea className="input-field resize-none" rows={2} value={contractForm.notes} onChange={e => setContractForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-[#e3e2e6]">
+                <button type="button" onClick={() => setContractModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+                <button type="submit" disabled={contractSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                  {contractSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.hr.contractSaved}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
