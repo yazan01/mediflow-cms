@@ -1,0 +1,27 @@
+[Unit]
+Description=MediFlow Next.js Frontend
+After=network.target mediflow-backend.service
+Wants=mediflow-backend.service
+
+[Service]
+Type=simple
+User=mediflow
+Group=mediflow
+WorkingDirectory=/opt/mediflow
+Environment=NODE_ENV=production
+Environment=PORT=3000
+EnvironmentFile=/opt/mediflow/.env.local
+ExecStart=/usr/bin/node_modules/.bin/next start
+ExecStartPre=/usr/bin/npm run build
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mediflow-frontend
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,4 @@
+import os
 import secrets
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
@@ -15,6 +16,9 @@ import models
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
+
+# True in production (HTTPS), False in local dev (HTTP)
+_COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
 PRIVILEGED_ROLES = {"SUPER_ADMIN", "CLINIC_MANAGER"}
 
@@ -39,7 +43,7 @@ def _set_csrf_cookie(response: Response) -> str:
         key="mediflow_csrf",
         value=token,
         httponly=False,
-        secure=False,
+        secure=_COOKIE_SECURE,
         max_age=8 * 3600,
         samesite="strict",
         path="/",
@@ -59,7 +63,7 @@ def _issue_session(user: models.User, roles: list, branch_id, response: Response
         key="mediflow_token",
         value=token,
         httponly=True,
-        secure=False,
+        secure=_COOKIE_SECURE,
         max_age=8 * 3600,
         samesite="strict",
         path="/",
