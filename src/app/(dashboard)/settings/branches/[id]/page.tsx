@@ -1118,16 +1118,18 @@ export default function BranchDetailPage() {
                 <div className="col-span-2 space-y-3 pt-2 border-t border-[#e3e2e6]">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-[#1a1c1e]">{s.clinicQueue}</span>
-                    <button onClick={() => setClinicForm(f => ({ ...f, queueEnabled: !f.queueEnabled }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${clinicForm.queueEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${clinicForm.queueEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <button type="button" role="switch" aria-checked={clinicForm.queueEnabled} dir="ltr"
+                      onClick={() => setClinicForm(f => ({ ...f, queueEnabled: !f.queueEnabled }))}
+                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.queueEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${clinicForm.queueEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-[#1a1c1e]">{s.clinicOnlineBooking}</span>
-                    <button onClick={() => setClinicForm(f => ({ ...f, onlineBooking: !f.onlineBooking }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${clinicForm.onlineBooking ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${clinicForm.onlineBooking ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <button type="button" role="switch" aria-checked={clinicForm.onlineBooking} dir="ltr"
+                      onClick={() => setClinicForm(f => ({ ...f, onlineBooking: !f.onlineBooking }))}
+                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.onlineBooking ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${clinicForm.onlineBooking ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                     </button>
                   </div>
                 </div>
@@ -1179,8 +1181,15 @@ function Toggle({ label, desc, checked, onChange }: { label: string; desc?: stri
         <p className="text-sm font-medium text-[#1a1c1e]">{label}</p>
         {desc && <p className="text-xs text-[#74777f]">{desc}</p>}
       </div>
-      <button onClick={() => onChange(!checked)} className={`relative w-11 h-6 rounded-full transition-colors ms-4 flex-shrink-0 ${checked ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        dir="ltr"
+        onClick={() => onChange(!checked)}
+        className={`relative w-11 h-6 rounded-full ms-4 flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${checked ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}
+      >
+        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
       </button>
     </div>
   );

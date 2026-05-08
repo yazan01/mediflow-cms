@@ -1351,10 +1351,14 @@ export default function SettingsPage() {
                             </span>
                           </div>
                           <button
+                            type="button"
+                            role="switch"
+                            aria-checked={flag.isEnabled}
+                            dir="ltr"
                             onClick={() => toggleFlag(flag)}
                             disabled={flagToggling === flag.id}
-                            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-1 disabled:opacity-50 ${flag.isEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flag.isEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                            className={`relative w-11 h-6 rounded-full flex-shrink-0 mt-1 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 disabled:opacity-50 ${flag.isEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${flag.isEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                           </button>
                         </div>
                       ))}
@@ -1785,9 +1789,14 @@ export default function SettingsPage() {
               )}
               <div className="flex items-center justify-between py-2 border-t border-[#e3e2e6]">
                 <span className="text-sm font-medium text-[#1a1c1e]">{t.common.active}</span>
-                <button onClick={() => setTplEditing(tpl => tpl ? ({ ...tpl, isActive: !tpl.isActive }) : tpl)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${tplEditing.isActive ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${tplEditing.isActive ? "translate-x-5" : "translate-x-0.5"}`} />
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={tplEditing.isActive}
+                  dir="ltr"
+                  onClick={() => setTplEditing(tpl => tpl ? ({ ...tpl, isActive: !tpl.isActive }) : tpl)}
+                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${tplEditing.isActive ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${tplEditing.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                 </button>
               </div>
             </div>
@@ -1928,16 +1937,18 @@ export default function SettingsPage() {
                 <div className="col-span-2 space-y-3 pt-2 border-t border-[#e3e2e6]">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-[#1a1c1e]">{s.clinicQueue}</span>
-                    <button onClick={() => setClinicForm(f => ({ ...f, queueEnabled: !f.queueEnabled }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${clinicForm.queueEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${clinicForm.queueEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <button type="button" role="switch" aria-checked={clinicForm.queueEnabled} dir="ltr"
+                      onClick={() => setClinicForm(f => ({ ...f, queueEnabled: !f.queueEnabled }))}
+                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.queueEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${clinicForm.queueEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-[#1a1c1e]">{s.clinicOnlineBooking}</span>
-                    <button onClick={() => setClinicForm(f => ({ ...f, onlineBooking: !f.onlineBooking }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${clinicForm.onlineBooking ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${clinicForm.onlineBooking ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <button type="button" role="switch" aria-checked={clinicForm.onlineBooking} dir="ltr"
+                      onClick={() => setClinicForm(f => ({ ...f, onlineBooking: !f.onlineBooking }))}
+                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.onlineBooking ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${clinicForm.onlineBooking ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                     </button>
                   </div>
                 </div>
@@ -1992,8 +2003,15 @@ function Toggle({ label, desc, checked, onChange, defaultChecked }: {
         <p className="text-sm font-medium text-[#1a1c1e]">{label}</p>
         {desc && <p className="text-xs text-[#74777f]">{desc}</p>}
       </div>
-      <button onClick={toggle} className={`relative w-11 h-6 rounded-full transition-colors ${isOn ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-5" : "translate-x-0.5"}`} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isOn}
+        dir="ltr"
+        onClick={toggle}
+        className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${isOn ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}
+      >
+        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isOn ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
       </button>
     </div>
   );
