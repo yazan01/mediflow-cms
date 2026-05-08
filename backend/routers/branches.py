@@ -40,6 +40,14 @@ class BranchUpdate(BaseModel):
     managerId: Optional[str] = None
     timezone: Optional[str] = None
     isActive: Optional[bool] = None
+    logo: Optional[str] = None           # base64 data URL
+    primaryColor: Optional[str] = Field(None, max_length=7)
+    invoiceFooter: Optional[str] = None
+
+
+class BranchClone(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    code: str = Field(..., min_length=1, max_length=20)
 
 
 class BranchSettingUpdate(BaseModel):
@@ -72,6 +80,9 @@ def branch_to_dict(b: models.Branch, manager_name: Optional[str] = None) -> dict
         "managerName": manager_name,
         "timezone": b.timezone or "",
         "isActive": b.isActive,
+        "logo": b.logo or "",
+        "primaryColor": b.primaryColor or "#1960a3",
+        "invoiceFooter": b.invoiceFooter or "",
         "createdAt": b.createdAt.isoformat() if b.createdAt else None,
     }
 
@@ -309,6 +320,94 @@ def update_branch_settings(
     log_audit(db, user.id, "UPDATE", "BranchSetting", branch_id, new_values=updates)
 
     return branch_setting_to_dict(bs)
+
+
+@router.post("/{branch_id}/clone", status_code=201)
+def clone_branch(
+    branch_id: str,
+    body: BranchClone,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("SUPER_ADMIN")),
+):
+    """Duplicate a branch — copies settings, shifts, notification templates, and feature-flag overrides."""
+    src = db.query(models.Branch).filter(models.Branch.id == branch_id).first()
+    if not src:
+        raise HTTPException(404, "Source branch not found")
+    if db.query(models.Branch).filter(models.Branch.code == body.code.upper()).first():
+        raise HTTPException(400, "Branch code already exists")
+
+    new_id = generate_id()
+    clone = models.Branch(
+        id=new_id,
+        name=body.name,
+        code=body.code.upper(),
+        description=src.description,
+        country=src.country,
+        city=src.city,
+        address=src.address,
+        phone=src.phone,
+        email=src.email,
+        timezone=src.timezone,
+        primaryColor=src.primaryColor,
+        invoiceFooter=src.invoiceFooter,
+        isActive=True,
+    )
+    db.add(clone)
+    db.flush()
+
+    # Clone BranchSetting
+    src_bs = db.query(models.BranchSetting).filter(models.BranchSetting.branchId == branch_id).first()
+    if src_bs:
+        db.add(models.BranchSetting(
+            id=generate_id(), branchId=new_id,
+            currency=src_bs.currency, timezone=src_bs.timezone, taxRate=src_bs.taxRate,
+            invoicePrefix=src_bs.invoicePrefix, paymentTerms=src_bs.paymentTerms,
+            language=src_bs.language, workingHoursStart=src_bs.workingHoursStart,
+            workingHoursEnd=src_bs.workingHoursEnd, workingDays=src_bs.workingDays,
+            emergencyContact=src_bs.emergencyContact,
+        ))
+    else:
+        db.add(models.BranchSetting(id=generate_id(), branchId=new_id))
+
+    # Clone AppointmentConfig
+    src_ac = db.query(models.AppointmentConfig).filter(models.AppointmentConfig.branchId == branch_id).first()
+    if src_ac:
+        db.add(models.AppointmentConfig(
+            id=generate_id(), branchId=new_id,
+            workingDays=src_ac.workingDays, startTime=src_ac.startTime, endTime=src_ac.endTime,
+            slotDurationMin=src_ac.slotDurationMin, bufferMin=src_ac.bufferMin,
+            maxDailyAppointments=src_ac.maxDailyAppointments, bookingWindowDays=src_ac.bookingWindowDays,
+            autoConfirm=src_ac.autoConfirm,
+        ))
+
+    # Clone FeatureFlag overrides
+    for flag in db.query(models.FeatureFlag).filter(models.FeatureFlag.branchId == branch_id).all():
+        db.add(models.FeatureFlag(
+            id=generate_id(), key=flag.key, branchId=new_id,
+            description=flag.description, isEnabled=flag.isEnabled,
+        ))
+
+    # Clone NotificationTemplate overrides (non-global)
+    for tpl in db.query(models.NotificationTemplate).filter(models.NotificationTemplate.branchId == branch_id).all():
+        db.add(models.NotificationTemplate(
+            id=generate_id(), branchId=new_id,
+            eventType=tpl.eventType, channel=tpl.channel, subject=tpl.subject,
+            body=tpl.body, variables=tpl.variables, language=tpl.language,
+            isActive=tpl.isActive, isDefault=False,
+        ))
+
+    # Clone Shifts
+    for shift in db.query(models.Shift).filter(models.Shift.branchId == branch_id).all():
+        db.add(models.Shift(
+            id=generate_id(), branchId=new_id, name=shift.name,
+            startTime=shift.startTime, endTime=shift.endTime,
+            daysOfWeek=shift.daysOfWeek, color=shift.color, isActive=shift.isActive,
+        ))
+
+    db.commit()
+    db.refresh(clone)
+    log_audit(db, user.id, "CLONE", "Branch", new_id, {"source": branch_id, "name": body.name})
+    return branch_to_dict(clone)
 
 
 @router.get("/{branch_id}/settings/history")

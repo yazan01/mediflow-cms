@@ -112,6 +112,29 @@ class TemplateUpdate(BaseModel):
     language: Optional[str] = Field(None, max_length=5)
 
 
+class TemplatePreviewRequest(BaseModel):
+    variables: dict = Field(default_factory=dict)
+
+
+import re as _re
+_VAR_RE = _re.compile(r"\{\{(\w+)\}\}")
+
+
+def _validate_variables(body: str, subject: Optional[str], declared: List[str]) -> List[str]:
+    """Return list of undeclared variable names used in body/subject."""
+    used = set(_VAR_RE.findall(body))
+    if subject:
+        used |= set(_VAR_RE.findall(subject))
+    return sorted(used - set(declared))
+
+
+def _render_template(text: str, variables: dict) -> str:
+    """Replace {{var}} placeholders with provided values."""
+    def _replace(m: _re.Match) -> str:
+        return str(variables.get(m.group(1), m.group(0)))
+    return _VAR_RE.sub(_replace, text)
+
+
 def tpl_to_dict(t: models.NotificationTemplate) -> dict:
     return {
         "id": t.id,
@@ -201,6 +224,12 @@ def create_template(
     if exists:
         raise HTTPException(409, "A template for this event/channel/language already exists for this branch")
 
+    # Validate that body doesn't use undeclared variables
+    undeclared = _validate_variables(body.body, body.subject, body.variables)
+    if undeclared:
+        from fastapi import HTTPException as _H
+        raise _H(422, f"Body references undeclared variables: {', '.join(undeclared)}. Add them to the variables list.")
+
     tpl = models.NotificationTemplate(
         id=generate_id(),
         branchId=body.branchId,
@@ -231,12 +260,41 @@ def update_template(
         raise HTTPException(404, "Template not found")
     if body.language and body.language not in VALID_LANGUAGES:
         raise HTTPException(422, "Invalid language")
-    for field, val in body.model_dump(exclude_none=True).items():
+    updates = body.model_dump(exclude_none=True)
+
+    new_body = updates.get("body", tpl.body)
+    new_subject = updates.get("subject", tpl.subject)
+    new_vars = updates.get("variables", tpl.variables or [])
+    undeclared = _validate_variables(new_body, new_subject, new_vars)
+    if undeclared:
+        raise HTTPException(422, f"Body references undeclared variables: {', '.join(undeclared)}. Add them to the variables list.")
+
+    for field, val in updates.items():
         setattr(tpl, field, val)
     db.commit()
     db.refresh(tpl)
     log_audit(db, user.id, "UPDATE", "NotificationTemplate", tpl.id, {"eventType": tpl.eventType})
     return tpl_to_dict(tpl)
+
+
+@router.post("/{template_id}/preview")
+def preview_template(
+    template_id: str,
+    body: TemplatePreviewRequest,
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("SUPER_ADMIN", "CLINIC_MANAGER")),
+):
+    tpl = db.query(models.NotificationTemplate).filter(models.NotificationTemplate.id == template_id).first()
+    if not tpl:
+        raise HTTPException(404, "Template not found")
+    rendered_body = _render_template(tpl.body, body.variables)
+    rendered_subject = _render_template(tpl.subject, body.variables) if tpl.subject else None
+    return {
+        "subject": rendered_subject,
+        "body": rendered_body,
+        "channel": tpl.channel,
+        "language": tpl.language,
+    }
 
 
 @router.delete("/{template_id}", status_code=204)

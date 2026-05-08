@@ -4,12 +4,26 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type Tab = "profile" | "settings" | "clinics" | "whatsapp" | "sms" | "payment";
+type Tab = "profile" | "settings" | "branding" | "appointments" | "clinics" | "whatsapp" | "sms" | "payment" | "audit";
 
 type Branch = {
   id: string; name: string; code: string; description: string;
   country: string; city: string; address: string; phone: string;
   email: string; timezone: string; isActive: boolean;
+  logo: string; primaryColor: string; invoiceFooter: string;
+};
+
+type Branding = { logo: string; primaryColor: string; invoiceFooter: string };
+
+type ApptConfig = {
+  workingDays: string[]; startTime: string; endTime: string;
+  slotDurationMin: number; bufferMin: number; maxDailyAppointments: number;
+  bookingWindowDays: number; autoConfirm: boolean;
+};
+
+type AuditEntry = {
+  id: string; action: string; module: string; userName: string;
+  entityId: string | null; ipAddress: string | null; timestamp: string;
 };
 
 type BranchSetting = {
@@ -43,6 +57,13 @@ type PaymentConfig = {
   provider: string; publicKey: string; secretKeyMasked: string; webhookSecretMasked: string;
   currency: string; testMode: boolean; isActive: boolean;
 };
+
+const DEFAULT_BRANDING: Branding = { logo: "", primaryColor: "#1960a3", invoiceFooter: "" };
+const DEFAULT_APPT: ApptConfig = {
+  workingDays: ["MON", "TUE", "WED", "THU", "FRI"], startTime: "08:00", endTime: "17:00",
+  slotDurationMin: 30, bufferMin: 5, maxDailyAppointments: 50, bookingWindowDays: 30, autoConfirm: false,
+};
+const WEEK_DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 const DEFAULT_BRANCH_SETTING: BranchSetting = {
   currency: "USD", timezone: "Asia/Amman", taxRate: 0, invoicePrefix: "INV",
@@ -124,6 +145,26 @@ export default function BranchDetailPage() {
   const [paymentSecretKey, setPaymentSecretKey] = useState("");
   const [paymentWebhookSecret, setPaymentWebhookSecret] = useState("");
 
+  // Branding
+  const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
+  const [brandingLoading, setBrandingLoading] = useState(false);
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [brandingStatus, setBrandingStatus] = useState<"idle" | "saved" | "error">("idle");
+
+  // Appointment config
+  const [appt, setAppt] = useState<ApptConfig>(DEFAULT_APPT);
+  const [apptLoading, setApptLoading] = useState(false);
+  const [apptSaving, setApptSaving] = useState(false);
+  const [apptStatus, setApptStatus] = useState<"idle" | "saved" | "error">("idle");
+
+  // Audit log
+  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  // Meta sync
+  const [waSyncing, setWaSyncing] = useState(false);
+  const [waSyncMsg, setWaSyncMsg] = useState("");
+
   // ── Load branch ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -150,10 +191,13 @@ export default function BranchDetailPage() {
   useEffect(() => {
     if (!branchId) return;
     if (activeTab === "settings") loadSetting();
+    if (activeTab === "branding") loadBranding();
+    if (activeTab === "appointments") loadAppt();
     if (activeTab === "clinics") loadClinics();
     if (activeTab === "whatsapp") { loadWa(); loadWaEvents(); }
     if (activeTab === "sms") loadSms();
     if (activeTab === "payment") loadPayment();
+    if (activeTab === "audit") loadAuditLogs();
   }, [activeTab, branchId]);
 
   function loadSetting() {
@@ -208,6 +252,33 @@ export default function BranchDetailPage() {
       .then((d) => { if (d) setPayment(d); })
       .catch(() => {})
       .finally(() => setPaymentLoading(false));
+  }
+
+  function loadBranding() {
+    setBrandingLoading(true);
+    fetch(`/api/branches/${branchId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setBranding({ logo: d.logo || "", primaryColor: d.primaryColor || "#1960a3", invoiceFooter: d.invoiceFooter || "" }); })
+      .catch(() => {})
+      .finally(() => setBrandingLoading(false));
+  }
+
+  function loadAppt() {
+    setApptLoading(true);
+    fetch(`/api/settings/appointment-config/${branchId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setAppt({ ...DEFAULT_APPT, ...d }); })
+      .catch(() => {})
+      .finally(() => setApptLoading(false));
+  }
+
+  function loadAuditLogs() {
+    setAuditLoading(true);
+    fetch(`/api/audit?entityId=${branchId}&pageSize=50`)
+      .then((r) => r.ok ? r.json() : { data: [] })
+      .then((d) => setAuditLogs(d.data || []))
+      .catch(() => setAuditLogs([]))
+      .finally(() => setAuditLoading(false));
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -310,15 +381,52 @@ export default function BranchDetailPage() {
     finally { setPaymentSaving(false); }
   }
 
+  async function saveBranding() {
+    setBrandingSaving(true); setBrandingStatus("idle");
+    try {
+      const res = await fetch(`/api/branches/${branchId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(branding),
+      });
+      setBrandingStatus(res.ok ? "saved" : "error");
+      if (res.ok) setTimeout(() => setBrandingStatus("idle"), 3000);
+    } catch { setBrandingStatus("error"); }
+    finally { setBrandingSaving(false); }
+  }
+
+  async function saveAppt() {
+    setApptSaving(true); setApptStatus("idle");
+    try {
+      const res = await fetch(`/api/settings/appointment-config/${branchId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(appt),
+      });
+      setApptStatus(res.ok ? "saved" : "error");
+      if (res.ok) setTimeout(() => setApptStatus("idle"), 3000);
+    } catch { setApptStatus("error"); }
+    finally { setApptSaving(false); }
+  }
+
+  async function syncMetaTemplates() {
+    setWaSyncing(true); setWaSyncMsg("");
+    try {
+      const res = await fetch(`/api/settings/whatsapp/${branchId}/sync-templates`, { method: "POST" });
+      const d = res.ok ? await res.json() : null;
+      setWaSyncMsg(d ? `${s.waSyncSuccess} (${d.synced})` : s.waSyncFailed);
+    } catch { setWaSyncMsg(s.waSyncFailed); }
+    finally { setWaSyncing(false); }
+  }
+
   // ── Tabs ─────────────────────────────────────────────────────────────────────
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: "profile",  label: s.branchProfile,      icon: "business" },
-    { key: "settings", label: s.branchSettings,     icon: "tune" },
-    { key: "clinics",  label: s.clinics,             icon: "medical_services" },
-    { key: "whatsapp", label: s.whatsapp,            icon: "chat" },
-    { key: "sms",      label: s.smsGatewayConfig,   icon: "sms" },
-    { key: "payment",  label: s.paymentConfig,       icon: "credit_card" },
+    { key: "profile",      label: s.branchProfile,      icon: "business" },
+    { key: "settings",     label: s.branchSettings,     icon: "tune" },
+    { key: "branding",     label: s.branding,           icon: "palette" },
+    { key: "appointments", label: s.apptConfig,         icon: "event" },
+    { key: "clinics",      label: s.clinics,            icon: "medical_services" },
+    { key: "whatsapp",     label: s.whatsapp,           icon: "chat" },
+    { key: "sms",          label: s.smsGatewayConfig,  icon: "sms" },
+    { key: "payment",      label: s.paymentConfig,      icon: "credit_card" },
+    { key: "audit",        label: s.branchAudit,        icon: "history" },
   ];
 
   if (loading) {
@@ -589,6 +697,18 @@ export default function BranchDetailPage() {
             )}
           </Card>
 
+          {/* Meta template sync */}
+          <div className="bg-white rounded-xl border border-[#e3e2e6] p-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[#1a1c1e]">{s.waSyncTemplates}</p>
+              <p className="text-xs text-[#74777f] mt-0.5">{s.waSyncTemplatesDesc}</p>
+              {waSyncMsg && <p className={`text-xs mt-1 font-semibold ${waSyncMsg.includes(s.waSyncFailed) ? "text-[#ba1a1a]" : "text-[#0d9488]"}`}>{waSyncMsg}</p>}
+            </div>
+            <button onClick={syncMetaTemplates} disabled={waSyncing} className="btn-secondary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2 whitespace-nowrap flex-shrink-0">
+              {waSyncing ? <SpinnerDark /> : <span className="material-symbols-outlined text-[16px]">sync</span>}{s.waSyncTemplates}
+            </button>
+          </div>
+
           {/* Webhook event log */}
           <div className="bg-white rounded-xl border border-[#e3e2e6] overflow-hidden">
             <div className="p-5 border-b border-[#e3e2e6] flex items-center justify-between">
@@ -704,6 +824,163 @@ export default function BranchDetailPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* ── Branding tab ── */}
+      {activeTab === "branding" && (
+        <Card title={s.brandingTitle} desc={s.brandingDesc} action={
+          <SaveButton saving={brandingSaving} status={brandingStatus} onSave={saveBranding} t={t} s={s} />
+        }>
+          {brandingLoading ? <Spinner /> : (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.brandLogo}</label>
+                <p className="text-xs text-[#74777f] mb-3">{s.brandLogoHint}</p>
+                <div className="flex items-center gap-4">
+                  {branding.logo
+                    ? <img src={branding.logo} alt="logo" className="h-16 object-contain border border-[#e3e2e6] rounded-lg p-2 bg-white" />
+                    : <div className="h-16 w-32 bg-[#f4f3f7] rounded-lg border border-dashed border-[#c4c6cf] flex items-center justify-center"><span className="material-symbols-outlined text-[#c4c6cf]">image</span></div>
+                  }
+                  <div className="flex flex-col gap-2">
+                    <input type="file" accept="image/png,image/svg+xml" className="hidden" id="logo-upload"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 200 * 1024) { alert("Max 200 KB"); return; }
+                        const reader = new FileReader();
+                        reader.onload = ev => setBranding(b => ({ ...b, logo: ev.target?.result as string }));
+                        reader.readAsDataURL(file);
+                      }} />
+                    <label htmlFor="logo-upload" className="btn-secondary text-xs px-3 py-1.5 cursor-pointer">{t.common.add}</label>
+                    {branding.logo && <button onClick={() => setBranding(b => ({ ...b, logo: "" }))} className="text-xs text-[#ba1a1a] hover:underline">{s.brandRemoveLogo}</button>}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.brandPrimaryColor}</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" className="w-10 h-10 rounded-lg border border-[#c4c6cf] cursor-pointer" value={branding.primaryColor}
+                      onChange={e => setBranding(b => ({ ...b, primaryColor: e.target.value }))} />
+                    <span className="font-mono text-sm text-[#43474e]">{branding.primaryColor}</span>
+                    <div className="w-8 h-8 rounded-full border border-[#e3e2e6]" style={{ backgroundColor: branding.primaryColor }} />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.brandInvoiceFooter}</label>
+                <textarea className="input-field resize-none w-full" rows={3} value={branding.invoiceFooter}
+                  placeholder="e.g. Thank you for choosing our clinic. For enquiries call +962 6 000 0000."
+                  onChange={e => setBranding(b => ({ ...b, invoiceFooter: e.target.value }))} />
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Appointments tab ── */}
+      {activeTab === "appointments" && (
+        <Card title={s.apptConfigTitle} desc={s.apptConfigDesc} action={
+          <SaveButton saving={apptSaving} status={apptStatus} onSave={saveAppt} t={t} s={s} />
+        }>
+          {apptLoading ? <Spinner /> : (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.apptWorkingDays}</label>
+                <div className="flex gap-2 flex-wrap">
+                  {WEEK_DAYS.map(d => {
+                    const on = appt.workingDays.includes(d);
+                    return (
+                      <button key={d} type="button" onClick={() => setAppt(a => ({
+                        ...a, workingDays: on ? a.workingDays.filter(x => x !== d) : [...a.workingDays, d],
+                      }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${on ? "bg-[#002045] text-white" : "bg-[#f4f3f7] text-[#74777f] hover:bg-[#e3e2e6]"}`}>
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apptStartTime}</label>
+                  <input type="time" className="input-field" value={appt.startTime} onChange={e => setAppt(a => ({ ...a, startTime: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apptEndTime}</label>
+                  <input type="time" className="input-field" value={appt.endTime} onChange={e => setAppt(a => ({ ...a, endTime: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apptSlotDuration}</label>
+                  <input type="number" className="input-field" value={appt.slotDurationMin} min={5} max={120}
+                    onChange={e => setAppt(a => ({ ...a, slotDurationMin: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apptBuffer}</label>
+                  <input type="number" className="input-field" value={appt.bufferMin} min={0} max={60}
+                    onChange={e => setAppt(a => ({ ...a, bufferMin: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apptMaxDaily}</label>
+                  <input type="number" className="input-field" value={appt.maxDailyAppointments} min={1}
+                    onChange={e => setAppt(a => ({ ...a, maxDailyAppointments: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apptBookingWindow}</label>
+                  <input type="number" className="input-field" value={appt.bookingWindowDays} min={1} max={365}
+                    onChange={e => setAppt(a => ({ ...a, bookingWindowDays: Number(e.target.value) }))} />
+                </div>
+              </div>
+              <Toggle label={s.apptAutoConfirm} checked={appt.autoConfirm} onChange={v => setAppt(a => ({ ...a, autoConfirm: v }))} />
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Audit tab ── */}
+      {activeTab === "audit" && (
+        <div className="bg-white rounded-xl border border-[#e3e2e6] overflow-hidden">
+          <div className="p-5 border-b border-[#e3e2e6] flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-[#1a1c1e]">{s.branchAudit}</h3>
+              <p className="text-xs text-[#74777f] mt-0.5">{s.branchAuditDesc}</p>
+            </div>
+            <button onClick={loadAuditLogs} className="p-2 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.retry}>
+              <span className="material-symbols-outlined text-[#74777f] text-[18px]">refresh</span>
+            </button>
+          </div>
+          {auditLoading ? (
+            <div className="p-10 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+          ) : auditLogs.length === 0 ? (
+            <div className="p-10 flex flex-col items-center gap-2">
+              <span className="material-symbols-outlined text-[40px] text-[#c4c6cf]">history</span>
+              <p className="text-sm text-[#74777f]">{s.noBranchAuditLogs}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="bg-[#f8f7fb]">
+                  <th className="table-header">{t.audit.action}</th>
+                  <th className="table-header">{t.audit.module}</th>
+                  <th className="table-header">{t.audit.user}</th>
+                  <th className="table-header">{t.audit.ipAddress}</th>
+                  <th className="table-header">{t.audit.timestamp}</th>
+                </tr></thead>
+                <tbody>
+                  {auditLogs.map(log => (
+                    <tr key={log.id} className="table-row">
+                      <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{log.action}</span></td>
+                      <td className="table-cell text-[#74777f] text-xs">{log.module}</td>
+                      <td className="table-cell text-[#74777f] text-xs">{log.userName || t.common.na}</td>
+                      <td className="table-cell text-[#74777f] text-xs font-mono">{log.ipAddress || t.common.na}</td>
+                      <td className="table-cell text-[#74777f] text-xs whitespace-nowrap">{log.timestamp ? new Date(log.timestamp).toLocaleString() : t.common.na}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Clinic Modal ── */}

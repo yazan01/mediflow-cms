@@ -15,7 +15,7 @@ from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors
 from routers import laboratory, radiology, branches, shifts, notifications
 from routers import events, search, clinics, smtp
 from routers import whatsapp, sms_config, payment_gateway, feature_flags, api_keys
-from routers import notification_templates
+from routers import notification_templates, appointment_config, integrations
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
@@ -23,7 +23,7 @@ _log = logging.getLogger("mediflow")
 
 # Paths exempt from CSRF check (no browser session involved)
 _CSRF_EXEMPT = {"/api/auth/login", "/api/auth/logout", "/api/auth/2fa/verify"}
-_CSRF_EXEMPT_PREFIX = "/api/webhooks/"
+_CSRF_EXEMPT_PREFIXES = ("/api/webhooks/",)
 
 
 @asynccontextmanager
@@ -65,7 +65,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 async def csrf_middleware(request: Request, call_next):
     if request.method in ("POST", "PATCH", "DELETE", "PUT"):
         path = request.url.path
-        if path not in _CSRF_EXEMPT and not path.startswith(_CSRF_EXEMPT_PREFIX):
+        if path not in _CSRF_EXEMPT and not any(path.startswith(p) for p in _CSRF_EXEMPT_PREFIXES):
             csrf_cookie = request.cookies.get("mediflow_csrf", "")
             csrf_header = request.headers.get("x-csrf-token", "")
             if not csrf_cookie or not csrf_header:
@@ -119,6 +119,9 @@ app.include_router(payment_gateway.router)
 app.include_router(feature_flags.router)
 app.include_router(api_keys.router)
 app.include_router(notification_templates.router)
+app.include_router(appointment_config.router)
+app.include_router(integrations.router)
+app.include_router(payment_gateway.webhook_router)
 
 
 @app.get("/api/health")

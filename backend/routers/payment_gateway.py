@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+import hashlib
+import hmac
+import json as _json
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -6,6 +10,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from auth import require_roles, generate_id, log_audit, encrypt_secret, decrypt_secret, mask_secret
 import models
+
+webhook_router = APIRouter(prefix="/api/webhooks/payment", tags=["payment-webhook"])
 
 router = APIRouter(prefix="/api/settings/payment", tags=["payment-gateway"])
 PG_ADMIN_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER")
@@ -91,3 +97,59 @@ def _update(branch_id, body: PaymentUpdate, db: Session, user):
 def _ensure_branch(branch_id: str, db: Session):
     if not db.query(models.Branch).filter(models.Branch.id == branch_id).first():
         raise HTTPException(404, "Branch not found")
+
+
+# ─── Payment webhook (public — verified by signature) ────────────────────────
+
+@webhook_router.post("/{branch_id}", status_code=200)
+async def payment_webhook(branch_id: str, request: Request, db: Session = Depends(get_db)):
+    cfg = db.query(models.PaymentGatewayConfig).filter(
+        models.PaymentGatewayConfig.branchId == branch_id,
+        models.PaymentGatewayConfig.isActive == True,
+    ).first()
+    if not cfg:
+        return JSONResponse({"detail": "Not configured"}, status_code=404)
+
+    body_bytes = await request.body()
+
+    # Verify webhook signature if webhookSecret is configured
+    if cfg.webhookSecretEncrypted:
+        from auth import decrypt_secret as _dec
+        secret = _dec(cfg.webhookSecretEncrypted)
+        if secret:
+            provider = cfg.provider or "stripe"
+            if provider == "stripe":
+                sig_header = request.headers.get("stripe-signature", "")
+                # Stripe signature: t=<timestamp>,v1=<hmac>
+                try:
+                    parts = {k: v for k, v in (p.split("=", 1) for p in sig_header.split(",") if "=" in p)}
+                    ts = parts.get("t", "")
+                    expected = hmac.new(secret.encode(), f"{ts}.".encode() + body_bytes, hashlib.sha256).hexdigest()
+                    if not hmac.compare_digest(parts.get("v1", ""), expected):
+                        return JSONResponse({"detail": "Invalid signature"}, status_code=401)
+                except Exception:
+                    return JSONResponse({"detail": "Signature verification failed"}, status_code=401)
+            else:
+                # Generic HMAC-SHA256
+                expected = "sha256=" + hmac.new(secret.encode(), body_bytes, hashlib.sha256).hexdigest()
+                sig = request.headers.get("x-payment-signature", "")
+                if sig and not hmac.compare_digest(expected, sig):
+                    return JSONResponse({"detail": "Invalid signature"}, status_code=401)
+
+    try:
+        payload = _json.loads(body_bytes)
+    except Exception:
+        payload = {}
+
+    event_type = payload.get("type", payload.get("event", "unknown"))
+    evt = models.WebhookEvent(
+        id=generate_id(),
+        branchId=branch_id,
+        source="payment",
+        eventType=str(event_type)[:50],
+        payload=payload,
+        processed=False,
+    )
+    db.add(evt)
+    db.commit()
+    return {"received": True}

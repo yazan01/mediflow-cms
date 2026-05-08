@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import json as _json_mod
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -262,8 +262,46 @@ def webhook_verify(
     raise HTTPException(403, "Invalid verify token")
 
 
+def _process_webhook_event(event_id: str):
+    """Background task: mark event processed; trigger auto-reply if enabled."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        evt = db.query(models.WebhookEvent).filter(models.WebhookEvent.id == event_id).first()
+        if not evt or evt.processed:
+            return
+        cfg = db.query(models.WhatsAppConfig).filter(models.WhatsAppConfig.branchId == evt.branchId).first()
+        if cfg and cfg.autoReplyEnabled and cfg.isActive and evt.fromNumber:
+            # Simple auto-reply: send a "received your message" acknowledgement
+            token = decrypt_secret(cfg.accessTokenEncrypted or "")
+            if token and cfg.phoneNumberId:
+                try:
+                    import urllib.request, json as _j
+                    payload = _j.dumps({
+                        "messaging_product": "whatsapp",
+                        "to": evt.fromNumber,
+                        "type": "text",
+                        "text": {"body": "Thank you for your message. Our team will get back to you shortly."},
+                    }).encode()
+                    req = urllib.request.Request(
+                        f"https://graph.facebook.com/v19.0/{cfg.phoneNumberId}/messages",
+                        data=payload,
+                        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    urllib.request.urlopen(req, timeout=10)
+                except Exception:
+                    pass
+        evt.processed = True
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+
 @webhook_router.post("/{branch_id}", status_code=200)
-async def webhook_receive(branch_id: str, request: Request, db: Session = Depends(get_db)):
+async def webhook_receive(branch_id: str, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     cfg = db.query(models.WhatsAppConfig).filter(models.WhatsAppConfig.branchId == branch_id).first()
     if not cfg:
         raise HTTPException(404)
@@ -314,6 +352,7 @@ async def webhook_receive(branch_id: str, request: Request, db: Session = Depend
     db.add(evt)
     db.commit()
 
+    background_tasks.add_task(_process_webhook_event, evt.id)
     return {"status": "received"}
 
 
@@ -344,6 +383,69 @@ def list_webhook_events(
         }
         for e in events
     ]
+
+
+# ─── Meta template sync ──────────────────────────────────────────────────────
+
+@router.post("/{branch_id}/sync-templates", status_code=200)
+def sync_meta_templates(
+    branch_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*WA_ADMIN_ROLES)),
+):
+    """Pull approved WhatsApp templates from Meta Graph API and upsert them locally."""
+    _check_branch(branch_id, db)
+    cfg = db.query(models.WhatsAppConfig).filter(models.WhatsAppConfig.branchId == branch_id).first()
+    if not cfg or not cfg.wabaId:
+        raise HTTPException(400, "WhatsApp WABA ID not configured")
+    token = decrypt_secret(cfg.accessTokenEncrypted or "")
+    if not token:
+        raise HTTPException(400, "Access token not configured")
+
+    try:
+        import urllib.request, json as _j
+        url = f"https://graph.facebook.com/v19.0/{cfg.wabaId}/message_templates?limit=100"
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = _j.loads(resp.read())
+    except Exception as e:
+        raise HTTPException(502, f"Meta API error: {str(e)[:200]}")
+
+    synced = 0
+    for tpl_data in data.get("data", []):
+        name = tpl_data.get("name", "")[:100]
+        category = tpl_data.get("category", "APPOINTMENT_REMINDER")
+        language = tpl_data.get("language", "en")[:10]
+        status = tpl_data.get("status", "")
+        if status != "APPROVED":
+            continue
+        # Extract body text from components
+        body_text = ""
+        for comp in tpl_data.get("components", []):
+            if comp.get("type") == "BODY":
+                body_text = comp.get("text", "")
+                break
+        if not body_text:
+            continue
+
+        existing = db.query(models.WhatsAppTemplate).filter(
+            models.WhatsAppTemplate.configId == cfg.id,
+            models.WhatsAppTemplate.name == name,
+        ).first()
+        if existing:
+            existing.category = category
+            existing.language = language
+            existing.bodyText = body_text
+        else:
+            db.add(models.WhatsAppTemplate(
+                id=generate_id(), configId=cfg.id,
+                name=name, category=category, language=language, bodyText=body_text,
+            ))
+        synced += 1
+
+    db.commit()
+    log_audit(db, user.id, "SYNC", "WhatsAppTemplate", cfg.id, {"synced": synced, "branchId": branch_id})
+    return {"synced": synced}
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────

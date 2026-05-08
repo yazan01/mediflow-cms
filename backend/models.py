@@ -864,6 +864,9 @@ class Branch(Base):
     description = Column(Text)
     country = Column(String(50))
     city = Column(String(100))
+    logo = Column(Text, nullable=True)            # base64 data URL or path
+    primaryColor = Column(String(7), nullable=True)   # hex #RRGGBB
+    invoiceFooter = Column(Text, nullable=True)
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -897,6 +900,22 @@ class BranchSetting(Base):
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     branch = relationship("Branch", back_populates="settings")
+
+
+class AppointmentConfig(Base):
+    """Per-branch appointment scheduling rules."""
+    __tablename__ = "appointment_configs"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id", ondelete="CASCADE"), nullable=False, unique=True)
+    workingDays = Column(JSON, default=lambda: ["MON", "TUE", "WED", "THU", "FRI"])
+    startTime = Column(String(5), default="08:00")
+    endTime = Column(String(5), default="17:00")
+    slotDurationMin = Column(Integer, default=30)
+    bufferMin = Column(Integer, default=5)
+    maxDailyAppointments = Column(Integer, default=50)
+    bookingWindowDays = Column(Integer, default=30)
+    autoConfirm = Column(Boolean, default=False)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class Clinic(Base):
