@@ -234,50 +234,34 @@ npm run dev
 
 ### التثبيت على Ubuntu Server (الإنتاج)
 
-#### الطريقة السريعة — سكريبت تلقائي
+#### الطريقة السريعة — نشر كامل تلقائي بأمر واحد
 
 ```bash
-# 1. استنساخ المشروع
 git clone https://github.com/YOUR_USERNAME/mediflow-cms.git /opt/mediflow
-
-# 2. تشغيل سكريبت النشر (يثبّت كل شيء)
 sudo bash /opt/mediflow/deploy/deploy.sh
 ```
 
-السكريبت يقوم تلقائياً بـ:
-1. تثبيت Python 3.11+، Node.js 20، Nginx، MySQL
-2. إنشاء مستخدم نظام `mediflow`
-3. إنشاء Python virtual environment وتثبيت المكتبات
-4. التوقف وطلب تعبئة ملفات `.env` — **يجب تعبئتها قبل المتابعة**
-5. تطبيق migrations قاعدة البيانات (`alembic upgrade head`)
-6. بناء Next.js (`npm run build`)
-7. تثبيت خدمات systemd وتشغيلها
-8. إعداد Nginx كـ reverse proxy
+السكريبت يسألك **أربعة أسئلة فقط في البداية** ثم يُكمل كل شيء وحده:
 
-#### إعداد ملفات البيئة (مطلوب)
+| السؤال | الوصف |
+|---|---|
+| رابط المستودع | عنوان Git repo |
+| النطاق أو IP | لـ Nginx — IP يعني HTTP فقط، نطاق يعني جاهز لـ HTTPS |
+| كلمة مرور MySQL | إذا مثبّت → يطلب الحالية ويتحقق منها؛ إذا غير مثبّت → يثبّته ويطلب تعيين جديدة |
+| كلمة مرور System Admin | لحساب `admin@mediflow.com` مع تحقق من القوة والتأكيد |
 
-**`/opt/mediflow/backend/.env`:**
-```env
-DATABASE_URL=mysql+pymysql://mediflow:STRONG_PASSWORD@localhost:3306/mediflow_db
-JWT_SECRET=سلسلة_عشوائية_64_حرف_على_الأقل
-SETTINGS_ENCRYPTION_KEY=مفتاح_Fernet_base64
-ALLOWED_ORIGINS=https://yourdomain.com
-COOKIE_SECURE=true
-```
+#### ما يفعله السكريبت تلقائياً
 
-**`/opt/mediflow/.env.local`:**
-```env
-BACKEND_URL=http://localhost:8000
-JWT_SECRET=نفس_القيمة_في_backend
-```
+1. تثبيت Python 3.11، Node.js 20، Nginx، MySQL (إذا لزم)
+2. إنشاء مستخدم نظام `mediflow` ومستخدم قاعدة بيانات مخصص
+3. توليد `JWT_SECRET` و`SETTINGS_ENCRYPTION_KEY` وكلمة مرور DB تلقائياً
+4. كتابة ملفات `.env` بالقيم المولّدة — **لا حاجة لتعديل يدوي**
+5. إنشاء جداول قاعدة البيانات وتطبيق الـ migrations
+6. تهيئة حساب System Admin بالكلمة التي أدخلتها
+7. بناء Next.js وتشغيل خدمات systemd
+8. إعداد Nginx — HTTP فقط للـ IP، أو نطاق جاهز لـ HTTPS
 
-> **لتوليد المفاتيح:**
-> ```bash
-> python3 -c "import secrets; print(secrets.token_hex(64))"           # JWT_SECRET
-> python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  # SETTINGS_ENCRYPTION_KEY
-> ```
-
-#### تفعيل HTTPS
+#### تفعيل HTTPS (للنطاقات فقط)
 
 ```bash
 sudo certbot --nginx -d yourdomain.com
@@ -1369,13 +1353,15 @@ month=YYYY-MM    (الشهر — افتراضي: الشهر الحالي)
 
 ### ما يجب فعله في بيئة الإنتاج
 
-- [ ] غيّر `JWT_SECRET` إلى سلسلة عشوائية 64+ حرف
-- [ ] غيّر كلمة مرور `admin@mediflow.com` الافتراضية
-- [ ] اضبط `COOKIE_SECURE=true` في `backend/.env` (يتطلب HTTPS)
-- [ ] أضف `ALLOWED_ORIGINS` بنطاق موقعك الفعلي
-- [ ] فعّل HTTPS (Certbot): `sudo certbot --nginx -d yourdomain.com`
-- [ ] أنشئ مستخدم MySQL مخصص بدلاً من `root`
-- [ ] لا ترفع `.env` أو `.env.local` على Git
+> **إذا استخدمت `deploy.sh`** فالبنود التلقائية ✅ تُنجز وحدها — تحتاج فقط ما هو يدوي ✋.
+
+- ✅ `JWT_SECRET` و`SETTINGS_ENCRYPTION_KEY` تُولَّد تلقائياً بـ `deploy.sh`
+- ✅ مستخدم MySQL مخصص (`mediflow_app`) يُنشأ بكلمة مرور عشوائية تلقائياً
+- ✅ `COOKIE_SECURE` يُضبط تلقائياً (`false` للـ IP، `true` للنطاق)
+- ✅ `ALLOWED_ORIGINS` يُضبط تلقائياً بالنطاق أو IP الذي أدخلته
+- ✋ فعّل HTTPS بعد النشر: `sudo certbot --nginx -d yourdomain.com`
+- ✋ غيّر كلمة مرور admin إذا نسيتها أو أردت تغييرها لاحقاً
+- ✋ لا ترفع `.env` أو `.env.local` على Git (مضافان في `.gitignore`)
 
 ---
 

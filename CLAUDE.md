@@ -317,11 +317,22 @@ npm run dev
 
 ### Ubuntu production deployment
 
-**First time:**
+**First time — fully automated (single run, no manual .env editing):**
 ```bash
 git clone https://github.com/YOUR_USERNAME/mediflow-cms.git /opt/mediflow
 sudo bash /opt/mediflow/deploy/deploy.sh
-# Fill in .env files when prompted, then re-run
+```
+
+`deploy.sh` collects four inputs upfront, then runs end-to-end without stopping:
+1. Git repo URL
+2. Domain name or server IP (IP → HTTP only + `COOKIE_SECURE=false`; domain → HTTPS-ready)
+3. MySQL root password (asks for existing if already installed; sets new one if not)
+4. System Admin password for `admin@mediflow.com` (strength-validated)
+
+After the prompts it auto-generates `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `DB_PASS`, writes both `.env` files, creates tables, seeds the admin user, builds Next.js, starts systemd services, and configures Nginx.
+
+**Enable HTTPS (domain deployments only):**
+```bash
 sudo certbot --nginx -d yourdomain.com
 ```
 
@@ -343,4 +354,5 @@ cd backend
 python reset_db.py --confirm
 ```
 
-Default credentials: `admin@mediflow.com` / `Admin@1234`
+Default dev credentials: `admin@mediflow.com` / `Admin@1234`
+Production credentials: `admin@mediflow.com` / password set during `deploy.sh`

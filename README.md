@@ -101,7 +101,9 @@ URL:       http://localhost:3000
 كلمة السر: Admin@1234
 ```
 
-> غيّر كلمة المرور فوراً بعد أول دخول.
+> **تحذير أمني:** غيّر كلمة المرور فوراً بعد أول دخول.
+
+> **في بيئة الإنتاج:** كلمة المرور هي ما أدخلته أثناء تشغيل `deploy.sh` — لا توجد كلمة مرور افتراضية.
 
 ---
 
@@ -109,48 +111,31 @@ URL:       http://localhost:3000
 
 > مُختبَر على **Ubuntu 22.04 / 24.04**.
 
-### الطريقة السريعة — سكريبت تلقائي
+### النشر الكامل — سكريبت تلقائي بالكامل
 
 ```bash
-# 1. استنساخ المشروع
-git clone https://github.com/YOUR_USERNAME/mediflow-cms.git /opt/mediflow
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/mediflow-cms/main/deploy/deploy.sh)
+```
 
-# 2. تشغيل سكريبت النشر (يثبّت كل شيء)
+أو إذا استنسخت المشروع مسبقاً:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/mediflow-cms.git /opt/mediflow
 sudo bash /opt/mediflow/deploy/deploy.sh
 ```
 
-السكريبت سيوقف في منتصفه ويطلب منك تعبئة ملفات `.env`. بعد التعبئة شغّله مرة ثانية.
+السكريبت يسألك **أسئلة فقط في البداية** ثم يكمل كل شيء وحده:
 
-### إعداد ملفات البيئة يدوياً
+| السؤال | الوصف |
+|---|---|
+| رابط المستودع | عنوان Git repo |
+| اسم النطاق / IP | للـ Nginx (IP = HTTP فقط، نطاق = جاهز لـ HTTPS) |
+| كلمة مرور MySQL | إذا مثبّت → يطلب كلمة المرور الحالية للتحقق؛ إذا غير مثبّت → يثبّته ويطلب تعيين كلمة مرور جديدة |
+| كلمة مرور System Admin | لحساب `admin@mediflow.com` — مع تحقق من القوة |
 
-**`/opt/mediflow/backend/.env`** (انسخ من `.env.example`):
+بعد الإجابة يُكمل تلقائياً: تثبيت الحزم، إنشاء قاعدة البيانات، توليد الأسرار، تطبيق migrations، بناء Next.js، تشغيل الخدمات، وإعداد Nginx.
 
-```env
-DATABASE_URL=mysql+pymysql://mediflow:STRONG_PASSWORD@localhost:3306/mediflow_db
-JWT_SECRET=سلسلة_عشوائية_64_حرف_على_الأقل
-SETTINGS_ENCRYPTION_KEY=مفتاح_Fernet
-ALLOWED_ORIGINS=https://yourdomain.com
-COOKIE_SECURE=true
-```
-
-**`/opt/mediflow/.env.local`** (انسخ من `.env.example`):
-
-```env
-BACKEND_URL=http://localhost:8000
-JWT_SECRET=نفس_القيمة_الموجودة_في_backend
-```
-
-### توليد المفاتيح السرية
-
-```bash
-# JWT_SECRET
-python3 -c "import secrets; print(secrets.token_hex(64))"
-
-# SETTINGS_ENCRYPTION_KEY
-python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-### تفعيل HTTPS
+### تفعيل HTTPS (إذا استخدمت نطاقاً)
 
 ```bash
 sudo certbot --nginx -d yourdomain.com
