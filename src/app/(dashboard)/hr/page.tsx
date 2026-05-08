@@ -90,6 +90,86 @@ const ATT_MARKER: Record<string, { sym: string; cls: string }> = {
 const ATT_STATUSES = ["PRESENT", "ABSENT", "LATE", "LEAVE", "HOLIDAY"] as const;
 type AttStatus = typeof ATT_STATUSES[number];
 
+// ─── Org Chart Tree ───────────────────────────────────────────────────────────
+
+interface OrgNode { id: string; name: string; jobTitle: string; department: string; reportsToId: string | null; status: string; empCode: string; }
+
+function OrgCard({ node }: { node: OrgNode }) {
+  const STATUS_CLS: Record<string, string> = {
+    ACTIVE: "bg-[#ccfbf1] text-[#0d9488]",
+    ON_LEAVE: "bg-[#fff7ed] text-[#d97706]",
+    INACTIVE: "bg-[#f4f3f7] text-[#74777f]",
+  };
+  return (
+    <div className="bg-white border border-[#e3e2e6] rounded-xl px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] min-w-[180px] max-w-[220px] text-center">
+      <div className="w-9 h-9 rounded-full bg-[#002045] text-white flex items-center justify-center text-sm font-bold mx-auto mb-2">
+        {node.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()}
+      </div>
+      <p className="text-sm font-semibold text-[#1a1c1e] truncate">{node.name}</p>
+      <p className="text-xs text-[#74777f] truncate">{node.jobTitle}</p>
+      <p className="text-[10px] text-[#74777f] mt-0.5 truncate">{node.department}</p>
+      <span className={`mt-1.5 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_CLS[node.status] ?? "bg-[#f4f3f7] text-[#74777f]"}`}>{node.status}</span>
+    </div>
+  );
+}
+
+function OrgTreeNode({ node, allNodes, depth }: { node: OrgNode; allNodes: OrgNode[]; depth: number }) {
+  const children = allNodes.filter(n => n.reportsToId === node.id);
+  return (
+    <div className="flex flex-col items-center">
+      <OrgCard node={node} />
+      {children.length > 0 && (
+        <>
+          <div className="w-px h-5 bg-[#c4c6cf]" />
+          <div className="flex gap-6 items-start">
+            {children.map((child, i) => (
+              <div key={child.id} className="flex flex-col items-center">
+                {children.length > 1 && (
+                  <div className={`h-px bg-[#c4c6cf] mb-0 ${i === 0 ? "w-1/2 self-end" : i === children.length - 1 ? "w-1/2 self-start" : "w-full"}`} />
+                )}
+                <div className="w-px h-5 bg-[#c4c6cf]" />
+                <OrgTreeNode node={child} allNodes={allNodes} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function OrgTree({ nodes, search, noResultsText }: { nodes: OrgNode[]; search: string; noResultsText: string }) {
+  const filtered = search
+    ? nodes.filter(n =>
+        n.name.toLowerCase().includes(search.toLowerCase()) ||
+        n.jobTitle.toLowerCase().includes(search.toLowerCase()) ||
+        n.department.toLowerCase().includes(search.toLowerCase())
+      )
+    : nodes;
+
+  if (search) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {filtered.map(n => <OrgCard key={n.id} node={n} />)}
+        {filtered.length === 0 && (
+          <div className="col-span-4 text-center py-10 text-sm text-[#74777f]">{noResultsText}</div>
+        )}
+      </div>
+    );
+  }
+
+  const roots = nodes.filter(n => !n.reportsToId || !nodes.find(x => x.id === n.reportsToId));
+  return (
+    <div className="overflow-x-auto pb-4">
+      <div className="flex gap-12 items-start min-w-max px-4 py-4">
+        {roots.map(root => (
+          <OrgTreeNode key={root.id} node={root} allNodes={nodes} depth={0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Helper sub-components ────────────────────────────────────────────────────
 
 function Spinner({ label }: { label: string }) {
@@ -191,7 +271,7 @@ export default function HRPage() {
     return LEAVE_TYPE_LABEL[type?.toUpperCase()] ?? type?.replace(/_/g, " ");
   }
 
-  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts" | "analytics" | "leavePolicies";
+  type Tab = "employees" | "attendance" | "leaveRequests" | "payroll" | "shifts" | "analytics" | "leavePolicies" | "orgChart";
   const TABS: { key: Tab; label: string }[] = [
     { key: "employees",     label: t.hr.employees },
     { key: "attendance",    label: t.hr.attendance },
@@ -200,6 +280,7 @@ export default function HRPage() {
     { key: "shifts",        label: t.hr.shifts },
     { key: "analytics",     label: t.hr.analytics },
     { key: "leavePolicies", label: t.hr.leavePolicies },
+    { key: "orgChart",      label: t.hr.orgChart },
   ];
 
   const [activeTab, setActiveTab] = useState<Tab>("employees");
@@ -268,6 +349,12 @@ export default function HRPage() {
   const [policyEditing, setPolicyEditing] = useState<string | null>(null);
   const [policyForm, setPolicyForm] = useState<Partial<LeavePolicy>>({});
   const [policySaving, setPolicySaving] = useState(false);
+
+  // Org Chart
+  interface OrgNode { id: string; name: string; jobTitle: string; department: string; reportsToId: string | null; status: string; empCode: string; }
+  const [orgNodes, setOrgNodes] = useState<OrgNode[]>([]);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgSearch, setOrgSearch] = useState("");
 
   // Reject leave modal
   const [rejectModal, setRejectModal] = useState<{ leaveId: string; employeeName: string } | null>(null);
@@ -419,6 +506,14 @@ export default function HRPage() {
     } catch { /* ignore */ } finally { setPoliciesLoading(false); }
   }, []);
 
+  const fetchOrgChart = useCallback(async () => {
+    setOrgLoading(true);
+    try {
+      const res = await fetch("/api/hr/org-chart");
+      if (res.ok) setOrgNodes(await res.json());
+    } catch { /* ignore */ } finally { setOrgLoading(false); }
+  }, []);
+
   // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
@@ -430,6 +525,7 @@ export default function HRPage() {
   useEffect(() => { if (activeTab === "shifts") { fetchShifts(); fetchBranches(); } }, [activeTab, fetchShifts, fetchBranches]);
   useEffect(() => { if (activeTab === "analytics") fetchAnalytics(); }, [activeTab, fetchAnalytics]);
   useEffect(() => { if (activeTab === "leavePolicies") fetchLeavePolicies(); }, [activeTab, fetchLeavePolicies]);
+  useEffect(() => { if (activeTab === "orgChart") fetchOrgChart(); }, [activeTab, fetchOrgChart]);
 
   async function handleSavePolicy(policyId: string) {
     setPolicySaving(true);
@@ -1501,6 +1597,34 @@ export default function HRPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Org Chart ── */}
+      {activeTab === "orgChart" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.orgChart}</h2>
+              <p className="text-sm text-[#74777f] mt-0.5">{t.hr.orgChartDesc}</p>
+            </div>
+            <input
+              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 w-56"
+              placeholder={t.hr.searchPlaceholder}
+              value={orgSearch}
+              onChange={e => setOrgSearch(e.target.value)}
+            />
+          </div>
+          {orgLoading ? (
+            <Spinner label={t.hr.loading} />
+          ) : orgNodes.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 text-center">
+              <span className="material-symbols-outlined text-4xl text-[#c4c6cf] block mb-2">account_tree</span>
+              <p className="text-sm text-[#74777f]">{t.hr.noOrgData}</p>
+            </div>
+          ) : (
+            <OrgTree nodes={orgNodes} search={orgSearch} noResultsText={t.hr.noEmployees} />
           )}
         </div>
       )}

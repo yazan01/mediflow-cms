@@ -895,7 +895,14 @@ def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), user=Depe
     )
     allowances = body.allowances if body.allowances is not None else auto_allowances
     gross = base + allowances + (body.bonus or 0) + (body.overtimePay or 0)
-    net = gross - (body.deductions or 0) - (body.taxDeduction or 0)
+    # Tax engine: use ClinicSetting.taxRate when taxDeduction not manually provided
+    if body.taxDeduction is not None:
+        tax_deduction = body.taxDeduction
+    else:
+        setting = db.query(models.ClinicSetting).filter(models.ClinicSetting.id == 1).first()
+        tax_rate = float(setting.taxRate) if setting and setting.taxRate is not None else 0.0
+        tax_deduction = round(gross * tax_rate / 100, 3)
+    net = gross - (body.deductions or 0) - tax_deduction
 
     payroll = models.Payroll(
         id=generate_id(),
@@ -907,7 +914,7 @@ def create_payroll(body: PayrollCreate, db: Session = Depends(get_db), user=Depe
         bonus=body.bonus or 0,
         overtimePay=body.overtimePay or 0,
         deductions=body.deductions or 0,
-        taxDeduction=body.taxDeduction or 0,
+        taxDeduction=tax_deduction,
         grossSalary=gross,
         netSalary=net,
         status="PROCESSED",
@@ -965,6 +972,10 @@ def bulk_process_payroll(
         ).all()
     }
 
+    # Tax engine: fetch clinic tax rate once for the whole bulk run
+    setting = db.query(models.ClinicSetting).filter(models.ClinicSetting.id == 1).first()
+    clinic_tax_rate = float(setting.taxRate) if setting and setting.taxRate is not None else 0.0
+
     created = []
     skipped = []
     for emp in active_employees:
@@ -978,7 +989,8 @@ def bulk_process_payroll(
             + float(emp.medicalAllowance or 0)
         )
         gross = float(emp.basicSalary) + allowances
-        net = gross  # No deductions in bulk run — HR can adjust individually after
+        tax_deduction = round(gross * clinic_tax_rate / 100, 3)
+        net = gross - tax_deduction
 
         payroll = models.Payroll(
             id=generate_id(),
@@ -990,7 +1002,7 @@ def bulk_process_payroll(
             bonus=0,
             overtimePay=0,
             deductions=0,
-            taxDeduction=0,
+            taxDeduction=tax_deduction,
             grossSalary=gross,
             netSalary=net,
             status="PROCESSED",
@@ -1823,3 +1835,233 @@ def get_leave_policies(db: Session = Depends(get_db), _user=Depends(require_role
         }
         for p in policies
     ]
+
+
+# ── Phase 3 — Org Chart ────────────────────────────────────────────────────────
+
+@router.get("/org-chart")
+def get_org_chart(db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    """Returns flat list of all active employees with hierarchy info — frontend builds the tree."""
+    employees = (
+        db.query(models.Employee)
+        .filter(models.Employee.deletedAt == None, models.Employee.status != "TERMINATED")
+        .options(
+            joinedload(models.Employee.user),
+            joinedload(models.Employee.department),
+        )
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "name": e.user.name if e.user else "—",
+            "jobTitle": e.jobTitle,
+            "department": e.department.name if e.department else "—",
+            "reportsToId": e.reportsToId,
+            "status": e.status,
+            "empCode": e.empCode,
+        }
+        for e in employees
+    ]
+
+
+# ── Phase 3 — Performance Reviews ─────────────────────────────────────────────
+
+VALID_RATINGS = {1, 2, 3, 4, 5}
+VALID_REVIEW_STATUSES = {"DRAFT", "SUBMITTED", "ACKNOWLEDGED"}
+
+
+class ReviewCreate(BaseModel):
+    employeeId: str
+    period: str               # e.g. "2025-Q2"
+    rating: int
+    goals: Optional[list] = []
+    strengths: Optional[str] = None
+    improvements: Optional[str] = None
+    comments: Optional[str] = None
+
+
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = None
+    goals: Optional[list] = None
+    strengths: Optional[str] = None
+    improvements: Optional[str] = None
+    comments: Optional[str] = None
+    status: Optional[str] = None
+
+
+def _review_to_dict(r: models.PerformanceReview) -> dict:
+    return {
+        "id": r.id,
+        "employeeId": r.employeeId,
+        "reviewerId": r.reviewerId,
+        "reviewerName": r.reviewer.name if r.reviewer else None,
+        "period": r.period,
+        "rating": r.rating,
+        "goals": r.goals or [],
+        "strengths": r.strengths,
+        "improvements": r.improvements,
+        "comments": r.comments,
+        "status": r.status,
+        "createdAt": r.createdAt.isoformat() if r.createdAt else None,
+    }
+
+
+@router.get("/performance-reviews")
+def list_reviews(
+    employeeId: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*HR_ROLES)),
+):
+    q = db.query(models.PerformanceReview).options(joinedload(models.PerformanceReview.reviewer))
+    if employeeId:
+        q = q.filter(models.PerformanceReview.employeeId == employeeId)
+    return [_review_to_dict(r) for r in q.order_by(models.PerformanceReview.period.desc()).all()]
+
+
+@router.post("/performance-reviews", status_code=201)
+def create_review(body: ReviewCreate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
+    if body.rating not in VALID_RATINGS:
+        raise HTTPException(422, "rating must be 1–5")
+    emp = db.query(models.Employee).filter(models.Employee.id == body.employeeId, models.Employee.deletedAt == None).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    existing = db.query(models.PerformanceReview).filter(
+        models.PerformanceReview.employeeId == body.employeeId,
+        models.PerformanceReview.period == body.period,
+    ).first()
+    if existing:
+        raise HTTPException(409, f"Review already exists for {body.period}")
+    review = models.PerformanceReview(
+        id=generate_id(),
+        employeeId=body.employeeId,
+        reviewerId=user.id,
+        period=body.period,
+        rating=body.rating,
+        goals=body.goals or [],
+        strengths=sanitize_string(body.strengths),
+        improvements=sanitize_string(body.improvements),
+        comments=sanitize_string(body.comments),
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    log_audit(db, user.id, "CREATE", "PerformanceReview", review.id, {"employeeId": body.employeeId, "period": body.period})
+    return _review_to_dict(review)
+
+
+@router.patch("/performance-reviews/{review_id}")
+def update_review(review_id: str, body: ReviewUpdate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
+    review = db.query(models.PerformanceReview).filter(models.PerformanceReview.id == review_id).first()
+    if not review:
+        raise HTTPException(404, "Review not found")
+    if body.rating is not None and body.rating not in VALID_RATINGS:
+        raise HTTPException(422, "rating must be 1–5")
+    if body.status is not None and body.status not in VALID_REVIEW_STATUSES:
+        raise HTTPException(422, f"status must be one of {sorted(VALID_REVIEW_STATUSES)}")
+    for field, val in body.model_dump(exclude_none=True).items():
+        setattr(review, field, sanitize_string(val) if isinstance(val, str) else val)
+    db.commit()
+    db.refresh(review)
+    log_audit(db, user.id, "UPDATE", "PerformanceReview", review_id, {"period": review.period})
+    return _review_to_dict(review)
+
+
+@router.delete("/performance-reviews/{review_id}", status_code=204)
+def delete_review(review_id: str, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
+    review = db.query(models.PerformanceReview).filter(models.PerformanceReview.id == review_id).first()
+    if not review:
+        raise HTTPException(404, "Review not found")
+    db.delete(review)
+    db.commit()
+    log_audit(db, user.id, "DELETE", "PerformanceReview", review_id, {})
+
+
+# ── Phase 3 — Employee Documents ──────────────────────────────────────────────
+
+VALID_DOC_TYPES = {"NATIONAL_ID", "PASSPORT", "CERTIFICATE", "CONTRACT", "OFFER_LETTER", "OTHER"}
+
+
+class DocumentCreate(BaseModel):
+    name: str
+    docType: str
+    notes: Optional[str] = None
+    expiryDate: Optional[str] = None
+
+    @field_validator("docType")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        v = v.upper()
+        if v not in VALID_DOC_TYPES:
+            raise ValueError(f"docType must be one of {sorted(VALID_DOC_TYPES)}")
+        return v
+
+
+@router.get("/employees/{employee_id}/documents")
+def list_documents(employee_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*HR_ROLES))):
+    docs = (
+        db.query(models.EmployeeDocument)
+        .filter(models.EmployeeDocument.employeeId == employee_id)
+        .options(joinedload(models.EmployeeDocument.uploadedBy))
+        .order_by(models.EmployeeDocument.createdAt.desc())
+        .all()
+    )
+    return [
+        {
+            "id": d.id,
+            "name": d.name,
+            "docType": d.docType,
+            "notes": d.notes,
+            "expiryDate": d.expiryDate.isoformat()[:10] if d.expiryDate else None,
+            "uploadedBy": d.uploadedBy.name if d.uploadedBy else None,
+            "createdAt": d.createdAt.isoformat() if d.createdAt else None,
+            "isExpiringSoon": (
+                d.expiryDate is not None and
+                d.expiryDate.date() <= (datetime.now() + timedelta(days=30)).date() and
+                d.expiryDate.date() >= datetime.now().date()
+            ),
+        }
+        for d in docs
+    ]
+
+
+@router.post("/employees/{employee_id}/documents", status_code=201)
+def create_document(
+    employee_id: str,
+    body: DocumentCreate,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles(*HR_ROLES)),
+):
+    emp = db.query(models.Employee).filter(models.Employee.id == employee_id, models.Employee.deletedAt == None).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    expiry = None
+    if body.expiryDate:
+        try:
+            expiry = datetime.fromisoformat(body.expiryDate)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "Invalid expiryDate format")
+    doc = models.EmployeeDocument(
+        id=generate_id(),
+        employeeId=employee_id,
+        uploadedById=user.id,
+        name=sanitize_string(body.name),
+        docType=body.docType,
+        notes=sanitize_string(body.notes),
+        expiryDate=expiry,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    log_audit(db, user.id, "CREATE", "EmployeeDocument", doc.id, {"name": body.name, "docType": body.docType, "employeeId": employee_id})
+    return {"id": doc.id, "name": doc.name, "docType": doc.docType, "createdAt": doc.createdAt.isoformat()}
+
+
+@router.delete("/documents/{document_id}", status_code=204)
+def delete_document(document_id: str, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
+    doc = db.query(models.EmployeeDocument).filter(models.EmployeeDocument.id == document_id).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    db.delete(doc)
+    db.commit()
+    log_audit(db, user.id, "DELETE", "EmployeeDocument", document_id, {})

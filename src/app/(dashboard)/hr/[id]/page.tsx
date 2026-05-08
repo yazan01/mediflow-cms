@@ -41,6 +41,8 @@ export default function EmployeeProfilePage() {
     yearsOfService: number; fractionYear: number;
     resignationEos: number; terminationEos: number; monthlySalary: number;
   }
+  interface ReviewRecord { id: string; period: string; rating: number; reviewerName: string | null; status: string; strengths: string | null; improvements: string | null; comments: string | null; goals: { title: string; status: string }[]; }
+  interface DocRecord { id: string; name: string; docType: string; notes: string | null; expiryDate: string | null; uploadedBy: string | null; isExpiringSoon: boolean; }
 
   const [emp, setEmp] = useState<Employee | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -52,6 +54,18 @@ export default function EmployeeProfilePage() {
   const [contractsLoading, setContractsLoading] = useState(false);
   const [salaryHistory, setSalaryHistory] = useState<SalaryRecord[]>([]);
   const [salaryLoading, setSalaryLoading] = useState(false);
+  const [reviews, setReviews] = useState<ReviewRecord[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewModal, setReviewModal] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ period: "", rating: "3", strengths: "", improvements: "", comments: "" });
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [docs, setDocs] = useState<DocRecord[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docModal, setDocModal] = useState(false);
+  const [docForm, setDocForm] = useState({ name: "", docType: "NATIONAL_ID", notes: "", expiryDate: "" });
+  const [docSaving, setDocSaving] = useState(false);
+  const [docError, setDocError] = useState("");
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [contractModal, setContractModal] = useState(false);
@@ -91,6 +105,60 @@ export default function EmployeeProfilePage() {
     }
   }
 
+  async function handleAddReview(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reviewForm.period) { setReviewError(t.common.required); return; }
+    setReviewSaving(true); setReviewError("");
+    try {
+      const res = await fetch("/api/hr/performance-reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: id,
+          period: reviewForm.period,
+          rating: Number(reviewForm.rating),
+          strengths: reviewForm.strengths || undefined,
+          improvements: reviewForm.improvements || undefined,
+          comments: reviewForm.comments || undefined,
+        }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); setReviewError(err.detail || t.hr.reviewFailed); return; }
+      setReviewModal(false);
+      setReviewForm({ period: "", rating: "3", strengths: "", improvements: "", comments: "" });
+      const rr = await fetch(`/api/hr/performance-reviews?employeeId=${id}`);
+      if (rr.ok) setReviews(await rr.json());
+    } catch { setReviewError(t.hr.reviewFailed); } finally { setReviewSaving(false); }
+  }
+
+  async function handleAddDoc(e: React.FormEvent) {
+    e.preventDefault();
+    if (!docForm.name) { setDocError(t.common.required); return; }
+    setDocSaving(true); setDocError("");
+    try {
+      const res = await fetch(`/api/hr/employees/${id}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: docForm.name,
+          docType: docForm.docType,
+          notes: docForm.notes || undefined,
+          expiryDate: docForm.expiryDate || undefined,
+        }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); setDocError(err.detail || t.hr.docFailed); return; }
+      setDocModal(false);
+      setDocForm({ name: "", docType: "NATIONAL_ID", notes: "", expiryDate: "" });
+      const dr = await fetch(`/api/hr/employees/${id}/documents`);
+      if (dr.ok) setDocs(await dr.json());
+    } catch { setDocError(t.hr.docFailed); } finally { setDocSaving(false); }
+  }
+
+  async function handleDeleteDoc(docId: string) {
+    if (!confirm(t.common.confirmDelete)) return;
+    await fetch(`/api/hr/documents/${docId}`, { method: "DELETE" });
+    setDocs(ds => ds.filter(d => d.id !== docId));
+  }
+
   const load = useCallback(async () => {
     const [empRes, deptRes, branchRes] = await Promise.all([
       fetch(`/api/hr/employees/${id}`),
@@ -104,21 +172,29 @@ export default function EmployeeProfilePage() {
     setLeaveHistoryLoading(true);
     setContractsLoading(true);
     setSalaryLoading(true);
+    setReviewsLoading(true);
+    setDocsLoading(true);
     try {
-      const [lr, cr, eosRes, salRes] = await Promise.all([
+      const [lr, cr, eosRes, salRes, revRes, docRes] = await Promise.all([
         fetch(`/api/hr/leaves?employeeId=${id}`),
         fetch(`/api/hr/employees/${id}/contracts`),
         fetch(`/api/hr/employees/${id}/eos?reason=resigned`),
         fetch(`/api/hr/salary-history/${id}`),
+        fetch(`/api/hr/performance-reviews?employeeId=${id}`),
+        fetch(`/api/hr/employees/${id}/documents`),
       ]);
       if (lr.ok) { const d = await lr.json(); setLeaveHistory(d.data ?? []); }
       if (cr.ok) setContracts(await cr.json());
       if (eosRes.ok) setEos(await eosRes.json());
       if (salRes.ok) setSalaryHistory(await salRes.json());
+      if (revRes.ok) setReviews(await revRes.json());
+      if (docRes.ok) setDocs(await docRes.json());
     } catch { /* ignore */ } finally {
       setLeaveHistoryLoading(false);
       setContractsLoading(false);
       setSalaryLoading(false);
+      setReviewsLoading(false);
+      setDocsLoading(false);
     }
   }, [id]);
 
@@ -449,6 +525,83 @@ export default function EmployeeProfilePage() {
         </div>
       </div>
 
+      {/* Performance Reviews */}
+      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-[#1a1c1e] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1960a3] text-[18px]">star_rate</span>
+            {t.hr.performanceReviews}
+          </h3>
+          <button onClick={() => { setReviewModal(true); setReviewError(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1960a3] text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            {t.hr.addReview}
+          </button>
+        </div>
+        {reviewsLoading ? (
+          <div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+        ) : reviews.length === 0 ? (
+          <p className="text-sm text-[#74777f]">{t.hr.noReviews}</p>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map(r => (
+              <div key={r.id} className="p-4 bg-[#f8f7fb] rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-[#1a1c1e]">{r.period}</span>
+                    <div className="flex gap-0.5">{[1,2,3,4,5].map(s => <span key={s} className={`material-symbols-outlined text-[16px] ${s <= r.rating ? "text-[#d97706]" : "text-[#c4c6cf]"}`}>star</span>)}</div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.status === "ACKNOWLEDGED" ? "bg-[#ccfbf1] text-[#0d9488]" : r.status === "SUBMITTED" ? "bg-[#d3e4ff] text-[#1960a3]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{r.status}</span>
+                  </div>
+                  <span className="text-xs text-[#74777f]">{r.reviewerName ?? "—"}</span>
+                </div>
+                {r.strengths && <p className="text-xs text-[#43474e] mt-1"><span className="font-semibold">{t.hr.strengths}:</span> {r.strengths}</p>}
+                {r.improvements && <p className="text-xs text-[#43474e]"><span className="font-semibold">{t.hr.improvements}:</span> {r.improvements}</p>}
+                {r.comments && <p className="text-xs text-[#74777f] mt-1 italic">{r.comments}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Documents */}
+      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-[#1a1c1e] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#1960a3] text-[18px]">folder_open</span>
+            {t.hr.documents}
+          </h3>
+          <button onClick={() => { setDocModal(true); setDocError(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1960a3] text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            {t.hr.addDocument}
+          </button>
+        </div>
+        {docsLoading ? (
+          <div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+        ) : docs.length === 0 ? (
+          <p className="text-sm text-[#74777f]">{t.hr.noDocuments}</p>
+        ) : (
+          <div className="space-y-2">
+            {docs.map(d => (
+              <div key={d.id} className="flex items-center justify-between p-3 bg-[#f8f7fb] rounded-xl">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#1960a3] text-[20px]">description</span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#1a1c1e]">{d.name}</p>
+                    <p className="text-xs text-[#74777f]">{d.docType.replace(/_/g, " ")} {d.expiryDate ? `· ${t.hr.expires}: ${d.expiryDate}` : ""}</p>
+                    {d.notes && <p className="text-xs text-[#74777f] italic">{d.notes}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {d.isExpiringSoon && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#fff7ed] text-[#d97706]">{t.hr.expiringSoon}</span>}
+                  <button onClick={() => handleDeleteDoc(d.id)} aria-label={t.common.delete} className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6]/40 rounded-lg transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Edit Log */}
       <EditLog entityId={id as string} />
 
@@ -501,6 +654,94 @@ export default function EmployeeProfilePage() {
                 <button type="button" onClick={() => setContractModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
                 <button type="submit" disabled={contractSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
                   {contractSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.hr.contractSaved}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Review Modal */}
+      {reviewModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="review-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setReviewModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="review-modal-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.addReview}</h2>
+              <button onClick={() => setReviewModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+            </div>
+            <form onSubmit={handleAddReview} className="p-6 space-y-4">
+              {reviewError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{reviewError}</div>}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.reviewPeriod} *</label>
+                  <input className="input-field" placeholder="2025-Q2" value={reviewForm.period} onChange={e => setReviewForm(f => ({ ...f, period: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.rating} (1-5) *</label>
+                  <select className="input-field" value={reviewForm.rating} onChange={e => setReviewForm(f => ({ ...f, rating: e.target.value }))} required>
+                    {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {'★'.repeat(n)}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.strengths}</label>
+                <textarea className="input-field resize-none" rows={2} value={reviewForm.strengths} onChange={e => setReviewForm(f => ({ ...f, strengths: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.improvements}</label>
+                <textarea className="input-field resize-none" rows={2} value={reviewForm.improvements} onChange={e => setReviewForm(f => ({ ...f, improvements: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.common.notes}</label>
+                <textarea className="input-field resize-none" rows={2} value={reviewForm.comments} onChange={e => setReviewForm(f => ({ ...f, comments: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-[#e3e2e6]">
+                <button type="button" onClick={() => setReviewModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+                <button type="submit" disabled={reviewSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                  {reviewSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Document Modal */}
+      {docModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="doc-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setDocModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="doc-modal-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.addDocument}</h2>
+              <button onClick={() => setDocModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+            </div>
+            <form onSubmit={handleAddDoc} className="p-6 space-y-4">
+              {docError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{docError}</div>}
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.docName} *</label>
+                <input className="input-field" value={docForm.name} onChange={e => setDocForm(f => ({ ...f, name: e.target.value }))} placeholder="National ID — Front" required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.docType} *</label>
+                  <select className="input-field" value={docForm.docType} onChange={e => setDocForm(f => ({ ...f, docType: e.target.value }))} required>
+                    {["NATIONAL_ID","PASSPORT","CERTIFICATE","CONTRACT","OFFER_LETTER","OTHER"].map(dt => (
+                      <option key={dt} value={dt}>{dt.replace(/_/g, " ")}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.expiryDate}</label>
+                  <input type="date" className="input-field" value={docForm.expiryDate} onChange={e => setDocForm(f => ({ ...f, expiryDate: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.common.notes}</label>
+                <textarea className="input-field resize-none" rows={2} value={docForm.notes} onChange={e => setDocForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-[#e3e2e6]">
+                <button type="button" onClick={() => setDocModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+                <button type="submit" disabled={docSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                  {docSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
                 </button>
               </div>
             </form>

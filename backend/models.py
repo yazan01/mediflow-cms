@@ -905,6 +905,47 @@ class ShiftAssignment(Base):
     shift = relationship("Shift", back_populates="assignments")
 
 
+class PerformanceReview(Base):
+    __tablename__ = "performance_reviews"
+    __table_args__ = (
+        Index("ix_perf_employee", "employeeId"),
+        Index("ix_perf_period", "period"),
+    )
+    id = Column(String(25), primary_key=True)
+    employeeId = Column(String(36), ForeignKey("employees.id"), nullable=False)
+    reviewerId = Column(String(36), ForeignKey("users.id"), nullable=False)
+    period = Column(String(7), nullable=False)   # "2025-Q1"
+    rating = Column(Integer, nullable=False)      # 1-5
+    goals = Column(JSON, default=lambda: [])      # list of {title, status}
+    strengths = Column(Text)
+    improvements = Column(Text)
+    comments = Column(Text)
+    status = Column(String(20), default="DRAFT")  # DRAFT | SUBMITTED | ACKNOWLEDGED
+    createdAt = Column(DateTime, server_default=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    employee = relationship("Employee", foreign_keys=[employeeId])
+    reviewer = relationship("User", foreign_keys=[reviewerId])
+
+
+class EmployeeDocument(Base):
+    __tablename__ = "employee_documents"
+    __table_args__ = (
+        Index("ix_doc_employee", "employeeId"),
+    )
+    id = Column(String(25), primary_key=True)
+    employeeId = Column(String(36), ForeignKey("employees.id"), nullable=False)
+    uploadedById = Column(String(36), ForeignKey("users.id"), nullable=False)
+    name = Column(String(300), nullable=False)
+    docType = Column(String(50), nullable=False)  # NATIONAL_ID | PASSPORT | CERTIFICATE | CONTRACT | OTHER
+    notes = Column(Text)
+    expiryDate = Column(DateTime, nullable=True)
+    createdAt = Column(DateTime, server_default=func.now())
+
+    employee = relationship("Employee")
+    uploadedBy = relationship("User")
+
+
 class TokenBlocklist(Base):
     """Revoked JWT tokens — checked on every authenticated request."""
     __tablename__ = "token_blocklist"

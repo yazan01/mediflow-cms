@@ -143,7 +143,7 @@ export default function DashboardClient({ stats, appointments }: Props) {
               <div className={`p-3 ${card.iconBg} rounded-2xl group-hover:scale-110 transition-transform`}>
                 <span className={`material-symbols-outlined ${card.iconColor} text-[22px]`}>{card.icon}</span>
               </div>
-              {card.change !== undefined && (
+              {card.change != null && (
                 <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${card.change >= 0 ? "bg-[#ccfbf1]/50 text-[#0d9488]" : "bg-[#ffdad6] text-[#93000a]"}`}>
                   <span className="material-symbols-outlined text-[14px]">
                     {card.change >= 0 ? "trending_up" : "trending_down"}
