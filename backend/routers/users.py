@@ -234,6 +234,34 @@ def update_user(
     return user_to_dict(user, emp.id if emp else None)
 
 
+@router.post("/{user_id}/set-password", status_code=200)
+def set_password(
+    user_id: str,
+    body: dict,
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*ADMIN_ROLES)),
+):
+    from auth import log_audit
+    new_password = body.get("newPassword", "")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not re.search(r"[A-Z]", new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter")
+    if not re.search(r"\d", new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one digit")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.passwordHash = hash_password(new_password)
+    db.commit()
+    log_audit(db, _user.id, "UPDATE", "User", user_id, {"action": "password_reset"})
+    return {"success": True}
+
+
 @router.delete("/{user_id}")
 def delete_user(user_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*ADMIN_ROLES))):
     user = db.query(models.User).filter(models.User.id == user_id).first()
