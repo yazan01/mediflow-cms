@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 from datetime import datetime
 
 from database import get_db
 from auth import get_current_user, require_roles, generate_id, log_audit
-from sqlalchemy.orm import joinedload
 
 SHIFT_ADMIN_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "HR_OFFICER")
 import models
@@ -126,6 +126,16 @@ def delete_shift(shift_id: str, db: Session = Depends(get_db), user=Depends(requ
     shift = db.query(models.Shift).filter(models.Shift.id == shift_id).first()
     if not shift:
         raise HTTPException(404, "Shift not found")
+    # L-005: Block deletion if active assignments exist
+    active_count = db.query(func.count(models.ShiftAssignment.id)).filter(
+        models.ShiftAssignment.shiftId == shift_id,
+        (models.ShiftAssignment.endDate == None) | (models.ShiftAssignment.endDate >= datetime.now()),
+    ).scalar() or 0
+    if active_count > 0:
+        raise HTTPException(
+            409,
+            f"Cannot delete shift with {active_count} active assignment(s). Remove all assignments first.",
+        )
     shift.isActive = False
     db.commit()
     log_audit(db, user.id, "DELETE", "Shift", shift_id, {})

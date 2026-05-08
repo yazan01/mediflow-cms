@@ -226,6 +226,9 @@ export default function HRPage() {
   // Attendance marking modal
   const [attMarkModal, setAttMarkModal] = useState<{ employeeId: string; employeeName: string; date: string } | null>(null);
   const [attMarkStatus, setAttMarkStatus] = useState<AttStatus>("PRESENT");
+  const [attMarkCheckIn, setAttMarkCheckIn] = useState("");
+  const [attMarkCheckOut, setAttMarkCheckOut] = useState("");
+  const [attMarkOvertimeHrs, setAttMarkOvertimeHrs] = useState("");
   const [attMarkSaving, setAttMarkSaving] = useState(false);
   const [attMarkError, setAttMarkError] = useState("");
 
@@ -480,6 +483,9 @@ export default function HRPage() {
           employeeId: attMarkModal.employeeId,
           date: attMarkModal.date,
           status: attMarkStatus,
+          ...(attMarkCheckIn && { checkIn: attMarkCheckIn }),
+          ...(attMarkCheckOut && { checkOut: attMarkCheckOut }),
+          ...(attMarkOvertimeHrs && { overtimeHrs: Number(attMarkOvertimeHrs) }),
         }),
       });
       if (!res.ok) {
@@ -509,32 +515,31 @@ export default function HRPage() {
     if (!confirm(t.hr.processAllConfirm)) return;
     setProcessAllLoading(true);
     try {
-      for (const pr of pending) {
-        await fetch("/api/hr/payroll", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employeeId: pr.employeeId, month: payrollMonth }),
-        });
-      }
-      fetchPayroll();
+      const res = await fetch("/api/hr/payroll/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: payrollMonth }),
+      });
+      if (res.ok) fetchPayroll();
     } catch { /* ignore */ } finally { setProcessAllLoading(false); }
   }
 
-  function handleExportCsv() {
-    if (employees.length === 0) return;
+  async function handleExportCsv() {
+    const params = new URLSearchParams({ page: "1", pageSize: "5000" });
+    if (empSearch) params.set("search", empSearch);
+    if (empDeptFilter !== "ALL") params.set("department", empDeptFilter);
+    if (empStatusFilter !== "ALL") params.set("status", empStatusFilter);
+    const res = await fetch(`/api/hr/employees?${params}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const all: Record<string, unknown>[] = data.data ?? [];
+    if (all.length === 0) return;
     const headers = ["Name", "Email", "Code", "Department", "Job Title", "Type", "Status", "Basic Salary", "Hire Date", "Annual Leave Balance"];
-    const rows = employees.map((e) => [
-      e.user.name,
-      e.user.email,
-      e.empCode,
-      e.department.name,
-      e.jobTitle,
-      e.employmentType,
-      e.status,
-      e.basicSalary,
-      e.hireDate?.slice(0, 10) ?? "",
-      e.annualLeaveBalance,
-    ]);
+    const rows = all.map((e) => {
+      const u = e.user as Record<string, unknown>;
+      const d = e.department as Record<string, unknown>;
+      return [u?.name, u?.email, e.empCode, d?.name, e.jobTitle, e.employmentType, e.status, e.basicSalary, String(e.hireDate ?? "").slice(0, 10), e.annualLeaveBalance];
+    });
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -937,6 +942,9 @@ export default function HRPage() {
                             onClick={() => {
                               setAttMarkModal({ employeeId: rec.employeeId, employeeName: rec.employeeName, date: key });
                               setAttMarkStatus(marker ?? "PRESENT");
+                              setAttMarkCheckIn("");
+                              setAttMarkCheckOut("");
+                              setAttMarkOvertimeHrs("");
                               setAttMarkError("");
                             }}
                           >
@@ -1008,7 +1016,15 @@ export default function HRPage() {
                             <p className="text-sm font-semibold text-[#1a1c1e] whitespace-nowrap">{lr.employeeName ?? lr.employee?.user?.name ?? "—"}</p>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-sm text-[#43474e]">{leaveTypeLabel(lr.type)}</td>
+                        <td className="px-5 py-4">
+                          <p className="text-sm text-[#43474e]">{leaveTypeLabel(lr.type)}</p>
+                          {lr.type?.toUpperCase().includes("ANNUAL") && lr.annualLeaveBalance != null && (
+                            <p className="text-xs text-[#74777f] mt-0.5">{t.hr.leaveBal}: {lr.annualLeaveBalance} {t.hr.daysUnit}</p>
+                          )}
+                          {lr.type?.toUpperCase().includes("SICK") && lr.sickLeaveBalance != null && (
+                            <p className="text-xs text-[#74777f] mt-0.5">{t.hr.leaveBal}: {lr.sickLeaveBalance} {t.hr.daysUnit}</p>
+                          )}
+                        </td>
                         <td className="px-5 py-4 text-sm text-[#43474e] whitespace-nowrap">{formatDate(lr.startDate)}</td>
                         <td className="px-5 py-4 text-sm text-[#43474e] whitespace-nowrap">{formatDate(lr.endDate)}</td>
                         <td className="px-5 py-4 text-sm text-[#43474e]">{lr.days}</td>
@@ -1057,6 +1073,7 @@ export default function HRPage() {
               type="month"
               className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
               value={payrollMonth}
+              min="2020-01"
               max={new Date().toISOString().slice(0, 7)}
               onChange={(e) => setPayrollMonth(e.target.value)}
             />
@@ -1350,7 +1367,7 @@ export default function HRPage() {
                             <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{c.endDate?.slice(0, 10) ?? "—"}</td>
                             <td className="py-2.5">
                               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.daysUntilExpiry <= 0 ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#fff7ed] text-[#d97706]"}`}>
-                                {c.daysUntilExpiry <= 0 ? "Expired" : `${c.daysUntilExpiry}d`}
+                                {c.daysUntilExpiry <= 0 ? t.hr.expired : `${c.daysUntilExpiry}d`}
                               </span>
                             </td>
                           </tr>
@@ -1491,7 +1508,6 @@ export default function HRPage() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {attMarkError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{attMarkError}</div>}
               <div className="grid grid-cols-1 gap-2">
                 {ATT_STATUSES.map((s) => {
                   const cfg = ATT_MARKER[s];
@@ -1508,6 +1524,23 @@ export default function HRPage() {
                 })}
               </div>
             </div>
+            {attMarkStatus === "PRESENT" && (
+              <div className="px-6 pb-4 grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1">{t.hr.checkIn}</label>
+                  <input type="time" className="input-field text-sm" value={attMarkCheckIn} onChange={(e) => setAttMarkCheckIn(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1">{t.hr.checkOut}</label>
+                  <input type="time" className="input-field text-sm" value={attMarkCheckOut} onChange={(e) => setAttMarkCheckOut(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1">{t.hr.overtimeHrs}</label>
+                  <input type="number" className="input-field text-sm" value={attMarkOvertimeHrs} min="0" step="0.5" onChange={(e) => setAttMarkOvertimeHrs(e.target.value)} />
+                </div>
+              </div>
+            )}
+            {attMarkError && <p className="px-6 pb-3 text-xs text-[#ba1a1a]">{attMarkError}</p>}
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
               <button onClick={() => setAttMarkModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={handleMarkAttendance} disabled={attMarkSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">

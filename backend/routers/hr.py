@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/hr", tags=["hr"])
 
 VALID_LEAVE_TYPES = {"ANNUAL", "SICK", "UNPAID", "EMERGENCY", "MATERNITY", "PATERNITY", "STUDY"}
 VALID_EMP_TYPES = {"FULL_TIME", "PART_TIME", "CONTRACT", "INTERN"}
-VALID_STATUSES = {"ACTIVE", "ON_LEAVE", "SUSPENDED", "TERMINATED"}
+VALID_STATUSES = {"ACTIVE", "INACTIVE", "ON_LEAVE", "SUSPENDED", "TERMINATED"}
 SALARY_FIELDS = {"basicSalary", "housingAllowance", "transportAllowance", "medicalAllowance"}
 
 
@@ -269,7 +269,7 @@ def get_departments(db: Session = Depends(get_db), _user=Depends(get_current_use
 @router.get("/employees")
 def get_employees(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(20, ge=1, le=100),
+    pageSize: int = Query(20, ge=1, le=5000),
     search: str = Query(""),
     status: Optional[str] = None,
     department: Optional[str] = None,
@@ -280,7 +280,9 @@ def get_employees(
 
     if search:
         query = query.join(models.User, models.Employee.userId == models.User.id).filter(
-            models.User.name.contains(search) | models.User.email.contains(search)
+            models.User.name.contains(search)
+            | models.User.email.contains(search)
+            | models.Employee.jobTitle.contains(search)
         )
 
     if status and status != "ALL":
@@ -401,6 +403,11 @@ def update_employee(
     data = body.model_dump(exclude_none=True)
     user_fields = {"userName", "userPhone", "userRoles", "salaryChangeReason"}
 
+    if "status" in data and data["status"] not in VALID_STATUSES:
+        raise HTTPException(422, f"status must be one of {sorted(VALID_STATUSES)}")
+    if "employmentType" in data and data["employmentType"] not in VALID_EMP_TYPES:
+        raise HTTPException(422, f"employmentType must be one of {sorted(VALID_EMP_TYPES)}")
+
     # Detect salary changes before applying
     salary_changed = any(f in data for f in SALARY_FIELDS)
     old_salary = {
@@ -472,6 +479,11 @@ def terminate_employee(
 
     emp.status = "TERMINATED"
     emp.endDate = end_date
+
+    # SEC-004: Deactivate user account so existing and future logins are blocked immediately
+    linked_user = db.query(models.User).filter(models.User.id == emp.userId).first()
+    if linked_user:
+        linked_user.isActive = False
 
     # Cancel all pending leave requests
     db.query(models.LeaveRequest).filter(
@@ -587,15 +599,19 @@ def _leave_to_dict(lr: models.LeaveRequest, approver_map: dict = None) -> dict:
         "id": lr.id,
         "employeeId": lr.employeeId,
         "employeeName": lr.employee.user.name if lr.employee and lr.employee.user else "",
+        "empCode": lr.employee.empCode if lr.employee else None,
         "type": lr.type,
         "startDate": lr.startDate.isoformat() if lr.startDate else None,
         "endDate": lr.endDate.isoformat() if lr.endDate else None,
         "days": lr.days,
         "reason": lr.reason,
+        "medicalCert": lr.medicalCert,
         "status": lr.status,
         "approvedById": lr.approvedById,
         "approverName": (approver_map or {}).get(lr.approvedById, "") if lr.approvedById else "",
         "rejectedReason": lr.rejectedReason,
+        "annualLeaveBalance": lr.employee.annualLeaveBalance if lr.employee else None,
+        "sickLeaveBalance": lr.employee.sickLeaveBalance if lr.employee else None,
         "createdAt": lr.createdAt.isoformat() if lr.createdAt else None,
     }
 

@@ -320,6 +320,8 @@ export interface LeaveRequest {
   approvedById?: string;
   approverName?: string;
   rejectedReason?: string;
+  annualLeaveBalance?: number;
+  sickLeaveBalance?: number;
   createdAt: string;
 }
 
