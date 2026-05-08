@@ -20,12 +20,45 @@ interface Props {
 
 export default function DashboardShell({ user, children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [showTimeout, setShowTimeout] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const router = useRouter();
   const showTimeoutRef = useRef(false);
   const { t } = useLanguage();
+
+  // Restore persisted preferences after mount
+  useEffect(() => {
+    const collapsed = localStorage.getItem("mediflow_sidebar_collapsed") === "true";
+    const dark      = localStorage.getItem("mediflow_dark") === "true";
+    setSidebarCollapsed(collapsed);
+    setDarkMode(dark);
+  }, []);
+
+  // Apply / remove dark class on <html>
+  useEffect(() => {
+    const html = document.documentElement;
+    if (darkMode) html.classList.add("dark");
+    else html.classList.remove("dark");
+  }, [darkMode]);
+
+  function toggleCollapsed() {
+    setSidebarCollapsed((v) => {
+      const next = !v;
+      localStorage.setItem("mediflow_sidebar_collapsed", String(next));
+      return next;
+    });
+  }
+
+  function toggleDark() {
+    setDarkMode((v) => {
+      const next = !v;
+      localStorage.setItem("mediflow_dark", String(next));
+      return next;
+    });
+  }
 
   const shortcuts: Shortcut[] = [
     { key: "n", alt: true, action: () => router.push("/appointments/new"), description: t.common.scNewAppointment, category: "create" },
@@ -39,7 +72,7 @@ export default function DashboardShell({ user, children }: Props) {
   useKeyboardShortcuts(shortcuts);
   const inactivityMsRef = useRef((DEFAULT_SESSION_TIMEOUT_MINS - 5) * 60 * 1000);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -85,17 +118,11 @@ export default function DashboardShell({ user, children }: Props) {
     }
     countdownTimer.current = setInterval(() => {
       setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(countdownTimer.current!);
-          handleLogout();
-          return 0;
-        }
+        if (c <= 1) { clearInterval(countdownTimer.current!); handleLogout(); return 0; }
         return c - 1;
       });
     }, 1000);
-    return () => {
-      if (countdownTimer.current) clearInterval(countdownTimer.current);
-    };
+    return () => { if (countdownTimer.current) clearInterval(countdownTimer.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTimeout]);
 
@@ -113,17 +140,29 @@ export default function DashboardShell({ user, children }: Props) {
 
   return (
     <>
-      <div className="flex h-screen bg-[#faf9fd] overflow-hidden">
+      <div className="flex h-screen bg-[var(--bg)] overflow-hidden">
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            className="fixed inset-0 bg-black/40 z-40 md:hidden backdrop-blur-[2px]"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
-        <Sidebar user={user} roles={user.roles} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          user={user}
+          roles={user.roles}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={toggleCollapsed}
+        />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <TopBar user={user} onMenuClick={() => setSidebarOpen((v) => !v)} />
+          <TopBar
+            user={user}
+            onMenuClick={() => setSidebarOpen((v) => !v)}
+            darkMode={darkMode}
+            onToggleDark={toggleDark}
+          />
           <main className="flex-1 overflow-y-auto p-6">
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>
@@ -131,11 +170,7 @@ export default function DashboardShell({ user, children }: Props) {
       </div>
 
       {showTimeout && (
-        <SessionTimeoutModal
-          countdown={countdown}
-          onStay={handleStay}
-          onLogout={handleLogout}
-        />
+        <SessionTimeoutModal countdown={countdown} onStay={handleStay} onLogout={handleLogout} />
       )}
 
       <ConnectionStatus />
@@ -148,9 +183,7 @@ export default function DashboardShell({ user, children }: Props) {
 }
 
 function SessionTimeoutModal({ countdown, onStay, onLogout }: {
-  countdown: number;
-  onStay: () => void;
-  onLogout: () => void;
+  countdown: number; onStay: () => void; onLogout: () => void;
 }) {
   const { t } = useLanguage();
   const mins = Math.floor(countdown / 60);
@@ -163,26 +196,22 @@ function SessionTimeoutModal({ countdown, onStay, onLogout }: {
       aria-labelledby="session-timeout-title"
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+      <div className="bg-[var(--surface)] rounded-2xl shadow-[var(--sh-xl)] max-w-sm w-full p-6 text-center border border-[var(--border)] animate-scale-in">
         <div className="w-16 h-16 rounded-full bg-[#fff7ed] flex items-center justify-center mx-auto mb-4">
           <span className="material-symbols-outlined text-[32px] text-[#d97706]" aria-hidden="true">timer</span>
         </div>
-        <h2 id="session-timeout-title" className="text-lg font-bold text-[#1a1c1e] mb-2">
+        <h2 id="session-timeout-title" className="text-lg font-bold text-[var(--txt1)] mb-2">
           {t.topbar.sessionExpiring}
         </h2>
-        <p className="text-sm text-[#74777f] mb-4">
+        <p className="text-sm text-[var(--txt3)] mb-4">
           {t.topbar.sessionExpiringDesc}
         </p>
-        <div className="text-3xl font-bold text-[#1960a3] mb-6 tabular-nums" aria-live="polite" aria-label={`${mins} minutes ${secs} seconds`}>
+        <div className="text-3xl font-bold text-[#1960a3] mb-6 tabular-nums" aria-live="polite">
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </div>
         <div className="flex gap-3">
-          <button onClick={onLogout} className="btn-secondary flex-1">
-            {t.topbar.signOut}
-          </button>
-          <button onClick={onStay} className="btn-primary flex-1">
-            {t.topbar.stayLoggedIn}
-          </button>
+          <button onClick={onLogout} className="btn-secondary flex-1">{t.topbar.signOut}</button>
+          <button onClick={onStay}   className="btn-primary  flex-1">{t.topbar.stayLoggedIn}</button>
         </div>
       </div>
     </div>

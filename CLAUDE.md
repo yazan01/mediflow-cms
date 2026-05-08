@@ -17,6 +17,7 @@ SRS reference: `../clinic_management/clinic_management_srs.md`
 | Database | MySQL 8.4 |
 | Auth | JWT (python-jose) + bcrypt (passlib) — `mediflow_token` HttpOnly cookie |
 | UI | Tailwind CSS v4, Material Symbols Outlined (Google Fonts), Recharts |
+| Animations | Framer Motion v12 — sidebar collapse, stagger entrance, page transitions |
 | Fonts | @fontsource/inter + @fontsource/cairo (self-hosted, no CDN) |
 | State | Zustand |
 | Tables | TanStack React Table |
@@ -166,7 +167,29 @@ mediflow-cms/
 - **Font**: Inter (EN) / Cairo (AR) — switched via `[lang="ar"]` CSS selector
 - **Icons**: `<span className="material-symbols-outlined">icon_name</span>` — NOT Lucide
 - **Border radius**: `rounded-lg` (8px) standard, `rounded-xl` (12px) for cards, `rounded-2xl` for modals
-- **Reusable CSS classes** (in `globals.css`): `btn-primary`, `btn-secondary`, `btn-ghost`, `btn-danger`, `card`, `input-field`, `select-field`, `badge`, `table-header`, `table-cell`, `table-row`, `no-scrollbar`
+- **Reusable CSS classes** (in `globals.css`): `btn-primary`, `btn-secondary`, `btn-ghost`, `btn-danger`, `card`, `input-field`, `select-field`, `badge`, `table-header`, `table-cell`, `table-row`, `no-scrollbar`, `skeleton`, `popup-panel`, `animate-fade-in`, `animate-slide-up`, `animate-scale-in`
+
+### CSS Custom Properties (Design Tokens)
+All colors are available as CSS variables via `:root` — use `var(--token)` in component CSS classes:
+- **Surfaces**: `--bg`, `--surface`, `--surface2`, `--surface3`, `--border`, `--border2`
+- **Text**: `--txt1`, `--txt2`, `--txt3`, `--txt4`
+- **Brand**: `--brand`, `--brandh`, `--blue`, `--blue-soft`, `--blue-bg`
+- **Status**: `--ok`, `--ok-bg`, `--err`, `--err-bg`, `--warn`, `--warn-bg`
+- **Shadows**: `--sh-xs`, `--sh-sm`, `--sh-md`, `--sh-lg`, `--sh-xl`
+
+### Dark Mode
+- Toggled by adding/removing the `dark` class on `<html>` (`html.dark`)
+- `DashboardShell` manages the `darkMode` boolean state — persisted in `localStorage` key `mediflow_dark`
+- `TopBar` receives `darkMode` + `onToggleDark` props — shows sun/moon toggle button
+- All CSS component classes (`.card`, `.btn-*`, `.input-field`, etc.) automatically respond to dark mode via `var()` tokens
+- `html.dark` overrides also lift common inline Tailwind values (`bg-white`, `text-[#1a1c1e]`, `border-[#e3e2e6]`, etc.)
+
+### Skeleton Loader
+Use the `.skeleton` CSS class on any placeholder element — renders an animated shimmer:
+```tsx
+<div className="skeleton h-8 w-48" />
+<div className="skeleton h-32 w-full rounded-xl" />
+```
 
 ## Auth Flow
 1. Frontend POSTs to `/api/auth/login` → Next.js proxies to FastAPI (rate limit: 10/min)
@@ -233,9 +256,11 @@ The dashboard layout uses a three-layer client structure:
 ```
 layout.tsx (server) → DashboardShell.tsx (client) → Sidebar + TopBar + children
 ```
-- `DashboardShell` manages: mobile sidebar open/close state, session timeout inactivity timer
-- `Sidebar` accepts `isOpen` + `onClose` props for mobile drawer mode — RTL-aware (`translate-x-full` vs `-translate-x-full`)
-- `TopBar` accepts `onMenuClick` prop — renders hamburger button (`md:hidden`) that toggles sidebar
+- `DashboardShell` manages: mobile sidebar open/close, **desktop sidebar collapse**, **dark mode toggle**, and session timeout inactivity timer
+- **Sidebar collapse**: `sidebarCollapsed` boolean — persisted in `localStorage` key `mediflow_sidebar_collapsed`; collapsed width = 72 px, expanded = 256 px; CSS `transition-[width]` on `md:` breakpoint; Framer Motion `AnimatePresence` fades nav labels in/out
+- **Dark mode**: `darkMode` boolean — persisted in `localStorage` key `mediflow_dark`; applies/removes `html.dark` class
+- `Sidebar` accepts: `isOpen`, `onClose` (mobile drawer), `isCollapsed`, `onToggleCollapse` (desktop)
+- `TopBar` accepts: `onMenuClick`, `darkMode`, `onToggleDark`
 - Session timeout: 25min inactivity → warning modal → 5min countdown → auto-logout
 
 ## Error Handling Pattern
@@ -286,6 +311,9 @@ layout.tsx (server) → DashboardShell.tsx (client) → Sidebar + TopBar + child
 - Frontend runs with `--webpack` flag (Turbopack breaks CSS resolution with spaces in path)
 - All search inputs use `useDebounce(search, 300)` — never pass raw `search` directly to API calls
 - Accessibility: icon-only buttons must have `aria-label`; dialogs must have `role="dialog"` + `aria-labelledby`
+- **New component CSS classes use CSS `var()` tokens** — do NOT add raw hardcoded hex values to new `.card`/`.btn-*` classes; use `var(--surface)`, `var(--txt1)` etc. so dark mode works automatically
+- **Framer Motion**: import `motion`, `AnimatePresence` from `framer-motion` — use for entrance animations and conditional content transitions; do NOT use for simple hover states (use CSS `transition` instead)
+- **`ease` type narrowing**: when passing a string ease to framer-motion `transition`, use `"easeOut" as const` to avoid TypeScript error; for bezier arrays use `[x1, y1, x2, y2] as [number, number, number, number]`
 
 ## Running the Project
 
