@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type FormData = {
   name: string; dob: string; gender: string; nationality: string; nationalId: string;
@@ -22,6 +23,8 @@ const EMPTY: FormData = {
 
 export default function NewPatientPage() {
   const router = useRouter();
+  const { t } = useLanguage();
+  const p = t.patients;
   const [form, setForm] = useState<FormData>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +36,7 @@ export default function NewPatientPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError("");
     setLoading(true);
     try {
@@ -47,19 +51,19 @@ export default function NewPatientPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Registration failed");
+      if (!res.ok) throw new Error(data.detail ?? data.error ?? p.registrationFailed);
       router.push(`/patients/${data.id}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : p.registrationFailed);
     } finally {
       setLoading(false);
     }
   }
 
   const tabs = [
-    { key: "personal", label: "Personal Info", icon: "person" },
-    { key: "clinical", label: "Clinical Info", icon: "medical_information" },
-    { key: "insurance", label: "Insurance", icon: "health_and_safety" },
+    { key: "personal",   label: p.tabPersonal,  icon: "person" },
+    { key: "clinical",   label: p.tabClinical,  icon: "medical_information" },
+    { key: "insurance",  label: p.tabInsurance, icon: "health_and_safety" },
   ] as const;
 
   return (
@@ -69,12 +73,13 @@ export default function NewPatientPage() {
         <Link
           href="/patients"
           className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors text-[#74777f] hover:text-[#1a1c1e]"
+          aria-label={t.common.back}
         >
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">Register New Patient</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">Fill in all required information to create the patient record</p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{p.registerTitle}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{p.registerDesc}</p>
         </div>
       </div>
 
@@ -106,57 +111,58 @@ export default function NewPatientPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
+
           {/* Personal Info Tab */}
           {activeTab === "personal" && (
             <div className="space-y-5">
-              <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">Personal Information</h2>
+              <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">{p.sectionPersonal}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Full Name *" required>
+                <Field label={`${p.fullNameLabel} *`}>
                   <input required value={form.name} onChange={(e) => update("name", e.target.value)}
-                    className="input-field" placeholder="First and last name" />
+                    className="input-field" placeholder={p.fullNamePlaceholder} />
                 </Field>
-                <Field label="Date of Birth *" required>
+                <Field label={`${p.dateOfBirth} *`}>
                   <input required type="date" value={form.dob} onChange={(e) => update("dob", e.target.value)}
                     className="input-field" />
                 </Field>
-                <Field label="Gender *" required>
+                <Field label={`${p.genderLabel} *`}>
                   <select required value={form.gender} onChange={(e) => update("gender", e.target.value)}
                     className="input-field">
-                    <option value="">Select gender</option>
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
+                    <option value="">{p.selectGender}</option>
+                    <option value="MALE">{p.male}</option>
+                    <option value="FEMALE">{p.female}</option>
                   </select>
                 </Field>
-                <Field label="Nationality">
+                <Field label={p.nationality}>
                   <input value={form.nationality} onChange={(e) => update("nationality", e.target.value)}
-                    className="input-field" placeholder="e.g. Jordanian" />
+                    className="input-field" placeholder={p.nationalityPlaceholder} />
                 </Field>
-                <Field label="National ID / Passport">
+                <Field label={p.nationalIdPassport}>
                   <input value={form.nationalId} onChange={(e) => update("nationalId", e.target.value)}
-                    className="input-field" placeholder="ID or passport number" />
+                    className="input-field" placeholder={p.idPassportPlaceholder} />
                 </Field>
-                <Field label="Phone Number *" required>
+                <Field label={`${p.phoneNumberLabel} *`}>
                   <input required type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)}
                     className="input-field" placeholder="+962 79 000 0000" />
                 </Field>
-                <Field label="Email Address">
+                <Field label={p.emailAddressLabel}>
                   <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)}
-                    className="input-field" placeholder="patient@email.com" />
+                    className="input-field" placeholder={p.emailPatientPlaceholder} />
                 </Field>
-                <Field label="Address">
+                <Field label={p.addressLabel}>
                   <input value={form.address} onChange={(e) => update("address", e.target.value)}
-                    className="input-field" placeholder="Street, city, country" />
+                    className="input-field" placeholder={p.addressPlaceholder} />
                 </Field>
               </div>
 
               <div className="pt-4 border-t border-[#e3e2e6]">
-                <h3 className="text-sm font-semibold text-[#43474e] mb-4">Emergency Contact</h3>
+                <h3 className="text-sm font-semibold text-[#43474e] mb-4">{p.emergencyContact}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <Field label="Contact Name">
+                  <Field label={p.contactName}>
                     <input value={form.emergencyContactName} onChange={(e) => update("emergencyContactName", e.target.value)}
-                      className="input-field" placeholder="Full name" />
+                      className="input-field" placeholder={p.contactNamePlaceholder} />
                   </Field>
-                  <Field label="Contact Phone">
+                  <Field label={p.contactPhone}>
                     <input type="tel" value={form.emergencyContactPhone} onChange={(e) => update("emergencyContactPhone", e.target.value)}
                       className="input-field" placeholder="+962 79 000 0000" />
                   </Field>
@@ -168,11 +174,11 @@ export default function NewPatientPage() {
           {/* Clinical Info Tab */}
           {activeTab === "clinical" && (
             <div className="space-y-5">
-              <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">Clinical Information</h2>
+              <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">{p.sectionClinical}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Blood Type">
+                <Field label={p.bloodTypeLabel}>
                   <select value={form.bloodType} onChange={(e) => update("bloodType", e.target.value)} className="input-field">
-                    <option value="">Unknown</option>
+                    <option value="">{p.bloodTypeUnknown}</option>
                     {["A_POS","A_NEG","B_POS","B_NEG","AB_POS","AB_NEG","O_POS","O_NEG"].map((b) => (
                       <option key={b} value={b}>
                         {b.replace("_POS", "+").replace("_NEG", "−").replace("_", "")}
@@ -181,25 +187,25 @@ export default function NewPatientPage() {
                   </select>
                 </Field>
               </div>
-              <Field label="Known Allergies">
+              <Field label={p.knownAllergies}>
                 <textarea
                   value={form.allergies}
                   onChange={(e) => update("allergies", e.target.value)}
                   className="input-field resize-none"
                   rows={3}
-                  placeholder="Enter allergies separated by commas (e.g. Penicillin, Sulfa, Aspirin)"
+                  placeholder={p.allergiesFullPlaceholder}
                 />
-                <p className="text-xs text-[#74777f] mt-1">Separate multiple allergies with commas</p>
+                <p className="text-xs text-[#74777f] mt-1">{p.separateWithCommas}</p>
               </Field>
-              <Field label="Chronic Conditions">
+              <Field label={p.chronicLabel}>
                 <textarea
                   value={form.chronicConditions}
                   onChange={(e) => update("chronicConditions", e.target.value)}
                   className="input-field resize-none"
                   rows={3}
-                  placeholder="e.g. Hypertension, Type 2 Diabetes, Asthma"
+                  placeholder={p.chronicFullPlaceholder}
                 />
-                <p className="text-xs text-[#74777f] mt-1">Separate multiple conditions with commas</p>
+                <p className="text-xs text-[#74777f] mt-1">{p.separateWithCommas}</p>
               </Field>
             </div>
           )}
@@ -207,17 +213,17 @@ export default function NewPatientPage() {
           {/* Insurance Tab */}
           {activeTab === "insurance" && (
             <div className="space-y-5">
-              <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">Insurance Information</h2>
+              <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">{p.sectionInsurance}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Insurance Provider">
+                <Field label={p.insuranceProvider}>
                   <input value={form.insuranceProvider} onChange={(e) => update("insuranceProvider", e.target.value)}
                     className="input-field" placeholder="e.g. CIGNA, AXA, BUPA" />
                 </Field>
-                <Field label="Policy Number">
+                <Field label={p.insurancePolicy}>
                   <input value={form.insurancePolicyNo} onChange={(e) => update("insurancePolicyNo", e.target.value)}
                     className="input-field" placeholder="Policy or member ID" />
                 </Field>
-                <Field label="Coverage Expiry Date">
+                <Field label={p.insuranceExpiryDate}>
                   <input type="date" value={form.insuranceExpiry} onChange={(e) => update("insuranceExpiry", e.target.value)}
                     className="input-field" />
                 </Field>
@@ -225,9 +231,7 @@ export default function NewPatientPage() {
 
               <div className="p-4 bg-[#eff6ff] border border-[#1960a3]/20 rounded-xl flex gap-3">
                 <span className="material-symbols-outlined text-[#1960a3] text-[20px] flex-shrink-0">info</span>
-                <p className="text-sm text-[#1a1c1e]">
-                  Insurance details can be updated later from the patient profile. Leave blank if the patient is self-paying.
-                </p>
+                <p className="text-sm text-[#1a1c1e]">{p.insuranceSelfPay}</p>
               </div>
             </div>
           )}
@@ -243,7 +247,7 @@ export default function NewPatientPage() {
                 className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                Previous
+                {t.common.previous}
               </button>
             )}
           </div>
@@ -253,7 +257,7 @@ export default function NewPatientPage() {
               href="/patients"
               className="border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
             >
-              Cancel
+              {t.common.cancel}
             </Link>
             {activeTab !== "insurance" ? (
               <button
@@ -261,7 +265,7 @@ export default function NewPatientPage() {
                 onClick={() => setActiveTab(activeTab === "personal" ? "clinical" : "insurance")}
                 className="flex items-center gap-2 bg-[#1960a3] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
               >
-                Next
+                {t.common.next}
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             ) : (
@@ -272,13 +276,13 @@ export default function NewPatientPage() {
               >
                 {loading ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Registering...
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {p.registering}
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]">person_add</span>
-                    Register Patient
+                    {p.registerBtn}
                   </>
                 )}
               </button>
@@ -290,11 +294,11 @@ export default function NewPatientPage() {
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">
-        {label} {required && <span className="text-[#ba1a1a]">*</span>}
+        {label}
       </label>
       {children}
     </div>
