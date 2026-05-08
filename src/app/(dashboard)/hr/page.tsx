@@ -691,7 +691,7 @@ export default function HRPage() {
     const data = await res.json();
     const all: Record<string, unknown>[] = data.data ?? [];
     if (all.length === 0) return;
-    const headers = ["Name", "Email", "Code", "Department", "Job Title", "Type", "Status", "Basic Salary", "Hire Date", "Annual Leave Balance"];
+    const headers = [t.common.name, t.common.email, t.hr.empCode, t.hr.department, t.hr.jobTitle, t.hr.type, t.hr.status, t.hr.basicSalaryLabel, t.hr.hireDate, t.hr.annualLeave];
     const rows = all.map((e) => {
       const u = e.user as Record<string, unknown>;
       const d = e.department as Record<string, unknown>;
@@ -710,7 +710,7 @@ export default function HRPage() {
   function handleExportSelectedCsv() {
     const selected = employees.filter(e => selectedEmpIds.has(e.id as string));
     if (selected.length === 0) return;
-    const headers = ["Name", "Email", "Code", "Department", "Job Title", "Type", "Status", "Basic Salary", "Hire Date", "Annual Leave Balance"];
+    const headers = [t.common.name, t.common.email, t.hr.empCode, t.hr.department, t.hr.jobTitle, t.hr.type, t.hr.status, t.hr.basicSalaryLabel, t.hr.hireDate, t.hr.annualLeave];
     const rows = selected.map((e) => [
       e.user.name, e.user.email, e.empCode, e.department.name, e.jobTitle,
       e.employmentType, e.status, e.basicSalary, e.hireDate?.slice(0, 10) ?? "", e.annualLeaveBalance,

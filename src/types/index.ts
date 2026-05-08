@@ -387,6 +387,8 @@ export interface Vendor {
   address?: string;
   taxId?: string;
   paymentTerms?: string;
+  bankDetails?: string;
+  notes?: string;
   rating?: number;
   isPreferred: boolean;
   isActive: boolean;

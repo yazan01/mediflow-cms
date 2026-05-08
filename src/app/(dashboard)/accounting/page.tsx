@@ -519,7 +519,8 @@ export default function AccountingPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#74777f" }} />
                       <YAxis tick={{ fontSize: 11, fill: "#74777f" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      { /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ }
+                      <Tooltip formatter={((v: any) => formatCurrency(Number(v) || 0)) as never} />
                       <Legend />
                       <Area type="monotone" dataKey="revenue" name={t.accounting.totalRevenue} stroke="#1960a3" strokeWidth={2} fill="url(#gradRev)" />
                       <Area type="monotone" dataKey="expenses" name={t.accounting.totalExpenses} stroke="#ba1a1a" strokeWidth={2} fill="url(#gradExp)" />
@@ -941,7 +942,8 @@ export default function AccountingPage() {
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                       <YAxis type="category" dataKey="category" tick={{ fontSize: 10 }} width={80} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      { /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ }
+                      <Tooltip formatter={((v: any) => formatCurrency(Number(v) || 0)) as never} />
                       <Bar dataKey="amount" fill="#ba1a1a" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1111,7 +1113,8 @@ export default function AccountingPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="year" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                    { /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ }
+                      <Tooltip formatter={((v: any) => formatCurrency(Number(v) || 0)) as never} />
                     <Area type="monotone" dataKey="bookValue" name={t.accounting.bookValue} stroke="#1960a3" fill="#d3e4ff" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>

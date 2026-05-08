@@ -198,10 +198,10 @@ export default function AppointmentDetailPage() {
 
             {hasConsultation ? (
               <div className="space-y-3">
-                {appt.chiefComplaint && (
+                {!!appt.chiefComplaint && (
                   <div className="p-3 bg-[#f4f3f7] rounded-lg">
                     <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider mb-1">{a.chiefComplaintLabel}</p>
-                    <p className="text-sm text-[#1a1c1e]">{appt.chiefComplaint as string}</p>
+                    <p className="text-sm text-[#1a1c1e]">{String(appt.chiefComplaint)}</p>
                   </div>
                 )}
                 <div className="flex gap-2">
