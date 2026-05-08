@@ -11,8 +11,7 @@ WorkingDirectory=/opt/mediflow
 Environment=NODE_ENV=production
 Environment=PORT=3000
 EnvironmentFile=/opt/mediflow/.env.local
-ExecStart=/usr/bin/node_modules/.bin/next start
-ExecStartPre=/usr/bin/npm run build
+ExecStart=/opt/mediflow/node_modules/.bin/next start
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
