@@ -369,7 +369,7 @@ export default function NewConsultationPage() {
       ══════════════════════════════════════════ */}
       <div className={CARD}>
         <button type="button" onClick={() => setVitalsOpen((o) => !o)} className="w-full flex items-center justify-between group">
-          <p className={`${SEC} mb-0`}><span className="material-symbols-outlined text-[14px]">monitor_heart</span>Vitals <span className="text-[#74777f] font-normal normal-case tracking-normal ml-1">(optional)</span></p>
+          <p className={`${SEC} mb-0`}><span className="material-symbols-outlined text-[14px]">monitor_heart</span>Vitals <span className="text-[#74777f] font-normal normal-case tracking-normal ms-1">(optional)</span></p>
           <span className={`material-symbols-outlined text-[20px] text-[#74777f] transition-transform ${vitalsOpen ? "rotate-180" : ""}`}>expand_more</span>
         </button>
         {vitalsOpen && (

@@ -663,7 +663,7 @@ export default function AccountingPage() {
           <div className="p-4 border-b border-[#e3e2e6] flex items-center gap-3">
             <div className="relative flex-1 max-w-xs">
               <span className="material-symbols-outlined absolute start-3 top-2.5 text-[#74777f] text-[18px]">search</span>
-              <input value={vendorSearch} onChange={(e) => setVendorSearch(e.target.value)} placeholder={t.accounting.searchVendors} className="w-full pl-9 pr-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white" />
+              <input value={vendorSearch} onChange={(e) => setVendorSearch(e.target.value)} placeholder={t.accounting.searchVendors} className="w-full ps-9 pe-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white" />
             </div>
             <Link href="/accounting/vendors/new" className="flex items-center gap-1.5 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
               <span className="material-symbols-outlined text-[18px]">add</span>{t.accounting.addVendor}
@@ -730,7 +730,7 @@ export default function AccountingPage() {
           <div className="p-4 border-b border-[#e3e2e6] flex flex-wrap items-center gap-3">
             <div className="relative">
               <span className="material-symbols-outlined absolute start-3 top-2.5 text-[#74777f] text-[18px]">search</span>
-              <input value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} placeholder="Search expenses…" className="pl-9 pr-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white w-64" />
+              <input value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} placeholder="Search expenses…" className="ps-9 pe-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white w-64" />
             </div>
             <select value={expenseStatus} onChange={(e) => setExpenseStatus(e.target.value)} className="border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm bg-white">
               <option value="ALL">{t.accounting.allExpenses}</option>
@@ -802,7 +802,7 @@ export default function AccountingPage() {
           <div className="p-4 border-b border-[#e3e2e6] flex flex-wrap items-center gap-3">
             <div className="relative">
               <span className="material-symbols-outlined absolute start-3 top-2.5 text-[#74777f] text-[18px]">search</span>
-              <input value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)} placeholder={t.accounting.searchAssets} className="pl-9 pr-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white w-64" />
+              <input value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)} placeholder={t.accounting.searchAssets} className="ps-9 pe-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white w-64" />
             </div>
             <select value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)} className="border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm bg-white">
               <option value="ALL">{t.accounting.allStatuses}</option>
@@ -1175,7 +1175,7 @@ function AgingTable({ report, label, t, valueKey }: {
           </div>
         ))}
       </div>
-      <div className={`text-right text-sm font-bold text-[#1a1c1e] pr-2`}>
+      <div className={`text-end text-sm font-bold text-[#1a1c1e] pe-2`}>
         {t.accounting.grandTotal}: {formatCurrency(report.summary.grandTotal)}
       </div>
       {/* Detail table */}

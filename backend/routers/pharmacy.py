@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from auth import get_current_user, require_roles, generate_id, sanitize_string, log_audit
@@ -179,7 +179,14 @@ def get_stock_movements(
         query = query.filter(models.StockMovement.medicationId == medicationId)
 
     total = query.count()
-    movements = query.order_by(models.StockMovement.createdAt.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
+    movements = (
+        query
+        .options(joinedload(models.StockMovement.medication))
+        .order_by(models.StockMovement.createdAt.desc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
 
     return {
         "data": [

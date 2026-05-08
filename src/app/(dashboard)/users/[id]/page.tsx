@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getInitials, formatDateTime } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { UserRole } from "@/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -88,6 +89,7 @@ function Toast({ msg, ok, onClose }: { msg: string; ok: boolean; onClose: () => 
 export default function UserViewPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [user, setUser] = useState<UserDetail | null>(null);
   const [departments, setDepartments] = useState<Dept[]>([]);
@@ -122,7 +124,7 @@ export default function UserViewPage() {
         fetch(`/api/users/${id}`),
         fetch("/api/hr/departments"),
       ]);
-      if (!uRes.ok) throw new Error(uRes.status === 404 ? "User not found" : "Failed to load user");
+      if (!uRes.ok) throw new Error(uRes.status === 404 ? t.users.noUsers : "Failed to load user");
       const u = await uRes.json();
       setUser(u);
       setEditForm({ name: u.name, phone: u.phone ?? "", departmentId: u.department?.id ?? "", roles: u.roles });
@@ -132,7 +134,7 @@ export default function UserViewPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t.users.noUsers]);
 
   const loadAudit = useCallback(async () => {
     setAuditLoading(true);
@@ -158,17 +160,17 @@ export default function UserViewPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
-        setToast({ msg: `User ${updated.isActive ? "activated" : "deactivated"} successfully`, ok: true });
+        setToast({ msg: updated.isActive ? t.users.userActivatedMsg : t.users.userDeactivatedMsg, ok: true });
       } else {
-        setToast({ msg: "Failed to update status", ok: false });
+        setToast({ msg: t.users.failedUpdateStatus, ok: false });
       }
     } finally { setToggling(false); }
   }
 
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault();
-    if (!editForm.name.trim()) { setEditError("Name is required"); return; }
-    if (editForm.roles.length === 0) { setEditError("Select at least one role"); return; }
+    if (!editForm.name.trim()) { setEditError(t.users.fullName); return; }
+    if (editForm.roles.length === 0) { setEditError(t.users.rolesLabel); return; }
     setEditSaving(true); setEditError("");
     try {
       const res = await fetch(`/api/users/${id}`, {
@@ -185,15 +187,15 @@ export default function UserViewPage() {
       if (!res.ok) { setEditError(data.detail ?? "Failed to save"); return; }
       setUser(data);
       setEditModal(false);
-      setToast({ msg: "User updated successfully", ok: true });
+      setToast({ msg: t.users.userUpdatedMsg, ok: true });
     } catch { setEditError("An error occurred"); }
     finally { setEditSaving(false); }
   }
 
   async function savePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (pwForm.newPassword !== pwForm.confirmPassword) { setPwError("Passwords do not match"); return; }
-    if (pwForm.newPassword.length < 8) { setPwError("Min 8 characters"); return; }
+    if (pwForm.newPassword !== pwForm.confirmPassword) { setPwError(t.users.passwordLabel); return; }
+    if (pwForm.newPassword.length < 8) { setPwError(t.users.passwordHint); return; }
     setPwSaving(true); setPwError("");
     try {
       const res = await fetch(`/api/users/${id}/set-password`, {
@@ -205,7 +207,7 @@ export default function UserViewPage() {
       if (!res.ok) { setPwError(data.detail ?? "Failed to reset password"); return; }
       setPwModal(false);
       setPwForm({ newPassword: "", confirmPassword: "" });
-      setToast({ msg: "Password reset successfully", ok: true });
+      setToast({ msg: t.users.passwordResetMsg, ok: true });
     } catch { setPwError("An error occurred"); }
     finally { setPwSaving(false); }
   }
@@ -217,7 +219,6 @@ export default function UserViewPage() {
     }));
   }
 
-  // ── Password strength indicator
   const pwStrength = (() => {
     const p = pwForm.newPassword;
     let score = 0;
@@ -229,6 +230,10 @@ export default function UserViewPage() {
     return score;
   })();
 
+  const pwStrengthLabel = pwStrength <= 2 ? t.users.pwWeak : pwStrength <= 3 ? t.users.pwFair : pwStrength === 4 ? t.users.pwStrong : t.users.pwVeryStrong;
+  const pwStrengthColor = pwStrength <= 2 ? "text-[#ba1a1a]" : pwStrength <= 3 ? "text-[#d97706]" : "text-[#0d9488]";
+  const pwBarColor = pwStrength <= 2 ? "bg-[#ba1a1a]" : pwStrength <= 3 ? "bg-[#d97706]" : "bg-[#0d9488]";
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
@@ -238,8 +243,10 @@ export default function UserViewPage() {
   if (error || !user) return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
       <span className="material-symbols-outlined text-[#c4c6cf] text-5xl">person_off</span>
-      <p className="text-sm font-semibold text-[#1a1c1e]">{error || "User not found"}</p>
-      <button onClick={() => router.push("/users")} className="text-sm text-[#1960a3] hover:underline">← Back to Users</button>
+      <p className="text-sm font-semibold text-[#1a1c1e]">{error || t.users.noUsers}</p>
+      <button onClick={() => router.push("/users")} className="text-sm text-[#1960a3] hover:underline">
+        {t.users.backToUsers}
+      </button>
     </div>
   );
 
@@ -248,7 +255,11 @@ export default function UserViewPage() {
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <button onClick={() => router.push("/users")} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+        <button
+          onClick={() => router.push("/users")}
+          className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors"
+          aria-label={t.users.backToUsers}
+        >
           <span className="material-symbols-outlined text-[#74777f]">arrow_back</span>
         </button>
         <div className="flex-1 min-w-0">
@@ -261,14 +272,14 @@ export default function UserViewPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#002045] text-white hover:opacity-90 transition-opacity"
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>
-            Edit
+            {t.common.edit}
           </button>
           <button
             onClick={() => { setPwForm({ newPassword: "", confirmPassword: "" }); setPwError(""); setPwModal(true); }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-[#1960a3] text-[#1960a3] hover:bg-[#d3e4ff] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">lock_reset</span>
-            Reset Password
+            {t.users.resetPassword}
           </button>
           <button
             onClick={() => setConfirmToggle(true)}
@@ -280,7 +291,7 @@ export default function UserViewPage() {
             <span className="material-symbols-outlined text-[18px]">
               {toggling ? "hourglass_empty" : user.isActive ? "person_off" : "person_check"}
             </span>
-            {user.isActive ? "Deactivate" : "Activate"}
+            {user.isActive ? t.users.deactivate : t.users.activate}
           </button>
         </div>
       </div>
@@ -301,38 +312,38 @@ export default function UserViewPage() {
           </div>
 
           <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
-            <InfoItem label="Status">
+            <InfoItem label={t.users.status}>
               <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${user.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e3e2e6] text-[#74777f]"}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                {user.isActive ? "Active" : "Inactive"}
+                {user.isActive ? t.users.activeStatus : t.users.inactiveStatus}
               </span>
             </InfoItem>
 
-            <InfoItem label="Two-Factor Auth">
+            <InfoItem label={t.users.twoFactorAuthLabel}>
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${user.twoFAEnabled ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
                 <span className="material-symbols-outlined text-[13px]">{user.twoFAEnabled ? "verified_user" : "security"}</span>
-                {user.twoFAEnabled ? "Enabled" : "Disabled"}
+                {user.twoFAEnabled ? t.users.twoFAEnabled : t.users.twoFANotEnabled}
               </span>
             </InfoItem>
 
-            <InfoItem label="Department" value={user.department?.name ?? "—"} />
-            <InfoItem label="Phone" value={user.phone ?? "—"} />
-            <InfoItem label="Last Login" value={user.lastLogin ? formatDateTime(user.lastLogin) : "Never"} />
-            <InfoItem label="Member Since" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+            <InfoItem label={t.users.department} value={user.department?.name ?? "—"} />
+            <InfoItem label={t.users.phoneLabel} value={user.phone ?? "—"} />
+            <InfoItem label={t.users.lastLogin} value={user.lastLogin ? formatDateTime(user.lastLogin) : t.users.neverLoggedIn} />
+            <InfoItem label={t.users.memberSince} value={user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
 
-            <InfoItem label="Employee Profile">
+            <InfoItem label={t.users.employeeProfile}>
               {user.hasEmployee && user.employeeId ? (
                 <Link href={`/hr/${user.employeeId}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#d3e4ff] hover:bg-[#b8d4ff] text-[#1960a3] text-xs font-semibold transition-colors">
                   <span className="material-symbols-outlined text-[14px]">badge</span>
-                  View Profile
+                  {t.users.viewUserProfile}
                   <span className="material-symbols-outlined text-[12px] opacity-60">open_in_new</span>
                 </Link>
               ) : (
-                <span className="text-sm text-[#74777f]">No employee record</span>
+                <span className="text-sm text-[#74777f]">{t.users.noEmployeeRecord}</span>
               )}
             </InfoItem>
 
-            <InfoItem label="Account ID">
+            <InfoItem label={t.users.accountId}>
               <p className="text-[11px] font-mono text-[#74777f] mt-0.5 select-all">{user.id}</p>
             </InfoItem>
           </div>
@@ -340,10 +351,10 @@ export default function UserViewPage() {
 
         {/* Roles */}
         <div className="mt-6 pt-5 border-t border-[#e3e2e6]">
-          <p className="text-[10px] font-semibold text-[#74777f] uppercase tracking-wider mb-3">Roles & Access</p>
+          <p className="text-[10px] font-semibold text-[#74777f] uppercase tracking-wider mb-3">{t.users.rolesAccess}</p>
           <div className="flex flex-wrap gap-2">
             {user.roles.length === 0 ? (
-              <span className="text-sm text-[#74777f]">No roles assigned</span>
+              <span className="text-sm text-[#74777f]">{t.users.noRolesAssigned}</span>
             ) : user.roles.map(r => (
               <span key={r} className={`text-xs font-semibold px-3 py-1.5 rounded-full ${ROLE_COLORS[r] ?? "bg-[#e9e7eb] text-[#43474e]"}`}>
                 {r.replace(/_/g, " ")}
@@ -357,7 +368,7 @@ export default function UserViewPage() {
       <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
         <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-[#1960a3] text-[18px]">manage_accounts</span>
-          Account Settings
+          {t.users.accountSettingsTitle}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
@@ -367,12 +378,14 @@ export default function UserViewPage() {
               <span className="material-symbols-outlined text-[#1960a3] text-[20px]">lock</span>
             </div>
             <div className="flex-1">
-              <p className="text-xs font-semibold text-[#1a1c1e]">Password</p>
-              <p className="text-xs text-[#74777f]">Encrypted (bcrypt)</p>
+              <p className="text-xs font-semibold text-[#1a1c1e]">{t.users.passwordLabel}</p>
+              <p className="text-xs text-[#74777f]">{t.users.encryptedBcrypt}</p>
             </div>
-            <button onClick={() => { setPwForm({ newPassword: "", confirmPassword: "" }); setPwError(""); setPwModal(true); }}
-              className="text-xs font-semibold text-[#1960a3] hover:underline whitespace-nowrap">
-              Reset
+            <button
+              onClick={() => { setPwForm({ newPassword: "", confirmPassword: "" }); setPwError(""); setPwModal(true); }}
+              className="text-xs font-semibold text-[#1960a3] hover:underline whitespace-nowrap"
+            >
+              {t.users.resetBtn}
             </button>
           </div>
 
@@ -382,8 +395,10 @@ export default function UserViewPage() {
               <span className={`material-symbols-outlined text-[20px] ${user.twoFAEnabled ? "text-[#0d9488]" : "text-[#74777f]"}`}>verified_user</span>
             </div>
             <div>
-              <p className="text-xs font-semibold text-[#1a1c1e]">Two-Factor Auth</p>
-              <p className={`text-xs font-semibold ${user.twoFAEnabled ? "text-[#0d9488]" : "text-[#74777f]"}`}>{user.twoFAEnabled ? "Enabled" : "Not enabled"}</p>
+              <p className="text-xs font-semibold text-[#1a1c1e]">{t.users.twoFactorAuthLabel}</p>
+              <p className={`text-xs font-semibold ${user.twoFAEnabled ? "text-[#0d9488]" : "text-[#74777f]"}`}>
+                {user.twoFAEnabled ? t.users.twoFAEnabled : t.users.twoFANotEnabled}
+              </p>
             </div>
           </div>
 
@@ -395,11 +410,16 @@ export default function UserViewPage() {
               </span>
             </div>
             <div className="flex-1">
-              <p className="text-xs font-semibold text-[#1a1c1e]">Account Access</p>
-              <p className={`text-xs font-semibold ${user.isActive ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{user.isActive ? "Full access" : "Suspended"}</p>
+              <p className="text-xs font-semibold text-[#1a1c1e]">{t.users.accountAccess}</p>
+              <p className={`text-xs font-semibold ${user.isActive ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>
+                {user.isActive ? t.users.fullAccess : t.users.suspended}
+              </p>
             </div>
-            <button onClick={() => setConfirmToggle(true)} className={`text-xs font-semibold hover:underline whitespace-nowrap ${user.isActive ? "text-[#ba1a1a]" : "text-[#0d9488]"}`}>
-              {user.isActive ? "Suspend" : "Enable"}
+            <button
+              onClick={() => setConfirmToggle(true)}
+              className={`text-xs font-semibold hover:underline whitespace-nowrap ${user.isActive ? "text-[#ba1a1a]" : "text-[#0d9488]"}`}
+            >
+              {user.isActive ? t.users.suspendBtn : t.users.enableBtn}
             </button>
           </div>
         </div>
@@ -409,7 +429,7 @@ export default function UserViewPage() {
       <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
         <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-[#1960a3] text-[18px]">history</span>
-          Recent Activity
+          {t.users.recentActivity}
         </h3>
         {auditLoading ? (
           <div className="flex justify-center py-8">
@@ -418,7 +438,7 @@ export default function UserViewPage() {
         ) : audit.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10">
             <span className="material-symbols-outlined text-[#c4c6cf] text-3xl">history_toggle_off</span>
-            <p className="text-sm text-[#74777f]">No activity recorded yet</p>
+            <p className="text-sm text-[#74777f]">{t.users.noActivityYet}</p>
           </div>
         ) : (
           <div className="relative">
@@ -456,8 +476,10 @@ export default function UserViewPage() {
         <div role="dialog" aria-modal="true" aria-labelledby="edit-user-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setEditModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
-              <h2 id="edit-user-title" className="text-base font-bold text-[#1a1c1e]">Edit User</h2>
-              <button onClick={() => setEditModal(false)} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+              <h2 id="edit-user-title" className="text-base font-bold text-[#1a1c1e]">{t.users.editUserTitle}</h2>
+              <button onClick={() => setEditModal(false)} className="p-2 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.close}>
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
             </div>
             <form onSubmit={saveEdit} className="flex-1 overflow-y-auto p-6 space-y-4">
               {editError && (
@@ -468,15 +490,15 @@ export default function UserViewPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Full Name *</label>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.fullName}</label>
                   <input className="input-field" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Phone</label>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.phoneLabel}</label>
                   <input className="input-field" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} placeholder="+962..." />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Department</label>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.department}</label>
                   <select className="input-field" value={editForm.departmentId} onChange={e => setEditForm(f => ({ ...f, departmentId: e.target.value }))}>
                     <option value="">— None —</option>
                     {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -485,13 +507,12 @@ export default function UserViewPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">Email</label>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{t.users.emailLabel}</label>
                 <input className="input-field bg-[#f4f3f7] text-[#74777f] cursor-not-allowed" value={user.email} disabled readOnly />
-                <p className="text-[11px] text-[#74777f] mt-1">Email cannot be changed after account creation</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">Roles *</label>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{t.users.rolesLabel}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {ALL_ROLES.map(role => {
                     const active = editForm.roles.includes(role);
@@ -516,10 +537,10 @@ export default function UserViewPage() {
               </div>
             </form>
             <div className="flex gap-3 px-6 py-4 border-t border-[#e3e2e6]">
-              <button type="button" onClick={() => setEditModal(false)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">Cancel</button>
+              <button type="button" onClick={() => setEditModal(false)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">{t.users.cancel}</button>
               <button onClick={saveEdit} disabled={editSaving || editForm.roles.length === 0} className="flex-1 bg-[#002045] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2">
                 {editSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[16px]">save</span>}
-                Save Changes
+                {t.users.saveChanges}
               </button>
             </div>
           </div>
@@ -532,10 +553,12 @@ export default function UserViewPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
               <div>
-                <h2 id="pw-modal-title" className="text-base font-bold text-[#1a1c1e]">Reset Password</h2>
-                <p className="text-xs text-[#74777f] mt-0.5">Set a new password for <span className="font-semibold">{user.name}</span></p>
+                <h2 id="pw-modal-title" className="text-base font-bold text-[#1a1c1e]">{t.users.resetPassword}</h2>
+                <p className="text-xs text-[#74777f] mt-0.5"><span className="font-semibold">{user.name}</span></p>
               </div>
-              <button onClick={() => setPwModal(false)} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+              <button onClick={() => setPwModal(false)} className="p-2 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.close}>
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
             </div>
             <form onSubmit={savePassword} className="p-6 space-y-4">
               {pwError && (
@@ -544,45 +567,38 @@ export default function UserViewPage() {
                 </div>
               )}
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">New Password *</label>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.newPasswordLabel} *</label>
                 <div className="relative">
                   <input
                     type={pwShow ? "text" : "password"}
                     className="input-field pe-10"
-                    placeholder="Min 8 chars, 1 uppercase, 1 digit"
+                    placeholder={t.users.passwordPlaceholder}
                     value={pwForm.newPassword}
                     onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
                     required
                   />
-                  <button type="button" onClick={() => setPwShow(s => !s)} className="absolute end-3 top-1/2 -translate-y-1/2 text-[#74777f] hover:text-[#1a1c1e]">
+                  <button type="button" onClick={() => setPwShow(s => !s)} className="absolute end-3 top-1/2 -translate-y-1/2 text-[#74777f] hover:text-[#1a1c1e]" aria-label="toggle password">
                     <span className="material-symbols-outlined text-[18px]">{pwShow ? "visibility_off" : "visibility"}</span>
                   </button>
                 </div>
-                {/* Strength bar */}
                 {pwForm.newPassword && (
                   <div className="mt-2">
                     <div className="flex gap-1">
                       {[1,2,3,4,5].map(i => (
-                        <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${
-                          i <= pwStrength
-                            ? pwStrength <= 2 ? "bg-[#ba1a1a]" : pwStrength <= 3 ? "bg-[#d97706]" : "bg-[#0d9488]"
-                            : "bg-[#e3e2e6]"
-                        }`} />
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= pwStrength ? pwBarColor : "bg-[#e3e2e6]"}`} />
                       ))}
                     </div>
-                    <p className={`text-[11px] mt-1 ${pwStrength <= 2 ? "text-[#ba1a1a]" : pwStrength <= 3 ? "text-[#d97706]" : "text-[#0d9488]"}`}>
-                      {pwStrength <= 2 ? "Weak" : pwStrength <= 3 ? "Fair" : pwStrength === 4 ? "Strong" : "Very Strong"}
-                    </p>
+                    <p className={`text-[11px] mt-1 ${pwStrengthColor}`}>{pwStrengthLabel}</p>
                   </div>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">Confirm Password *</label>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.users.confirmPasswordLabel} *</label>
                 <div className="relative">
                   <input
                     type={pwShow ? "text" : "password"}
                     className={`input-field pe-10 ${pwForm.confirmPassword && pwForm.newPassword !== pwForm.confirmPassword ? "ring-2 ring-[#ba1a1a]/40 border-[#ba1a1a]" : ""}`}
-                    placeholder="Repeat password"
+                    placeholder={t.users.repeatPassword}
                     value={pwForm.confirmPassword}
                     onChange={e => setPwForm(f => ({ ...f, confirmPassword: e.target.value }))}
                     required
@@ -597,10 +613,10 @@ export default function UserViewPage() {
               {/* Requirements checklist */}
               <div className="bg-[#f8f7fb] rounded-xl p-3 space-y-1.5">
                 {[
-                  { label: "At least 8 characters", ok: pwForm.newPassword.length >= 8 },
-                  { label: "One uppercase letter", ok: /[A-Z]/.test(pwForm.newPassword) },
-                  { label: "One lowercase letter", ok: /[a-z]/.test(pwForm.newPassword) },
-                  { label: "One digit", ok: /\d/.test(pwForm.newPassword) },
+                  { label: t.users.reqMinChars,   ok: pwForm.newPassword.length >= 8 },
+                  { label: t.users.reqUppercase,  ok: /[A-Z]/.test(pwForm.newPassword) },
+                  { label: t.users.reqLowercase,  ok: /[a-z]/.test(pwForm.newPassword) },
+                  { label: t.users.reqDigit,      ok: /\d/.test(pwForm.newPassword) },
                 ].map(req => (
                   <div key={req.label} className="flex items-center gap-2">
                     <span className={`material-symbols-outlined text-[14px] ${req.ok ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{req.ok ? "check_circle" : "radio_button_unchecked"}</span>
@@ -609,11 +625,11 @@ export default function UserViewPage() {
                 ))}
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setPwModal(false)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">Cancel</button>
+                <button type="button" onClick={() => setPwModal(false)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">{t.users.cancel}</button>
                 <button type="submit" disabled={pwSaving || pwStrength < 3 || pwForm.newPassword !== pwForm.confirmPassword}
                   className="flex-1 bg-[#1960a3] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
                   {pwSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[16px]">lock_reset</span>}
-                  Reset Password
+                  {t.users.resetPassword}
                 </button>
               </div>
             </form>
@@ -630,17 +646,17 @@ export default function UserViewPage() {
                 {user.isActive ? "person_off" : "person_check"}
               </span>
               <div>
-                <p className="font-semibold text-[#1a1c1e]">{user.isActive ? "Deactivate" : "Activate"} user?</p>
+                <p className="font-semibold text-[#1a1c1e]">{user.isActive ? t.users.deactivateUserConfirm : t.users.activateUserConfirm}</p>
                 <p className="text-sm text-[#74777f]">{user.name}</p>
               </div>
             </div>
             <p className="text-sm text-[#74777f]">
-              {user.isActive ? "This user will lose all system access immediately." : "This user will regain full access to the system."}
+              {user.isActive ? t.users.userLoseAccess : t.users.userRegainAccess}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmToggle(false)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">Cancel</button>
+              <button onClick={() => setConfirmToggle(false)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">{t.users.cancel}</button>
               <button onClick={toggleActive} className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white ${user.isActive ? "bg-[#ba1a1a]" : "bg-[#0d9488]"} hover:opacity-90`}>
-                {user.isActive ? "Deactivate" : "Activate"}
+                {user.isActive ? t.users.deactivate : t.users.activate}
               </button>
             </div>
           </div>

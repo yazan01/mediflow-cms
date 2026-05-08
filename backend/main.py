@@ -9,6 +9,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy.exc import IntegrityError
 
 from routers import auth, patients, appointments, emr, consultations, billing
 from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors, audit, settings
@@ -58,6 +59,15 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         status_code=429,
         content={"detail": "Too many requests. Please slow down."},
         headers={"Retry-After": "60"},
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    _log.warning("IntegrityError on %s %s: %s", request.method, request.url.path, exc.orig)
+    return JSONResponse(
+        status_code=409,
+        content={"detail": "Operation conflicts with existing data. Check for duplicate or missing references."},
     )
 
 

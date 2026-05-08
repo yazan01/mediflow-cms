@@ -101,11 +101,14 @@ def patient_to_dict(p: models.Patient) -> dict:
     }
 
 
-def _parse_date(value: str, field_name: str) -> datetime:
+def _parse_date(value: str, field_name: str, disallow_future: bool = False) -> datetime:
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except (ValueError, TypeError):
         raise HTTPException(status_code=422, detail=f"Invalid date format for {field_name}: {value!r}")
+    if disallow_future and parsed > datetime.now():
+        raise HTTPException(status_code=422, detail=f"{field_name} cannot be a future date")
+    return parsed
 
 
 @router.get("")
@@ -163,7 +166,7 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
         if existing:
             raise HTTPException(status_code=409, detail="A patient with this national ID already exists")
 
-    dob = _parse_date(body.dateOfBirth, "dateOfBirth")
+    dob = _parse_date(body.dateOfBirth, "dateOfBirth", disallow_future=True)
     ins_expiry = _parse_date(body.insuranceExpiry, "insuranceExpiry") if body.insuranceExpiry else None
 
     try:
@@ -293,7 +296,7 @@ def update_patient(
             if field == "insuranceExpiry":
                 value = _parse_date(value, "insuranceExpiry")
             elif field == "dateOfBirth":
-                value = _parse_date(value, "dateOfBirth")
+                value = _parse_date(value, "dateOfBirth", disallow_future=True)
             elif field in STRING_FIELDS and isinstance(value, str):
                 value = sanitize_string(value)
             elif field in ("allergies", "chronicConditions") and isinstance(value, list):

@@ -126,7 +126,7 @@ export default function NewAppointmentPage() {
                     className={`w-full text-left px-4 py-3 text-sm hover:bg-[#f4f3f7] border-b border-[#e3e2e6] last:border-b-0 transition-colors ${form.patientId === p.id ? "bg-[#d3e4ff]/30 font-semibold text-[#1960a3]" : ""}`}
                   >
                     <span className="font-semibold">{p.firstName} {p.lastName}</span>
-                    <span className="text-[#74777f] ml-2 text-xs">{p.mrn}</span>
+                    <span className="text-[#74777f] ms-2 text-xs">{p.mrn}</span>
                   </button>
                 ))
               )}

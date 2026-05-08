@@ -439,7 +439,7 @@ export default function PharmacyPage() {
                         {med.expiryDate ? (
                           <span className={`text-sm ${isExpiringSoon ? "text-[#d97706] font-semibold" : "text-[#43474e]"}`}>
                             {isExpiringSoon && (
-                              <span className="material-symbols-outlined text-[13px] mr-0.5 align-middle">warning</span>
+                              <span className="material-symbols-outlined text-[13px] me-0.5 align-middle">warning</span>
                             )}
                             {formatDate(med.expiryDate)}
                           </span>

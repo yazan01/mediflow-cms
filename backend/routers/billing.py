@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 
 from database import get_db
@@ -188,7 +188,18 @@ def get_invoices(
             raise HTTPException(status_code=422, detail=f"Invalid dateTo format: {dateTo!r}")
 
     total = query.count()
-    invoices = query.order_by(models.Invoice.createdAt.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
+    invoices = (
+        query
+        .options(
+            joinedload(models.Invoice.patient),
+            joinedload(models.Invoice.items),
+            joinedload(models.Invoice.payments),
+        )
+        .order_by(models.Invoice.createdAt.desc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
 
     return {
         "data": [invoice_to_dict(inv) for inv in invoices],
@@ -203,10 +214,23 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), current_u
     if not body.patientId or not body.items:
         raise HTTPException(status_code=400, detail="Patient and at least one item are required")
 
-    subtotal = sum(item.quantity * item.unitPrice for item in body.items)
+    patient = db.query(models.Patient).filter(
+        models.Patient.id == body.patientId,
+        models.Patient.deletedAt == None,  # noqa: E711
+    ).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Subtotal accounts for per-item discounts
+    subtotal = sum(
+        item.quantity * item.unitPrice * (1 - (item.discount or 0) / 100)
+        for item in body.items
+    )
     discount = body.discountAmount if body.discountAmount is not None else (
         subtotal * (body.discountRate / 100) if body.discountRate else 0
     )
+    if discount > subtotal:
+        raise HTTPException(status_code=422, detail="Discount amount cannot exceed the invoice subtotal")
     after_discount = subtotal - discount
     tax = after_discount * (body.taxRate / 100) if body.taxRate else 0
     total = after_discount + tax
