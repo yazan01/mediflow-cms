@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { InsuranceProviderSelect } from "@/components/ui/InsuranceProviderSelect";
 
 type FormData = {
   name: string; dob: string; gender: string; nationality: string; nationalId: string;
@@ -216,8 +217,11 @@ export default function NewPatientPage() {
               <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">{p.sectionInsurance}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Field label={p.insuranceProvider}>
-                  <input value={form.insuranceProvider} onChange={(e) => update("insuranceProvider", e.target.value)}
-                    className="input-field" placeholder="e.g. CIGNA, AXA, BUPA" />
+                  <InsuranceProviderSelect
+                    value={form.insuranceProvider}
+                    onChange={(v) => update("insuranceProvider", v)}
+                    className="input-field"
+                  />
                 </Field>
                 <Field label={p.insurancePolicy}>
                   <input value={form.insurancePolicyNo} onChange={(e) => update("insurancePolicyNo", e.target.value)}

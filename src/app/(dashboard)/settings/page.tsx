@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history" | "health";
+type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history" | "health" | "insurance";
 
 type Settings = {
   clinicName: string; licenseNumber: string; phone: string; email: string;
@@ -78,6 +78,11 @@ type NotifTemplate = {
   id: string; branchId: string | null; eventType: string; channel: string;
   subject: string; body: string; variables: string[]; language: string;
   isActive: boolean; isDefault: boolean; updatedAt: string | null;
+};
+
+type InsuranceProviderRow = {
+  id: string; name: string; code: string | null; contactPhone: string | null;
+  contactEmail: string | null; notes: string | null; isActive: boolean; createdAt: string | null;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -229,6 +234,16 @@ export default function SettingsPage() {
   const [purging, setPurging] = useState(false);
   const [purgedCount, setPurgedCount] = useState<number | null>(null);
 
+  // Insurance providers
+  const [insuranceProviders, setInsuranceProviders] = useState<InsuranceProviderRow[]>([]);
+  const [insuranceLoading, setInsuranceLoading] = useState(false);
+  const [insuranceModal, setInsuranceModal] = useState<"add" | "edit" | null>(null);
+  const [editingProvider, setEditingProvider] = useState<InsuranceProviderRow | null>(null);
+  const [providerForm, setProviderForm] = useState({ name: "", code: "", contactPhone: "", contactEmail: "", notes: "", isActive: true });
+  const [providerSaving, setProviderSaving] = useState(false);
+  const [providerError, setProviderError] = useState("");
+  const [providerStatus, setProviderStatus] = useState<"idle" | "saved" | "deleted">("idle");
+
   // Nav accordion
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -264,6 +279,7 @@ export default function SettingsPage() {
     if (activeSection === "apikeys") loadApiKeys();
     if (activeSection === "templates") loadTemplates();
     if (activeSection === "health") loadHealth();
+    if (activeSection === "insurance") loadInsuranceProviders();
   }, [activeSection]);
 
   useEffect(() => {
@@ -369,6 +385,52 @@ export default function SettingsPage() {
       .then(setHealthData)
       .catch(() => setHealthData([]))
       .finally(() => setHealthLoading(false));
+  }
+
+  function loadInsuranceProviders() {
+    setInsuranceLoading(true);
+    fetch("/api/insurance-providers")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setInsuranceProviders)
+      .catch(() => setInsuranceProviders([]))
+      .finally(() => setInsuranceLoading(false));
+  }
+
+  async function saveProvider() {
+    if (!providerForm.name.trim()) return;
+    setProviderSaving(true);
+    setProviderError("");
+    try {
+      const isEdit = insuranceModal === "edit" && editingProvider;
+      const url = isEdit ? `/api/insurance-providers/${editingProvider.id}` : "/api/insurance-providers";
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...providerForm, code: providerForm.code || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setProviderError(data.detail ?? "Error saving provider"); return; }
+      if (isEdit) {
+        setInsuranceProviders((ps) => ps.map((p) => p.id === data.id ? data : p));
+      } else {
+        setInsuranceProviders((ps) => [...ps, data].sort((a, b) => a.name.localeCompare(b.name)));
+      }
+      setInsuranceModal(null);
+      setProviderStatus("saved");
+      setTimeout(() => setProviderStatus("idle"), 3000);
+    } catch {
+      setProviderError(t.common.networkError);
+    } finally {
+      setProviderSaving(false);
+    }
+  }
+
+  async function deleteProvider(id: string, name: string) {
+    if (!confirm(s.confirmDeleteProvider)) return;
+    await fetch(`/api/insurance-providers/${id}`, { method: "DELETE" });
+    setInsuranceProviders((ps) => ps.filter((p) => p.id !== id));
+    setProviderStatus("deleted");
+    setTimeout(() => setProviderStatus("idle"), 3000);
   }
 
   function loadRetentionStats() {
@@ -664,6 +726,7 @@ export default function SettingsPage() {
     { key: "organization",  label: s.navOrganization,  items: [
       { key: "branches",      label: s.branches,          icon: "account_tree" },
       { key: "clinics",       label: s.clinics,           icon: "medical_services" },
+      { key: "insurance",     label: s.insuranceProviders, icon: "health_and_safety" },
       { key: "health",        label: s.branchHealth,      icon: "monitor_heart" },
     ]},
     { key: "integrations",  label: s.navIntegrations,  items: [
@@ -680,7 +743,7 @@ export default function SettingsPage() {
     ]},
   ] as const;
 
-  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history", "health"].includes(activeSection);
+  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history", "health", "insurance"].includes(activeSection);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1661,6 +1724,94 @@ export default function SettingsPage() {
                 </div>
                 </div>
               )}
+
+              {/* ── Insurance Providers ── */}
+              {activeSection === "insurance" && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                    <div className="p-5 border-b border-[#e3e2e6] flex items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-base font-semibold text-[#1a1c1e]">{s.insuranceProvidersTitle}</h2>
+                        <p className="text-xs text-[#74777f] mt-0.5">{s.insuranceProvidersDesc}</p>
+                      </div>
+                      <button
+                        onClick={() => { setEditingProvider(null); setProviderForm({ name: "", code: "", contactPhone: "", contactEmail: "", notes: "", isActive: true }); setProviderError(""); setInsuranceModal("add"); }}
+                        className="btn-primary text-sm px-3 py-2 shrink-0 flex items-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                        {s.addInsuranceProvider}
+                      </button>
+                    </div>
+
+                    {providerStatus === "saved" && <div className="px-5 py-2.5 bg-[#ccfbf1] text-[#0d9488] text-sm font-semibold">{s.providerSaved}</div>}
+                    {providerStatus === "deleted" && <div className="px-5 py-2.5 bg-[#ffdad6] text-[#ba1a1a] text-sm font-semibold">{s.providerDeleted}</div>}
+
+                    {insuranceLoading ? (
+                      <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    ) : insuranceProviders.length === 0 ? (
+                      <div className="p-12 flex flex-col items-center gap-3">
+                        <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">health_and_safety</span>
+                        <p className="text-sm font-semibold text-[#74777f]">{s.noInsuranceProviders}</p>
+                        <p className="text-xs text-[#74777f] text-center max-w-xs">{s.noInsuranceProvidersDesc}</p>
+                        <button
+                          onClick={() => { setProviderForm({ name: "", code: "", contactPhone: "", contactEmail: "", notes: "", isActive: true }); setProviderError(""); setInsuranceModal("add"); }}
+                          className="mt-2 btn-primary text-sm px-4 py-2"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">add</span>{s.addInsuranceProvider}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-[#f8f7fb]">
+                              <th className="table-header">{s.insuranceProviderName}</th>
+                              <th className="table-header">{s.insuranceProviderCode}</th>
+                              <th className="table-header">{s.insuranceProviderPhone}</th>
+                              <th className="table-header">{s.insuranceProviderEmail}</th>
+                              <th className="table-header">{t.common.status}</th>
+                              <th className="table-header">{t.common.actions}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {insuranceProviders.map((prov) => (
+                              <tr key={prov.id} className="table-row">
+                                <td className="table-cell font-semibold text-[#1a1c1e]">{prov.name}</td>
+                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{prov.code ?? "—"}</span></td>
+                                <td className="table-cell text-[#74777f]">{prov.contactPhone ?? "—"}</td>
+                                <td className="table-cell text-[#74777f]">{prov.contactEmail ?? "—"}</td>
+                                <td className="table-cell">
+                                  <span className={`badge text-[10px] ${prov.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                                    {prov.isActive ? t.common.active : t.common.inactive}
+                                  </span>
+                                </td>
+                                <td className="table-cell">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => { setEditingProvider(prov); setProviderForm({ name: prov.name, code: prov.code ?? "", contactPhone: prov.contactPhone ?? "", contactEmail: prov.contactEmail ?? "", notes: prov.notes ?? "", isActive: prov.isActive }); setProviderError(""); setInsuranceModal("edit"); }}
+                                      className="p-1.5 rounded hover:bg-[#f4f3f7] text-[#74777f] hover:text-[#1960a3] transition-colors"
+                                      aria-label={t.common.edit}
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                                    </button>
+                                    <button
+                                      onClick={() => deleteProvider(prov.id, prov.name)}
+                                      className="p-1.5 rounded hover:bg-[#ffdad6] text-[#74777f] hover:text-[#ba1a1a] transition-colors"
+                                      aria-label={t.common.delete}
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1882,6 +2033,62 @@ export default function SettingsPage() {
             </div>
             <div className="flex justify-end px-6 py-4 border-t border-[#e3e2e6]">
               <button onClick={() => setApiKeyCreated(null)} className="btn-primary px-6 py-2 text-sm">{t.common.close}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Insurance Provider Modal ── */}
+      {insuranceModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="provider-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setInsuranceModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <h2 id="provider-modal-title" className="text-lg font-bold text-[#1a1c1e]">
+                {insuranceModal === "add" ? s.addInsuranceProvider : s.editInsuranceProvider}
+              </h2>
+              <button onClick={() => setInsuranceModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {providerError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{providerError}</div>}
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderName} *</label>
+                <input className="input-field" placeholder="e.g. CIGNA, AXA, BUPA" value={providerForm.name} onChange={(e) => setProviderForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderCode}</label>
+                <input className="input-field font-mono uppercase" placeholder="e.g. CIGNA" value={providerForm.code} onChange={(e) => setProviderForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderPhone}</label>
+                  <input className="input-field" placeholder="+962 6 000 0000" value={providerForm.contactPhone} onChange={(e) => setProviderForm(f => ({ ...f, contactPhone: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderEmail}</label>
+                  <input type="email" className="input-field" placeholder="claims@provider.com" value={providerForm.contactEmail} onChange={(e) => setProviderForm(f => ({ ...f, contactEmail: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderNotes}</label>
+                <textarea className="input-field resize-none" rows={2} value={providerForm.notes} onChange={(e) => setProviderForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-sm font-semibold text-[#43474e]">{t.common.active}</span>
+                <button
+                  type="button" role="switch" aria-checked={providerForm.isActive} dir="ltr"
+                  onClick={() => setProviderForm(f => ({ ...f, isActive: !f.isActive }))}
+                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none ${providerForm.isActive ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${providerForm.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 pb-6">
+              <button onClick={() => setInsuranceModal(null)} className="btn-secondary text-sm px-4 py-2">{t.common.cancel}</button>
+              <button onClick={saveProvider} disabled={providerSaving || !providerForm.name.trim()} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
+                {providerSaving ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t.common.saving}</> : <>{t.common.save}</>}
+              </button>
             </div>
           </div>
         </div>

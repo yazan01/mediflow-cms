@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { InsuranceProviderSelect } from "@/components/ui/InsuranceProviderSelect";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -717,12 +718,10 @@ export default function NewInvoicePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ps-1">
                   <div>
                     <label className={LABEL}>{b.insuranceProviderLabel} *</label>
-                    <input
-                      type="text"
-                      className={INPUT}
-                      placeholder="e.g. CIGNA, AXA, BUPA"
+                    <InsuranceProviderSelect
                       value={insuranceProvider}
-                      onChange={(e) => setInsuranceProvider(e.target.value)}
+                      onChange={setInsuranceProvider}
+                      className={INPUT}
                     />
                   </div>
                   <div>

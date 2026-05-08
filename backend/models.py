@@ -1224,6 +1224,19 @@ class WebhookEvent(Base):
     createdAt = Column(DateTime, server_default=func.now())
 
 
+class InsuranceProvider(Base):
+    __tablename__ = "insurance_providers"
+    id = Column(String(36), primary_key=True)
+    name = Column(String(200), nullable=False)
+    code = Column(String(50), unique=True)
+    contactPhone = Column(String(50))
+    contactEmail = Column(String(200))
+    notes = Column(Text)
+    isActive = Column(Boolean, default=True)
+    createdAt = Column(DateTime, server_default=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class TokenBlocklist(Base):
     """Revoked JWT tokens — checked on every authenticated request."""
     __tablename__ = "token_blocklist"
