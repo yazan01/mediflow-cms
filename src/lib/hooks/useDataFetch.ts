@@ -62,6 +62,10 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
 
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
+      throw new ApiError(401, "Session expired");
+    }
     let message = `Request failed (${res.status})`;
     try {
       const body = await res.json();
