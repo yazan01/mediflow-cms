@@ -553,6 +553,12 @@ const en = {
     catRadiology: "Radiology",
     catMedication: "Medication",
     catOther: "Other",
+    // Co-pay
+    copayPercent: "Patient Co-pay (%)",
+    copayDesc: "The percentage the patient is responsible for. The rest is a claim on the insurance company.",
+    patientShare: "Patient Share",
+    insuranceShare: "Insurance Claim",
+    copayBreakdown: "Co-pay Breakdown",
   },
 
   pharmacy: {
@@ -2357,6 +2363,12 @@ export const ar: T = {
     catRadiology: "أشعة",
     catMedication: "دواء",
     catOther: "أخرى",
+    // Co-pay
+    copayPercent: "نسبة تحمل المريض (%)",
+    copayDesc: "النسبة التي يتحملها المريض. الباقي يصبح ذمة على شركة التأمين.",
+    patientShare: "حصة المريض",
+    insuranceShare: "ذمة التأمين",
+    copayBreakdown: "تفصيل نسبة التحمل",
   },
 
   pharmacy: {

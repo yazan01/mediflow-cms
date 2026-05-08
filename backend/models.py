@@ -397,6 +397,7 @@ class Invoice(Base):
     insuranceClaim = Column(Boolean, default=False)
     insuranceProvider = Column(String(200))
     insurancePolicyNo = Column(String(100))
+    insuranceCopayPercent = Column(Numeric(5, 2))  # % patient pays; remainder = insurance claim
     notes = Column(Text)
     createdById = Column(String(36))
     createdAt = Column(DateTime, server_default=func.now())

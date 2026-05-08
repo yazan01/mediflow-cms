@@ -37,6 +37,7 @@ class InvoiceCreate(BaseModel):
     insuranceClaim: Optional[bool] = False
     insuranceProvider: Optional[str] = None
     insurancePolicyNo: Optional[str] = None
+    insuranceCopayPercent: Optional[float] = Field(None, ge=0, le=100)
 
 
 VALID_INVOICE_STATUSES = {"PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"}
@@ -85,6 +86,18 @@ def invoice_to_dict(inv: models.Invoice) -> dict:
         "status": inv.status,
         "insuranceClaim": inv.insuranceClaim,
         "insuranceProvider": inv.insuranceProvider,
+        "insurancePolicyNo": inv.insurancePolicyNo,
+        "insuranceCopayPercent": float(inv.insuranceCopayPercent) if inv.insuranceCopayPercent is not None else None,
+        "patientShare": (
+            round(float(inv.totalAmount) * float(inv.insuranceCopayPercent) / 100, 2)
+            if inv.insuranceClaim and inv.insuranceCopayPercent is not None
+            else float(inv.totalAmount)
+        ),
+        "insuranceShare": (
+            round(float(inv.totalAmount) * (1 - float(inv.insuranceCopayPercent) / 100), 2)
+            if inv.insuranceClaim and inv.insuranceCopayPercent is not None
+            else 0.0
+        ),
         "notes": inv.notes,
         "dueDate": inv.dueDate.isoformat() if inv.dueDate else None,
         "createdAt": inv.createdAt.isoformat() if inv.createdAt else None,
@@ -215,6 +228,7 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), current_u
         insuranceClaim=body.insuranceClaim or False,
         insuranceProvider=sanitize_string(body.insuranceProvider),
         insurancePolicyNo=sanitize_string(body.insurancePolicyNo),
+        insuranceCopayPercent=body.insuranceCopayPercent if body.insuranceClaim else None,
         notes=sanitize_string(body.notes),
     )
     db.add(invoice)

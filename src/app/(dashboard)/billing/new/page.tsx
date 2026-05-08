@@ -87,6 +87,7 @@ export default function NewInvoicePage() {
   const [insuranceClaim, setInsuranceClaim] = useState(false);
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNo, setInsurancePolicyNo] = useState("");
+  const [copayPercent, setCopayPercent] = useState<string>("");
   const [notes, setNotes] = useState("");
 
   // Totals panel
@@ -215,6 +216,11 @@ export default function NewInvoicePage() {
   })();
   const totalAmount = afterDiscount + taxAmount;
 
+  const copayValue = parseFloat(copayPercent);
+  const hasCopay = insuranceClaim && !isNaN(copayValue) && copayValue >= 0 && copayValue <= 100;
+  const patientShare = hasCopay ? totalAmount * copayValue / 100 : totalAmount;
+  const insuranceShare = hasCopay ? totalAmount * (1 - copayValue / 100) : 0;
+
   // ── Submission ───────────────────────────────────────────────────────────
 
   async function submit(asDraft = false) {
@@ -252,6 +258,7 @@ export default function NewInvoicePage() {
         insuranceClaim,
         insuranceProvider: insuranceClaim ? insuranceProvider : undefined,
         insurancePolicyNo: insuranceClaim ? insurancePolicyNo : undefined,
+        insuranceCopayPercent: hasCopay ? copayValue : undefined,
         notes: notes || undefined,
         ...(asDraft && { status: "DRAFT" }),
       };
@@ -715,26 +722,61 @@ export default function NewInvoicePage() {
               </div>
 
               {insuranceClaim && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ps-1">
-                  <div>
-                    <label className={LABEL}>{b.insuranceProviderLabel} *</label>
-                    <InsuranceProviderSelect
-                      value={insuranceProvider}
-                      onChange={setInsuranceProvider}
-                      className={INPUT}
-                    />
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ps-1">
+                    <div>
+                      <label className={LABEL}>{b.insuranceProviderLabel} *</label>
+                      <InsuranceProviderSelect
+                        value={insuranceProvider}
+                        onChange={setInsuranceProvider}
+                        className={INPUT}
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>{b.policyMemberNo}</label>
+                      <input
+                        type="text"
+                        className={INPUT}
+                        placeholder={b.policyPlaceholder}
+                        value={insurancePolicyNo}
+                        onChange={(e) => setInsurancePolicyNo(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL}>{b.copayPercent}</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          className={`${INPUT} pe-6`}
+                          placeholder="e.g. 20"
+                          value={copayPercent}
+                          onChange={(e) => setCopayPercent(e.target.value)}
+                        />
+                        <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">%</span>
+                      </div>
+                      <p className="text-xs text-[#74777f] mt-1">{b.copayDesc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className={LABEL}>{b.policyMemberNo}</label>
-                    <input
-                      type="text"
-                      className={INPUT}
-                      placeholder={b.policyPlaceholder}
-                      value={insurancePolicyNo}
-                      onChange={(e) => setInsurancePolicyNo(e.target.value)}
-                    />
-                  </div>
-                </div>
+
+                  {/* Live copay breakdown */}
+                  {hasCopay && (
+                    <div className="p-3 bg-[#f4f8ff] border border-[#1960a3]/20 rounded-xl grid grid-cols-2 gap-3">
+                      <div className="text-center p-2 bg-white rounded-lg border border-[#e3e2e6]">
+                        <p className="text-[10px] font-semibold text-[#74777f] uppercase tracking-wider mb-0.5">{b.patientShare}</p>
+                        <p className="text-base font-bold text-[#002045]">{formatCurrency(patientShare)}</p>
+                        <p className="text-[10px] text-[#74777f]">{copayValue}%</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg border border-[#e3e2e6]">
+                        <p className="text-[10px] font-semibold text-[#74777f] uppercase tracking-wider mb-0.5">{b.insuranceShare}</p>
+                        <p className="text-base font-bold text-[#1960a3]">{formatCurrency(insuranceShare)}</p>
+                        <p className="text-[10px] text-[#74777f]">{100 - copayValue}%</p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -868,12 +910,25 @@ export default function NewInvoicePage() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[#74777f] font-medium">{b.balanceDue}</span>
-                <span className="font-bold text-[#ba1a1a] tabular-nums">
-                  {formatCurrency(totalAmount)}
-                </span>
-              </div>
+              {hasCopay ? (
+                <>
+                  <div className="flex items-center justify-between text-sm pt-2 border-t border-[#e3e2e6]">
+                    <span className="text-[#002045] font-semibold">{b.patientShare} ({copayValue}%)</span>
+                    <span className="font-bold text-[#ba1a1a] tabular-nums">{formatCurrency(patientShare)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#1960a3] font-semibold">{b.insuranceShare} ({100 - copayValue}%)</span>
+                    <span className="font-bold text-[#1960a3] tabular-nums">{formatCurrency(insuranceShare)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[#74777f] font-medium">{b.balanceDue}</span>
+                  <span className="font-bold text-[#ba1a1a] tabular-nums">
+                    {formatCurrency(totalAmount)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -73,6 +73,9 @@ export default function InvoiceDetailPage() {
   const payments = (invoice.payments as Record<string, unknown>[]) ?? [];
   const patient = invoice.patient as Record<string, unknown> | null;
   const balance = Number(invoice.balance ?? 0);
+  const copayPct = invoice.insuranceCopayPercent != null ? Number(invoice.insuranceCopayPercent) : null;
+  const patientShare = invoice.patientShare != null ? Number(invoice.patientShare) : null;
+  const insuranceShare = invoice.insuranceShare != null ? Number(invoice.insuranceShare) : null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -171,6 +174,24 @@ export default function InvoiceDetailPage() {
             <span>Balance Due</span>
             <span>{formatCurrency(balance)}</span>
           </div>
+
+          {/* Co-pay breakdown */}
+          {Boolean(invoice.insuranceClaim) && copayPct != null && patientShare != null && insuranceShare != null && (
+            <div className="pt-3 mt-2 border-t border-[#e3e2e6] space-y-2">
+              <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">Co-pay Breakdown</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-[#fff7ed] border border-[#d97706]/20 rounded-xl text-center">
+                  <p className="text-[10px] font-semibold text-[#d97706] uppercase tracking-wider mb-0.5">Patient Share ({copayPct}%)</p>
+                  <p className="text-lg font-bold text-[#002045]">{formatCurrency(patientShare)}</p>
+                </div>
+                <div className="p-3 bg-[#eff6ff] border border-[#1960a3]/20 rounded-xl text-center">
+                  <p className="text-[10px] font-semibold text-[#1960a3] uppercase tracking-wider mb-0.5">Insurance Claim ({100 - copayPct}%)</p>
+                  <p className="text-lg font-bold text-[#1960a3]">{formatCurrency(insuranceShare)}</p>
+                  {invoice.insuranceProvider != null && <p className="text-[10px] text-[#74777f] mt-0.5">{String(invoice.insuranceProvider)}</p>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
