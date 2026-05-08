@@ -65,39 +65,38 @@
 
 ### مخطط المكونات
 
+**بيئة التطوير (Windows):**
+```
+المتصفح :3000 → Next.js → /api/* proxy rewrite → FastAPI :8000 → MySQL
+```
+
+**بيئة الإنتاج (Ubuntu):**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        المتصفح                               │
-│                    http://localhost:3000                       │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTP
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Next.js 16 — المنفذ 3000                        │
-│  ┌─────────────────┐    ┌──────────────────────────────────┐ │
-│  │  middleware.ts  │    │   app/(dashboard)/               │ │
-│  │  JWT Edge Auth  │    │   صفحات النظام المحمية           │ │
-│  └────────┬────────┘    └──────────────────────────────────┘ │
-│           │                                                   │
-│    /api/* → proxy rewrite                                     │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTP (internal)
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│              FastAPI — المنفذ 8000                           │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐  │
-│  │ patients │ │appoint.  │ │ billing  │ │   ...routers   │  │
-│  └──────────┘ └──────────┘ └──────────┘ └────────────────┘  │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │     SQLAlchemy 2.0 ORM + TokenBlocklist                 │ │
-│  └──────────────────────────────────────────────────────────┘│
+│                    المتصفح (HTTPS :443)                      │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              MySQL 8.4 — المنفذ 3306                         │
-│              قاعدة البيانات: mediflow                        │
-└─────────────────────────────────────────────────────────────┘
+│              Nginx — Reverse Proxy                            │
+│   /api/*  ──────────────────────────► FastAPI :8000          │
+│   /       ──────────────────────────► Next.js :3000          │
+│   /_next/static/ (cache immutable)                           │
+│   HTTP → HTTPS redirect تلقائي                              │
+│   SSL/TLS — Let's Encrypt (Certbot)                          │
+└───────┬─────────────────────────────────┬────────────────────┘
+        │                                 │
+        ▼                                 ▼
+┌──────────────────┐             ┌─────────────────────────────┐
+│ Next.js :3000    │             │ FastAPI :8000                │
+│ middleware.ts    │             │ routers + SQLAlchemy ORM     │
+│ JWT Edge Auth    │             │ TokenBlocklist + Alembic     │
+│ صفحات النظام    │             └───────────┬─────────────────┘
+└──────────────────┘                         │
+                                             ▼
+                                   ┌─────────────────┐
+                                   │ MySQL 8.4 :3306  │
+                                   └─────────────────┘
 ```
 
 ### تدفق المصادقة (Auth Flow)
@@ -118,6 +117,7 @@
 | Frontend | Next.js App Router + TypeScript | 16 |
 | Backend | FastAPI + Python | 3.11+ |
 | ORM | SQLAlchemy | 2.0 |
+| Migrations | Alembic | 1.14 |
 | قاعدة البيانات | MySQL | 8.4 |
 | المصادقة | JWT (python-jose) + bcrypt (passlib) | — |
 | UI | Tailwind CSS v4 + Material Symbols | 4 |
@@ -232,9 +232,64 @@ npm run dev
 
 > **ملاحظة:** استخدم `cmd` وليس `PowerShell` لتجنب مشاكل الصلاحيات مع npm.
 
-### التثبيت على Linux Server (الإنتاج)
+### التثبيت على Ubuntu Server (الإنتاج)
 
-راجع ملف [README.md](README.md) للحصول على تعليمات التثبيت الكاملة على Linux مع Nginx وSSL وsystemd.
+#### الطريقة السريعة — سكريبت تلقائي
+
+```bash
+# 1. استنساخ المشروع
+git clone https://github.com/YOUR_USERNAME/mediflow-cms.git /opt/mediflow
+
+# 2. تشغيل سكريبت النشر (يثبّت كل شيء)
+sudo bash /opt/mediflow/deploy/deploy.sh
+```
+
+السكريبت يقوم تلقائياً بـ:
+1. تثبيت Python 3.11+، Node.js 20، Nginx، MySQL
+2. إنشاء مستخدم نظام `mediflow`
+3. إنشاء Python virtual environment وتثبيت المكتبات
+4. التوقف وطلب تعبئة ملفات `.env` — **يجب تعبئتها قبل المتابعة**
+5. تطبيق migrations قاعدة البيانات (`alembic upgrade head`)
+6. بناء Next.js (`npm run build`)
+7. تثبيت خدمات systemd وتشغيلها
+8. إعداد Nginx كـ reverse proxy
+
+#### إعداد ملفات البيئة (مطلوب)
+
+**`/opt/mediflow/backend/.env`:**
+```env
+DATABASE_URL=mysql+pymysql://mediflow:STRONG_PASSWORD@localhost:3306/mediflow_db
+JWT_SECRET=سلسلة_عشوائية_64_حرف_على_الأقل
+SETTINGS_ENCRYPTION_KEY=مفتاح_Fernet_base64
+ALLOWED_ORIGINS=https://yourdomain.com
+COOKIE_SECURE=true
+```
+
+**`/opt/mediflow/.env.local`:**
+```env
+BACKEND_URL=http://localhost:8000
+JWT_SECRET=نفس_القيمة_في_backend
+```
+
+> **لتوليد المفاتيح:**
+> ```bash
+> python3 -c "import secrets; print(secrets.token_hex(64))"           # JWT_SECRET
+> python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  # SETTINGS_ENCRYPTION_KEY
+> ```
+
+#### تفعيل HTTPS
+
+```bash
+sudo certbot --nginx -d yourdomain.com
+```
+
+#### تحديث النظام بعد كل push
+
+```bash
+sudo bash /opt/mediflow/deploy/update.sh
+```
+
+يقوم تلقائياً بـ: `git pull` → تحديث مكتبات Python → تطبيق migrations → بناء Next.js → إعادة تشغيل الخدمات.
 
 ### إعادة تعيين قاعدة البيانات
 
@@ -1295,6 +1350,8 @@ month=YYYY-MM    (الشهر — افتراضي: الشهر الحالي)
 | تشفير كلمة المرور | bcrypt, 12 rounds |
 | مدة الـ JWT | 8 ساعات |
 | الكوكي | HttpOnly + SameSite=Strict |
+| COOKIE_SECURE | `false` محلياً (HTTP) — `true` في الإنتاج (HTTPS إلزامي) |
+| CSRF Protection | Double-submit cookie على جميع طلبات POST/PATCH/DELETE |
 | قفل الجلسة بالخمول | 25 دقيقة تحذير + 5 دقائق logout |
 | Rate limit — تسجيل دخول | 10 محاولات/دقيقة لكل IP |
 | Rate limit — عام | 200 طلب/دقيقة |
@@ -1314,8 +1371,9 @@ month=YYYY-MM    (الشهر — افتراضي: الشهر الحالي)
 
 - [ ] غيّر `JWT_SECRET` إلى سلسلة عشوائية 64+ حرف
 - [ ] غيّر كلمة مرور `admin@mediflow.com` الافتراضية
+- [ ] اضبط `COOKIE_SECURE=true` في `backend/.env` (يتطلب HTTPS)
 - [ ] أضف `ALLOWED_ORIGINS` بنطاق موقعك الفعلي
-- [ ] فعّل HTTPS (Certbot)
+- [ ] فعّل HTTPS (Certbot): `sudo certbot --nginx -d yourdomain.com`
 - [ ] أنشئ مستخدم MySQL مخصص بدلاً من `root`
 - [ ] لا ترفع `.env` أو `.env.local` على Git
 
@@ -1369,6 +1427,29 @@ token_blocklist ─────────────────────�
 audit_logs ─────────────────────────────────────────────
   id, userId, action, module, entityId, entityType, createdAt
 ```
+
+### Migrations — Alembic
+
+الـ migrations تتتبع التغييرات في `models.py` وتطبّقها على قاعدة البيانات بشكل آمن.
+
+```bash
+cd backend
+
+# إنشاء migration جديد بعد تعديل models.py
+alembic revision --autogenerate -m "وصف التعديل"
+
+# تطبيق جميع الـ migrations المعلّقة
+alembic upgrade head
+
+# عرض الحالة الحالية
+alembic current
+
+# التراجع عن آخر migration
+alembic downgrade -1
+```
+
+> **إنتاج:** `deploy.sh` و `update.sh` يُشغّلان `alembic upgrade head` تلقائياً.
+> **تطوير:** شغّل `alembic upgrade head` يدوياً بعد أي تغيير في `models.py`.
 
 ### النسخ الاحتياطي
 
@@ -1471,6 +1552,46 @@ python reset_db.py --confirm
 
 ---
 
+### المشكلة: فشل تطبيق Alembic migration
+
+**الأسباب المحتملة:**
+1. `DATABASE_URL` خاطئ في `backend/.env`
+2. تعارض في بنية الجداول (يتطلب `alembic downgrade`)
+3. لا يوجد ملف `alembic.ini` أو `migrations/env.py`
+
+**الحل:**
+```bash
+cd /opt/mediflow/backend
+source .venv/bin/activate   # Linux
+
+# تحقق من الحالة الحالية
+alembic current
+
+# أعد تطبيق الـ migration
+alembic upgrade head
+
+# إذا كان هناك تعارض — تراجع ثم أعد
+alembic downgrade -1
+alembic upgrade head
+```
+
+---
+
+### المشكلة: فشل update.sh أو deploy.sh
+
+**الحل:**
+```bash
+# اعرض الخطأ بالتفصيل
+sudo bash /opt/mediflow/deploy/update.sh 2>&1 | tee /tmp/update.log
+cat /tmp/update.log
+
+# تحقق من logs الخدمات
+sudo journalctl -u mediflow-backend -n 50
+sudo journalctl -u mediflow-frontend -n 50
+```
+
+---
+
 ### إيقاف وإعادة تشغيل الخدمات على Linux
 
 ```bash
@@ -1516,6 +1637,19 @@ stop.bat
 
 # إعادة تشغيل كل شيء (Windows)
 start.bat
+```
+
+```bash
+# تحديث النظام كاملاً (Ubuntu — بعد كل push)
+sudo bash /opt/mediflow/deploy/update.sh
+
+# إعادة تشغيل خدمة واحدة (Ubuntu)
+sudo systemctl restart mediflow-backend
+sudo systemctl restart mediflow-frontend
+```
+
+```cmd
+# أوامر قاعدة البيانات
 
 # إعادة تعيين كلمة مرور admin (يتطلب وصولاً لقاعدة البيانات)
 cd backend
