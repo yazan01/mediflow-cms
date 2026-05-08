@@ -11,7 +11,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from routers import auth, patients, appointments, emr, consultations, billing
 from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors, audit, settings
 from routers import laboratory, radiology, branches, shifts, notifications
-from routers import events, search
+from routers import events, search, clinics, smtp
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
@@ -72,6 +72,8 @@ app.include_router(shifts.router)
 app.include_router(notifications.router)
 app.include_router(events.router)
 app.include_router(search.router)
+app.include_router(clinics.router)
+app.include_router(smtp.router)
 
 
 @app.get("/api/health")

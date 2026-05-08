@@ -861,6 +861,9 @@ class Branch(Base):
     managerId = Column(String(25), nullable=True)
     timezone = Column(String(50))          # overrides clinic timezone if set
     isActive = Column(Boolean, default=True)
+    description = Column(Text)
+    country = Column(String(50))
+    city = Column(String(100))
     createdAt = Column(DateTime, server_default=func.now())
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -872,6 +875,54 @@ class Branch(Base):
     )
 
     shifts = relationship("Shift", back_populates="branch")
+    settings = relationship("BranchSetting", back_populates="branch", uselist=False)
+    clinics = relationship("Clinic", back_populates="branch", cascade="all, delete-orphan")
+
+
+class BranchSetting(Base):
+    """Per-branch configuration that overrides global ClinicSetting values."""
+    __tablename__ = "branch_settings"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=False, unique=True)
+    currency = Column(String(10), default="USD")
+    timezone = Column(String(50), default="Asia/Amman")
+    taxRate = Column(Numeric(5, 2), default=0)
+    invoicePrefix = Column(String(20), default="INV")
+    paymentTerms = Column(Integer, default=30)
+    language = Column(String(5), default="en")
+    workingHoursStart = Column(String(5), default="08:00")
+    workingHoursEnd = Column(String(5), default="17:00")
+    workingDays = Column(JSON, default=lambda: [0, 1, 2, 3, 4])
+    emergencyContact = Column(String(100))
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    branch = relationship("Branch", back_populates="settings")
+
+
+class Clinic(Base):
+    """Sub-entity inside a branch (e.g., General, Dental, Radiology)."""
+    __tablename__ = "clinics"
+    __table_args__ = (
+        UniqueConstraint("branchId", "code", name="uq_clinic_branch_code"),
+        Index("ix_clinic_branch", "branchId"),
+    )
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    code = Column(String(20), nullable=False)
+    description = Column(Text)
+    clinicType = Column(String(50), default="general")
+    colorTheme = Column(String(20), default="#1960a3")
+    capacity = Column(Integer, default=10)
+    apptDurationMin = Column(Integer, default=20)
+    queueEnabled = Column(Boolean, default=True)
+    onlineBooking = Column(Boolean, default=True)
+    status = Column(String(20), default="active")
+    sortOrder = Column(Integer, default=0)
+    createdAt = Column(DateTime, server_default=func.now())
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    branch = relationship("Branch", back_populates="clinics")
 
 
 class Shift(Base):
@@ -944,6 +995,46 @@ class EmployeeDocument(Base):
 
     employee = relationship("Employee")
     uploadedBy = relationship("User")
+
+
+class SmtpConfig(Base):
+    """SMTP email configuration — branchId=None means global fallback."""
+    __tablename__ = "smtp_configs"
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id"), nullable=True)
+    host = Column(String(255))
+    port = Column(Integer, default=587)
+    useTLS = Column(Boolean, default=True)
+    username = Column(String(255))
+    passwordEncrypted = Column(Text)
+    fromName = Column(String(100))
+    fromEmail = Column(String(255))
+    isActive = Column(Boolean, default=False)
+    lastTestedAt = Column(DateTime)
+    lastTestResult = Column(String(20))
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("branchId", name="uq_smtp_branch"),
+    )
+
+
+class SettingsHistory(Base):
+    """Audit trail for all settings mutations."""
+    __tablename__ = "settings_history"
+    __table_args__ = (
+        Index("ix_settings_history_scope", "scope", "scopeId", "changedAt"),
+    )
+    id = Column(String(25), primary_key=True)
+    scope = Column(String(10), nullable=False)
+    scopeId = Column(String(25))
+    changedBy = Column(String(25), ForeignKey("users.id"), nullable=True)
+    changedAt = Column(DateTime, server_default=func.now())
+    category = Column(String(50))
+    fieldName = Column(String(100))
+    oldValue = Column(Text)
+    newValue = Column(Text)
+    ipAddress = Column(String(45))
 
 
 class TokenBlocklist(Base):

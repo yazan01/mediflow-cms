@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 import re
@@ -6,6 +7,7 @@ import uuid
 import json
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from cryptography.fernet import Fernet
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -88,6 +90,38 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     to_encode["exp"] = datetime.now(timezone.utc) + timedelta(hours=8)
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _get_fernet() -> Fernet:
+    """Return a Fernet instance keyed from SETTINGS_ENCRYPTION_KEY or derived from JWT_SECRET."""
+    key = os.getenv("SETTINGS_ENCRYPTION_KEY")
+    if not key:
+        raw = hashlib.sha256(JWT_SECRET.encode()).digest()
+        key = base64.urlsafe_b64encode(raw).decode()
+    return Fernet(key.encode())
+
+
+def encrypt_secret(value: str) -> str:
+    if not value:
+        return ""
+    return _get_fernet().encrypt(value.encode()).decode()
+
+
+def decrypt_secret(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        return _get_fernet().decrypt(value.encode()).decode()
+    except Exception:
+        return ""
+
+
+def mask_secret(value: str) -> str:
+    if not value:
+        return ""
+    if len(value) <= 4:
+        return "••••"
+    return "•" * (len(value) - 4) + value[-4:]
 
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
