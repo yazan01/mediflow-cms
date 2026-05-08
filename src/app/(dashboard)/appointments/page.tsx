@@ -11,7 +11,12 @@ import { useDebounce } from "@/lib/hooks/useDebounce";
 
 // ── Local types ────────────────────────────────────────────────────────────────
 
-interface Doctor { id: string; user: { name: string }; specialization: string; }
+interface Doctor {
+  id: string; name: string; user?: { name: string };
+  specialization: string; departmentName?: string;
+  jobTitle?: string; empCode?: string;
+  branchId?: string; branchName?: string;
+}
 interface Branch { id: string; name: string; code: string; }
 interface Patient { id: string; firstName: string; lastName: string; mrn: string; }
 interface WorkingConfig {
@@ -335,6 +340,12 @@ export default function AppointmentsPage() {
         const e = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
         params.set("startDate", localDateTimeStr(s));
         params.set("endDate", localDateTimeStr(e));
+      } else {
+        // list view: today ±30 days
+        const s = new Date(today); s.setDate(s.getDate() - 30); s.setHours(0,0,0,0);
+        const e = new Date(today); e.setDate(e.getDate() + 30); e.setHours(23,59,59,999);
+        params.set("startDate", localDateTimeStr(s));
+        params.set("endDate", localDateTimeStr(new Date(e.getTime() + 1)));
       }
 
       const res = await fetch(`/api/appointments?${params}`);
@@ -347,9 +358,16 @@ export default function AppointmentsPage() {
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
   useEffect(() => {
-    fetch("/api/doctors").then(r => r.ok ? r.json() : []).then(setDoctors).catch(() => {});
     fetch("/api/branches").then(r => r.ok ? r.json() : []).then(setBranches).catch(() => {});
   }, []);
+
+  // Reload doctors when branch filter changes (show only doctors in that branch)
+  useEffect(() => {
+    const url = filterBranch !== "ALL"
+      ? `/api/doctors?branch_id=${filterBranch}`
+      : "/api/doctors";
+    fetch(url).then(r => r.ok ? r.json() : []).then(setDoctors).catch(() => {});
+  }, [filterBranch]);
 
   // Load branch working config
   useEffect(() => {
@@ -363,11 +381,13 @@ export default function AppointmentsPage() {
       .catch(() => {});
   }, [filterBranch]);
 
-  // Auto-scroll to current time
+  // Auto-scroll: show working hours start (8 AM) with current time visible if possible
   useEffect(() => {
-    if (calendarRef.current && (view === "week" || view === "day")) {
-      calendarRef.current.scrollTop = Math.max(0, nowPx - 120);
-    }
+    if (!calendarRef.current || (view !== "week" && view !== "day")) return;
+    const workStartPx = (workingStartH() - HOURS_START) * CELL_H;
+    // Prefer showing work-start, but shift forward if now is past it + viewport
+    const target = Math.min(nowPx - 120, workStartPx);
+    calendarRef.current.scrollTop = Math.max(0, target);
   }, [view, loading]);
 
   // Patient search for quick book
@@ -511,7 +531,12 @@ export default function AppointmentsPage() {
               className="w-full border border-[#c4c6cf] bg-white rounded-lg px-2.5 py-2 text-xs text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             >
               <option value="ALL">{a.allDoctors}</option>
-              {doctors.map(d => <option key={d.id} value={d.id}>{d.user?.name}</option>)}
+              {doctors.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.name || d.user?.name}
+                  {d.departmentName ? ` — ${d.departmentName}` : d.specialization ? ` — ${d.specialization}` : ""}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -924,7 +949,12 @@ export default function AppointmentsPage() {
                 <select value={qbDoctor} onChange={e => setQbDoctor(e.target.value)}
                   className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
                   <option value="">{a.selectDoctor}</option>
-                  {doctors.map(d => <option key={d.id} value={d.id}>{d.user?.name} — {d.specialization}</option>)}
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>
+                      {d.name || d.user?.name}
+                      {" — "}{d.departmentName || d.specialization}
+                    </option>
+                  ))}
                 </select>
               </div>
 

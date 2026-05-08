@@ -84,7 +84,7 @@ def get_appointment_config(
             "startTime": cfg.startTime or "08:00",
             "endTime": cfg.endTime or "17:00",
             "workingDays": cfg.workingDays or ["MON", "TUE", "WED", "THU", "FRI"],
-            "slotDuration": cfg.slotDuration or 30,
+            "slotDuration": cfg.slotDurationMin or 30,
         }
     return {
         "branchId": branch_id,
