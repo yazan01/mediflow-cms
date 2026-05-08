@@ -1,6 +1,7 @@
 "use client";
 
 import type { FetchError } from "@/lib/hooks/useDataFetch";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type AnyError = FetchError | Error;
 
@@ -17,6 +18,7 @@ function toFetchError(error: AnyError): FetchError {
 }
 
 export function ErrorBanner({ error, onRetry }: Props) {
+  const { t } = useLanguage();
   const fe = toFetchError(error);
   const isNetwork = fe.type === "network";
   const status = fe.type === "api" ? fe.status : undefined;
@@ -33,7 +35,7 @@ export function ErrorBanner({ error, onRetry }: Props) {
           onClick={onRetry}
           className="text-xs font-semibold text-[#1960a3] hover:underline flex-shrink-0"
         >
-          Retry
+          {t.common.retry}
         </button>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Props {
   children: React.ReactNode;
@@ -11,6 +12,28 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+}
+
+function ErrorFallback({ moduleName, onReset }: { moduleName?: string; onReset: () => void }) {
+  const { t } = useLanguage();
+  const msg = moduleName
+    ? t.common.moduleError.replace("{module}", moduleName)
+    : t.common.unexpectedError;
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-8">
+      <span className="material-symbols-outlined text-5xl text-[#ba1a1a]" aria-hidden="true">
+        error_outline
+      </span>
+      <div>
+        <p className="text-lg font-semibold text-[#1a1c1e]">{t.common.somethingWentWrong}</p>
+        <p className="text-sm text-[#74777f] mt-1">{msg}</p>
+      </div>
+      <button className="btn-secondary text-sm" onClick={onReset}>
+        {t.common.retry}
+      </button>
+    </div>
+  );
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
@@ -30,32 +53,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
-
       return (
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-8">
-          <span className="material-symbols-outlined text-5xl text-[#ba1a1a]">
-            error_outline
-          </span>
-          <div>
-            <p className="text-lg font-semibold text-[#1a1c1e]">
-              Something went wrong
-            </p>
-            <p className="text-sm text-[#74777f] mt-1">
-              {this.props.moduleName
-                ? `The ${this.props.moduleName} module encountered an error.`
-                : "An unexpected error occurred."}
-            </p>
-          </div>
-          <button
-            className="btn-secondary text-sm"
-            onClick={() => this.setState({ hasError: false, error: undefined })}
-          >
-            Try again
-          </button>
-        </div>
+        <ErrorFallback
+          moduleName={this.props.moduleName}
+          onReset={() => this.setState({ hasError: false, error: undefined })}
+        />
       );
     }
-
     return this.props.children;
   }
 }

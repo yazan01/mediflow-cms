@@ -6,10 +6,18 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
 
 from database import get_db
-from auth import get_current_user, generate_id, sanitize_string
+from auth import get_current_user, require_roles, generate_id, sanitize_string, log_audit
 import models
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
+
+APPT_READER_ROLES = (
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE",
+    "RECEPTIONIST", "ACCOUNTANT", "AUDITOR",
+)
+APPT_WRITER_ROLES = (
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RECEPTIONIST",
+)
 
 VALID_STATUSES = {
     "SCHEDULED", "CHECKED_IN", "IN_CONSULTATION", "COMPLETED",
@@ -70,7 +78,7 @@ def appt_to_dict(a: models.Appointment) -> dict:
 def get_appointment_config(
     branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*APPT_READER_ROLES)),
 ):
     """Return AppointmentConfig for a branch (or global defaults if not set)."""
     cfg = None
@@ -107,7 +115,7 @@ def get_appointments(
     patientId: Optional[str] = None,
     branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*APPT_READER_ROLES)),
 ):
     query = db.query(models.Appointment).options(
         joinedload(models.Appointment.patient),
@@ -158,7 +166,7 @@ def get_appointments(
 def create_appointment(
     body: AppointmentCreate,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*APPT_WRITER_ROLES)),
 ):
     if not all([body.patientId, body.doctorId, body.scheduledAt]):
         raise HTTPException(status_code=400, detail="Patient, doctor, and scheduled time are required")
@@ -252,7 +260,7 @@ def update_appointment(
     appointment_id: str,
     body: dict,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*APPT_WRITER_ROLES)),
 ):
     appt = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appt:
@@ -286,7 +294,7 @@ def update_appointment(
 def send_reminder(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*APPT_READER_ROLES)),
 ):
     import os
     appt = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()

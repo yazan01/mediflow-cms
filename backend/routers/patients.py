@@ -6,10 +6,21 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from database import get_db
-from auth import get_current_user, generate_id, generate_mrn, sanitize_string, log_audit
+from auth import get_current_user, require_roles, generate_id, generate_mrn, sanitize_string, log_audit
 import models
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
+
+# Roles that can read patient demographics
+PATIENT_READER_ROLES = (
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE",
+    "RECEPTIONIST", "ACCOUNTANT", "LAB_TECHNICIAN", "RADIOLOGIST",
+    "PHARMACIST", "AUDITOR",
+)
+# Roles that can create, update, or soft-delete patients
+PATIENT_WRITER_ROLES = (
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RECEPTIONIST",
+)
 
 VALID_GENDERS = {"MALE", "FEMALE"}
 VALID_BLOOD_TYPES = {"A_POS", "A_NEG", "B_POS", "B_NEG", "AB_POS", "AB_NEG", "O_POS", "O_NEG"}
@@ -104,7 +115,7 @@ def get_patients(
     search: str = Query(""),
     status: Optional[str] = None,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*PATIENT_READER_ROLES)),
 ):
     # Never return soft-deleted records
     query = db.query(models.Patient).filter(models.Patient.deletedAt == None)  # noqa: E711
@@ -137,7 +148,7 @@ def get_patients(
 
 
 @router.post("", status_code=201)
-def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Depends(require_roles(*PATIENT_WRITER_ROLES))):
     if body.gender not in VALID_GENDERS:
         raise HTTPException(status_code=422, detail=f"Invalid gender. Must be one of: {', '.join(VALID_GENDERS)}")
 
@@ -190,7 +201,7 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
 
 
 @router.get("/{patient_id}")
-def get_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def get_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*PATIENT_READER_ROLES))):
     p = db.query(models.Patient).filter(
         models.Patient.id == patient_id,
         models.Patient.deletedAt == None,  # noqa: E711
@@ -255,7 +266,7 @@ def update_patient(
     patient_id: str,
     body: PatientUpdate,
     db: Session = Depends(get_db),
-    _user=Depends(get_current_user),
+    _user=Depends(require_roles(*PATIENT_WRITER_ROLES)),
 ):
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
@@ -298,7 +309,7 @@ def update_patient(
 
 
 @router.delete("/{patient_id}")
-def delete_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def delete_patient(patient_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*PATIENT_WRITER_ROLES))):
     patient = db.query(models.Patient).filter(
         models.Patient.id == patient_id,
         models.Patient.deletedAt == None,  # noqa: E711

@@ -254,7 +254,7 @@ export default function UsersPage() {
                               {user.hasEmployee && (
                                 <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#1960a3] bg-[#d3e4ff] px-1.5 py-0.5 rounded-full mt-0.5">
                                   <span className="material-symbols-outlined text-[10px]">badge</span>
-                                  Employee
+                                  {t.common.employeeSingular}
                                 </span>
                               )}
                             </div>
@@ -282,7 +282,7 @@ export default function UsersPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                          <p className="text-xs text-[#74777f]">{user.lastLogin ? formatDateTime(user.lastLogin) : "Never"}</p>
+                          <p className="text-xs text-[#74777f]">{user.lastLogin ? formatDateTime(user.lastLogin) : t.users.neverLoggedIn}</p>
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
@@ -305,7 +305,7 @@ export default function UsersPage() {
                             {user.hasEmployee && user.employeeId && (
                               <a
                                 href={`/hr/${user.employeeId}`}
-                                title="View Employee Profile"
+                                title={t.users.viewEmployeeProfile}
                                 className="p-1.5 hover:bg-[#e9fdf4] rounded-lg transition-colors text-[#74777f] hover:text-[#0d9488]"
                               >
                                 <span className="material-symbols-outlined text-[18px]">badge</span>
@@ -434,19 +434,17 @@ export default function UsersPage() {
               </div>
             </div>
             <p className="text-sm text-[#74777f]">
-              {confirmToggle.isActive
-                ? "This user will lose all access immediately. You can reactivate them later."
-                : "This user will regain access to the system."}
+              {confirmToggle.isActive ? t.users.userLoseAccess : t.users.userRegainAccess}
             </p>
             <div className="flex gap-3 pt-1">
               <button onClick={() => setConfirmToggle(null)} className="flex-1 border border-[#c4c6cf] bg-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7]">
-                Cancel
+                {t.common.cancel}
               </button>
               <button
                 onClick={confirmAndToggle}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white ${confirmToggle.isActive ? "bg-[#ba1a1a] hover:opacity-90" : "bg-[#0d9488] hover:opacity-90"}`}
               >
-                {confirmToggle.isActive ? "Deactivate" : "Activate"}
+                {confirmToggle.isActive ? t.users.deactivate : t.users.activate}
               </button>
             </div>
           </div>

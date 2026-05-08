@@ -229,7 +229,8 @@ def enable_2fa_confirm(
 
 
 @router.post("/2fa/verify")
-def verify_2fa(body: TwoFAVerifyRequest, response: Response, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def verify_2fa(body: TwoFAVerifyRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     try:
         import pyotp
     except ImportError:
@@ -238,6 +239,9 @@ def verify_2fa(body: TwoFAVerifyRequest, response: Response, db: Session = Depen
     user = db.query(models.User).filter(models.User.id == body.userId).first()
     if not user or not user.twoFAEnabled or not user.twoFASecret:
         raise HTTPException(400, "2FA not configured for this account")
+
+    if not user.isActive:
+        raise HTTPException(403, "Account is deactivated. Please contact your administrator.")
 
     secret = decrypt_secret(user.twoFASecret)
     totp = pyotp.TOTP(secret)
@@ -259,7 +263,8 @@ def verify_2fa(body: TwoFAVerifyRequest, response: Response, db: Session = Depen
     )
     branch_id = employee.branchId if employee else None
 
-    return _issue_session(user, roles, branch_id, response, db, ip="2fa-verify")
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    return _issue_session(user, roles, branch_id, response, db, ip=ip)
 
 
 @router.post("/2fa/disable")

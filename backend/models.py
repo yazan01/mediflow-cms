@@ -72,6 +72,13 @@ class Department(Base):
 
 class Patient(Base):
     __tablename__ = "patients"
+    __table_args__ = (
+        Index("ix_patient_deleted", "deletedAt"),
+        Index("ix_patient_active", "isActive"),
+        Index("ix_patient_phone", "phone"),
+        Index("ix_patient_lastname", "lastName"),
+        Index("ix_patient_created", "createdAt"),
+    )
     id = Column(String(36), primary_key=True)
     mrn = Column(String(50), unique=True, nullable=False)
     firstName = Column(String(100), nullable=False)
@@ -652,6 +659,8 @@ class Employee(Base):
         Index("ix_employee_user", "userId"),
         Index("ix_employee_dept", "departmentId"),
         Index("ix_employee_status", "status"),
+        Index("ix_employee_branch", "branchId"),
+        Index("ix_employee_deleted", "deletedAt"),
     )
     id = Column(String(36), primary_key=True)
     empCode = Column(String(50), unique=True, nullable=False)

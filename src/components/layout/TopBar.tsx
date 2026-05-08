@@ -112,6 +112,16 @@ export default function TopBar({ user, onMenuClick }: TopBarProps) {
     setLang(lang === "en" ? "ar" : "en");
   }
 
+  function sanitizeLink(link: string): string {
+    try {
+      const url = new URL(link, window.location.href);
+      if (url.protocol === "javascript:") return "/";
+      return link;
+    } catch {
+      return "/";
+    }
+  }
+
   function resolveTitle(n: ApiNotif): string {
     const key = n.title as keyof typeof t.topbar;
     const base = (t.topbar[key] as string) ?? n.title;
@@ -209,7 +219,7 @@ export default function TopBar({ user, onMenuClick }: TopBarProps) {
                         time={timeAgo(n.createdAt, t.topbar)}
                         unread={n.unread && !readIds.has(n.id)}
                         link={n.link}
-                        onRead={() => { setReadIds((s) => new Set(s).add(n.id)); setNotifOpen(false); router.push(n.link); }}
+                        onRead={() => { setReadIds((s) => new Set(s).add(n.id)); setNotifOpen(false); router.push(sanitizeLink(n.link)); }}
                       />
                     ))
                   )}

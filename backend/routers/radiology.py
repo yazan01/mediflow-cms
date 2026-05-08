@@ -130,7 +130,10 @@ def update_radiology_order(
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "radiology")
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+MIME_TO_EXT = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
+UPLOAD_ROLES = ("SUPER_ADMIN", "CLINIC_MANAGER", "RADIOLOGIST", "DOCTOR", "NURSE")
 
 
 @router.post("/{order_id}/images", status_code=201)
@@ -138,7 +141,7 @@ async def upload_image(
     order_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_roles(*UPLOAD_ROLES)),
 ):
     order = db.query(models.RadiologyOrder).filter(models.RadiologyOrder.id == order_id).first()
     if not order:
@@ -152,7 +155,8 @@ async def upload_image(
         raise HTTPException(422, "File exceeds 20 MB limit")
 
     image_id = generate_id()
-    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin"
+    # Derive extension from validated MIME type — never trust the client filename
+    ext = MIME_TO_EXT[file.content_type]
     save_name = f"{image_id}.{ext}"
     order_dir = os.path.join(UPLOAD_DIR, order_id)
     os.makedirs(order_dir, exist_ok=True)
@@ -173,6 +177,7 @@ async def upload_image(
     db.add(img)
     db.commit()
     db.refresh(img)
+    log_audit(db, current_user.id, "UPLOAD", "RADIOLOGY", entity_id=order_id, entity_type="RadiologyImage")
 
     return {
         "id": img.id,
@@ -203,14 +208,20 @@ def list_images(order_id: str, db: Session = Depends(get_db), _user=Depends(get_
 
 
 @router.get("/images/{image_id}")
-def download_image(image_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+def download_image(image_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*RADIOLOGY_ROLES))):
     img = db.query(models.RadiologyImage).filter(models.RadiologyImage.id == image_id).first()
     if not img:
         raise HTTPException(404, "Image not found")
+    # Reconstruct path using only trusted DB values — never use originalName for path
     path = os.path.join(UPLOAD_DIR, img.orderId, img.filename)
     if not os.path.exists(path):
         raise HTTPException(404, "File not found on disk")
-    return FileResponse(path, media_type=img.mimeType, filename=img.originalName)
+    safe_name = img.filename  # UUID-based, safe
+    return FileResponse(
+        path,
+        media_type=img.mimeType,
+        headers={"Content-Disposition": f"attachment; filename=\"{safe_name}\""},
+    )
 
 
 @router.delete("/images/{image_id}", status_code=204)

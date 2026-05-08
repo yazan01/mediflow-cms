@@ -28,6 +28,9 @@ const en = {
     patientSingular: "Patient", appointmentSingular: "Appointment",
     invoiceSingular: "Invoice", employeeSingular: "Employee",
     tryAgain: "Try adjusting your filters", error: "Error",
+    somethingWentWrong: "Something went wrong",
+    unexpectedError: "An unexpected error occurred.",
+    moduleError: "The {module} module encountered an error.",
     success: "Success", saved: "Saved!", saving: "Saving...",
     showing: "Showing", of: "of", page: "Page", pages: "pages",
     required: "Required", optional: "Optional", na: "—",
@@ -1067,6 +1070,8 @@ const en = {
     assetPurchases: "Asset Purchases",
     poPayments: "PO Payments",
     breakdown: "Breakdown",
+    saveChanges: "Save Changes",
+    noPurchasePrice: "This asset has no purchase price — depreciation cannot be calculated.",
   },
 
   reports: {
@@ -1212,6 +1217,10 @@ const en = {
     usersLabel: "users registered",
     passwordResetSent: "Password reset email sent.",
     passwordResetFailed: "Failed to reset password.",
+    neverLoggedIn: "Never",
+    viewEmployeeProfile: "View Employee Profile",
+    userLoseAccess: "This user will lose all access immediately. You can reactivate them later.",
+    userRegainAccess: "This user will regain access to the system.",
   },
 
   settings: {
@@ -1697,6 +1706,9 @@ export const ar: T = {
     patientSingular: "مريض", appointmentSingular: "موعد",
     invoiceSingular: "فاتورة", employeeSingular: "موظف",
     tryAgain: "حاول تعديل الفلاتر", error: "خطأ",
+    somethingWentWrong: "حدث خطأ ما",
+    unexpectedError: "حدث خطأ غير متوقع.",
+    moduleError: "واجهت وحدة {module} خطأ.",
     success: "نجاح", saved: "تم الحفظ!", saving: "جاري الحفظ...",
     showing: "عرض", of: "من", page: "صفحة", pages: "صفحات",
     required: "مطلوب", optional: "اختياري", na: "—",
@@ -2736,6 +2748,8 @@ export const ar: T = {
     assetPurchases: "مشتريات الأصول",
     poPayments: "مدفوعات الطلبات",
     breakdown: "تفصيل",
+    saveChanges: "حفظ التغييرات",
+    noPurchasePrice: "هذا الأصل لا يحتوي على سعر شراء — لا يمكن احتساب الاستهلاك.",
   },
 
   reports: {
@@ -2881,6 +2895,10 @@ export const ar: T = {
     usersLabel: "مستخدم مسجّل",
     passwordResetSent: "تم إرسال بريد إعادة تعيين كلمة المرور.",
     passwordResetFailed: "فشل في إعادة تعيين كلمة المرور.",
+    neverLoggedIn: "أبداً",
+    viewEmployeeProfile: "عرض الملف الوظيفي",
+    userLoseAccess: "سيفقد هذا المستخدم جميع صلاحياته فوراً. يمكنك إعادة تفعيله لاحقاً.",
+    userRegainAccess: "سيستعيد هذا المستخدم صلاحية الوصول إلى النظام.",
   },
 
   settings: {

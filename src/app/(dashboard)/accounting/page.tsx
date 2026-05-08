@@ -1089,7 +1089,7 @@ export default function AccountingPage() {
           </div>
           <button onClick={saveVendor} disabled={vendorSaving} className="w-full flex items-center justify-center gap-2 bg-[#002045] text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 mt-2">
             {vendorSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">save</span>}
-            Save Changes
+            {t.accounting.saveChanges}
           </button>
         </Modal>
       )}
@@ -1139,7 +1139,7 @@ export default function AccountingPage() {
                 </table>
               </div>
             </>
-          ) : <p className="text-sm text-[#74777f] text-center py-8">This asset has no purchase price — depreciation cannot be calculated.</p>}
+          ) : <p className="text-sm text-[#74777f] text-center py-8">{t.accounting.noPurchasePrice}</p>}
         </Modal>
       )}
     </div>

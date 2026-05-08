@@ -162,13 +162,19 @@ def export_report(
         .all()
     )
 
+    def _safe_csv(value: str) -> str:
+        """Prefix formula-injection characters to prevent spreadsheet execution."""
+        if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+            return "'" + value
+        return value
+
     rows = [["Invoice No", "Patient", "Amount", "Method", "Date"]]
     for pay, inv, pat in payments:
         rows.append([
-            inv.invoiceNo,
-            f"{pat.firstName} {pat.lastName}",
+            _safe_csv(inv.invoiceNo or ""),
+            _safe_csv(f"{pat.firstName} {pat.lastName}"),
             str(float(pay.amount)),
-            pay.method or "",
+            _safe_csv(pay.method or ""),
             pay.paidAt.strftime("%Y-%m-%d %H:%M") if pay.paidAt else "",
         ])
 

@@ -5,30 +5,30 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
   }).format(amount);
 }
 
-export function formatDate(date: Date | string | null | undefined): string {
+export function formatDate(date: Date | string | null | undefined, locale = "en-US"): string {
   if (!date) return "—";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
   }).format(d);
 }
 
-export function formatDateTime(date: Date | string | null | undefined): string {
+export function formatDateTime(date: Date | string | null | undefined, locale = "en-US"): string {
   if (!date) return "—";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -37,11 +37,11 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   }).format(d);
 }
 
-export function formatTime(date: Date | string | null | undefined): string {
+export function formatTime(date: Date | string | null | undefined, locale = "en-US"): string {
   if (!date) return "—";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(d);

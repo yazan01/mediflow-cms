@@ -1,5 +1,4 @@
 import calendar
-import os
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -83,9 +82,10 @@ def get_dashboard_stats(db: Session = Depends(get_db), _user=Depends(require_rol
             return 0
         return round(((curr - prev) / prev) * 100)
 
-    wa_configured = bool(
-        os.getenv("TWILIO_SID") and os.getenv("TWILIO_TOKEN") and os.getenv("TWILIO_WA_FROM")
-    )
+    wa_configured = safe(lambda: db.query(models.WhatsAppConfig).filter(
+        models.WhatsAppConfig.isActive == True,
+        models.WhatsAppConfig.isVerified == True,
+    ).count() > 0)
 
     return {
         "dailyRevenue": daily_revenue,
