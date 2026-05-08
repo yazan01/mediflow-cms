@@ -21,8 +21,37 @@ SALARY_FIELDS = {"basicSalary", "housingAllowance", "transportAllowance", "medic
 
 # ── Pydantic Models ─────────────────────────────────────────────────────────────
 
+VALID_ROLES = {
+    "SUPER_ADMIN", "CLINIC_MANAGER", "DOCTOR", "NURSE", "RECEPTIONIST",
+    "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "ACCOUNTANT",
+    "HR_OFFICER", "AUDITOR", "STAFF",
+}
+
+
+class NewUserInline(BaseModel):
+    """Embedded user creation — used when createUser=True."""
+    name: str
+    email: str
+    password: str
+    phone: Optional[str] = None
+    roles: List[str] = ["STAFF"]
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: List[str]) -> List[str]:
+        invalid = set(v) - VALID_ROLES
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}")
+        return v
+
+
 class EmployeeCreate(BaseModel):
-    userId: str
+    # Link mode: provide userId of an existing User
+    userId: Optional[str] = None
+    # Inline-create mode: set createUser=True and fill newUser
+    createUser: Optional[bool] = False
+    newUser: Optional[NewUserInline] = None
+    # Common fields
     departmentId: str
     jobTitle: str
     employmentType: str = "FULL_TIME"
@@ -229,6 +258,8 @@ def employee_to_dict(e: models.Employee, mask_bank: bool = True) -> dict:
             "photo": e.user.photo if e.user else None,
             "roles": e.user.roles if e.user else [],
             "isActive": e.user.isActive if e.user else True,
+            "lastLogin": e.user.lastLogin.isoformat() if e.user and e.user.lastLogin else None,
+            "twoFAEnabled": bool(e.user.twoFAEnabled) if e.user else False,
         },
         "department": {
             "id": e.department.id if e.department else None,
@@ -335,10 +366,45 @@ def get_employees(
 
 @router.post("/employees", status_code=201)
 def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=Depends(require_roles(*HR_ROLES))):
-    if not body.userId or not body.departmentId or not body.jobTitle:
-        raise HTTPException(400, "userId, departmentId, and jobTitle are required")
+    from auth import hash_password
+
+    if not body.departmentId or not body.jobTitle:
+        raise HTTPException(400, "departmentId and jobTitle are required")
+
+    resolved_user_id: str
+
+    if body.createUser and body.newUser:
+        # ── Inline user creation ────────────────────────────────────────────
+        nu = body.newUser
+        if not nu.name or not nu.email or not nu.password:
+            raise HTTPException(400, "newUser.name, email, and password are required")
+        if len(nu.password) < 8:
+            raise HTTPException(400, "Password must be at least 8 characters")
+        if db.query(models.User).filter(models.User.email == nu.email.lower().strip()).first():
+            raise HTTPException(409, f"A user with email '{nu.email}' already exists")
+        new_user = models.User(
+            id=generate_id(),
+            name=sanitize_string(nu.name),
+            email=nu.email.lower().strip(),
+            passwordHash=hash_password(nu.password),
+            phone=sanitize_string(nu.phone) if nu.phone else None,
+            roles=nu.roles,
+            isActive=True,
+        )
+        db.add(new_user)
+        db.flush()
+        resolved_user_id = new_user.id
+    elif body.userId:
+        # ── Link to existing user ───────────────────────────────────────────
+        resolved_user = db.query(models.User).filter(models.User.id == body.userId).first()
+        if not resolved_user:
+            raise HTTPException(404, "User not found")
+        resolved_user_id = body.userId
+    else:
+        raise HTTPException(400, "Provide userId (existing user) or set createUser=true with newUser details")
+
     existing = db.query(models.Employee).filter(
-        models.Employee.userId == body.userId, models.Employee.deletedAt == None
+        models.Employee.userId == resolved_user_id, models.Employee.deletedAt == None
     ).first()
     if existing:
         raise HTTPException(400, "An employee record already exists for this user")
@@ -357,7 +423,7 @@ def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=De
 
     emp = models.Employee(
         id=generate_id(),
-        userId=body.userId,
+        userId=resolved_user_id,
         departmentId=body.departmentId,
         jobTitle=sanitize_string(body.jobTitle),
         empCode=generate_emp_code(db),

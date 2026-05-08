@@ -85,7 +85,7 @@ class UserUpdate(BaseModel):
         return v
 
 
-def user_to_dict(u: models.User) -> dict:
+def user_to_dict(u: models.User, employee_id: str | None = None) -> dict:
     return {
         "id": u.id,
         "name": u.name,
@@ -98,6 +98,8 @@ def user_to_dict(u: models.User) -> dict:
         "lastLogin": u.lastLogin.isoformat() if u.lastLogin else None,
         "createdAt": u.createdAt.isoformat() if u.createdAt else None,
         "department": {"id": u.department.id, "name": u.department.name} if u.department else None,
+        "employeeId": employee_id,
+        "hasEmployee": employee_id is not None,
     }
 
 
@@ -131,8 +133,18 @@ def get_users(
         .all()
     )
 
+    # Batch-load employee records for this page to avoid N+1
+    user_ids = [u.id for u in page_data]
+    emp_map: dict[str, str] = {}
+    if user_ids:
+        emps = db.query(models.Employee.userId, models.Employee.id).filter(
+            models.Employee.userId.in_(user_ids),
+            models.Employee.deletedAt == None,
+        ).all()
+        emp_map = {e.userId: e.id for e in emps}
+
     return {
-        "data": [user_to_dict(u) for u in page_data],
+        "data": [user_to_dict(u, emp_map.get(u.id)) for u in page_data],
         "total": total,
         "page": page,
         "pageSize": pageSize,
@@ -179,7 +191,10 @@ def create_user(body: UserCreate, db: Session = Depends(get_db), _user=Depends(r
 
     db.commit()
     db.refresh(user)
-    return user_to_dict(user)
+    emp = db.query(models.Employee).filter(
+        models.Employee.userId == user.id, models.Employee.deletedAt == None
+    ).first()
+    return user_to_dict(user, emp.id if emp else None)
 
 
 @router.patch("/{user_id}")
@@ -202,7 +217,10 @@ def update_user(
 
     db.commit()
     db.refresh(user)
-    return user_to_dict(user)
+    emp = db.query(models.Employee).filter(
+        models.Employee.userId == user.id, models.Employee.deletedAt == None
+    ).first()
+    return user_to_dict(user, emp.id if emp else None)
 
 
 @router.delete("/{user_id}")

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { Employee, LeaveRequest } from "@/types";
@@ -227,6 +228,8 @@ function StatCard({ icon, iconBg, iconColor, label, value }: {
 
 export default function HRPage() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const highlightedEmployeeRef = useRef<HTMLTableRowElement | null>(null);
 
   const EMP_STATUS: Record<string, { label: string; cls: string }> = {
     ACTIVE:      { label: t.hr.activeStatus,   cls: "bg-[#ccfbf1] text-[#0d9488]" },
@@ -528,6 +531,21 @@ export default function HRPage() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
   useEffect(() => { fetchBranches(); }, [fetchBranches]);
+
+  // Deep-link: /hr?employee=<id> — switch to employees tab and highlight the row
+  const deepLinkEmployeeId = searchParams.get("employee");
+  useEffect(() => {
+    if (!deepLinkEmployeeId) return;
+    setActiveTab("employees");
+  }, [deepLinkEmployeeId]);
+
+  useEffect(() => {
+    if (!deepLinkEmployeeId || empLoading) return;
+    const timer = setTimeout(() => {
+      highlightedEmployeeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [deepLinkEmployeeId, empLoading]);
   useEffect(() => { if (activeTab === "attendance") fetchAttendance(); }, [activeTab, fetchAttendance]);
   useEffect(() => { if (activeTab === "leaveRequests") fetchLeaves(); }, [activeTab, fetchLeaves]);
   useEffect(() => { if (activeTab === "payroll") fetchPayroll(); }, [activeTab, fetchPayroll]);
@@ -935,8 +953,13 @@ export default function HRPage() {
                     const statusCfg = EMP_STATUS[emp.status] ?? EMP_STATUS.INACTIVE;
                     const typeCfg = EMP_TYPE[emp.employmentType] ?? EMP_TYPE.FULL_TIME;
                     const isSelected = selectedEmpIds.has(emp.id as string);
+                    const isHighlighted = emp.id === deepLinkEmployeeId;
                     return (
-                      <tr key={emp.id} className={`hover:bg-[#f4f3f7] transition-colors group ${isSelected ? "bg-[#eef4ff]" : ""}`}>
+                      <tr
+                        key={emp.id}
+                        ref={isHighlighted ? highlightedEmployeeRef : null}
+                        className={`hover:bg-[#f4f3f7] transition-colors group ${isSelected ? "bg-[#eef4ff]" : ""} ${isHighlighted ? "ring-2 ring-inset ring-[#1960a3] bg-[#d3e4ff]/30" : ""}`}
+                      >
                         <td className="px-5 py-4 border-b border-[#e3e2e6] w-10">
                           <input
                             type="checkbox"
@@ -953,12 +976,33 @@ export default function HRPage() {
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-[#002045] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              {getInitials(emp.user.name)}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors whitespace-nowrap">{emp.user.name}</p>
-                              <p className="text-xs text-[#74777f]">{emp.user.email}</p>
+                            {/* Avatar: real photo or colored initials */}
+                            {emp.user.photo ? (
+                              <img src={emp.user.photo} alt={emp.user.name}
+                                className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[#e3e2e6]" />
+                            ) : (
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                emp.user.isActive ? "bg-[#002045] text-white" : "bg-[#94a3b8] text-white"
+                              }`}>
+                                {getInitials(emp.user.name)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors whitespace-nowrap">{emp.user.name}</p>
+                                {!emp.user.isActive && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#fee2e2] text-[#991b1b] whitespace-nowrap">INACTIVE</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#74777f] truncate">{emp.user.email}</p>
+                              {/* Role badges */}
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {(emp.user.roles as string[] ?? []).map((role: string) => (
+                                  <span key={role} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#eff6ff] text-[#1d4ed8] whitespace-nowrap">
+                                    {role.replace("_", " ")}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -992,13 +1036,31 @@ export default function HRPage() {
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
                           <div className="flex items-center gap-1">
-                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label="View Profile">
+                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label={t.common.view}>
                               <span className="material-symbols-outlined text-[18px]">visibility</span>
                             </Link>
-                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label="Edit">
+                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label={t.common.edit}>
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </Link>
+                            {/* Link to user account */}
+                            <Link
+                              href={`/users?search=${encodeURIComponent(emp.user.email)}`}
+                              className="p-1.5 hover:bg-[#ede9fe] rounded-lg transition-colors text-[#74777f] hover:text-[#7c3aed]"
+                              aria-label="View system account"
+                              title="View system account"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+                            </Link>
                           </div>
+                          {/* Last login */}
+                          {(emp.user as { lastLogin?: string | null }).lastLogin ? (
+                            <p className="text-[10px] text-[#94a3b8] mt-1 whitespace-nowrap">
+                              <span className="material-symbols-outlined text-[11px] align-middle">login</span>
+                              {" "}{new Date((emp.user as { lastLogin?: string | null }).lastLogin!).toLocaleDateString("en-GB", { day:"2-digit", month:"short" })}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-[#c4c6cf] mt-1">Never logged in</p>
+                          )}
                         </td>
                       </tr>
                     );

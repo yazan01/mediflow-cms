@@ -244,7 +244,15 @@ export default function UsersPage() {
                             <div className="w-9 h-9 rounded-full bg-[#1a365d] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                               {getInitials(user.name)}
                             </div>
-                            <p className="text-sm font-semibold text-[#1a1c1e]">{user.name}</p>
+                            <div>
+                              <p className="text-sm font-semibold text-[#1a1c1e]">{user.name}</p>
+                              {user.hasEmployee && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#1960a3] bg-[#d3e4ff] px-1.5 py-0.5 rounded-full mt-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">badge</span>
+                                  Employee
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-4 border-b border-[#e3e2e6]">
@@ -289,6 +297,15 @@ export default function UsersPage() {
                             <button title={t.users.viewAudit} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]">
                               <span className="material-symbols-outlined text-[18px]">history</span>
                             </button>
+                            {user.hasEmployee && user.employeeId && (
+                              <a
+                                href={`/hr?employee=${user.employeeId}`}
+                                title="View Employee Profile"
+                                className="p-1.5 hover:bg-[#e9fdf4] rounded-lg transition-colors text-[#74777f] hover:text-[#0d9488]"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">badge</span>
+                              </a>
+                            )}
                           </div>
                         </td>
                       </tr>

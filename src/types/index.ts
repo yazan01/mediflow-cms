@@ -68,6 +68,8 @@ export interface User {
   twoFAEnabled: boolean;
   lastLogin?: string;
   createdAt: string;
+  employeeId?: string | null;
+  hasEmployee?: boolean;
 }
 
 export interface Department {
