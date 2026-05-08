@@ -39,6 +39,7 @@ class AppointmentCreate(BaseModel):
     notes: Optional[str] = None
     isUrgent: Optional[bool] = False
     isWalkIn: Optional[bool] = False
+    branchId: Optional[str] = None
 
 
 def appt_to_dict(a: models.Appointment) -> dict:
@@ -60,6 +61,37 @@ def appt_to_dict(a: models.Appointment) -> dict:
         "isUrgent": a.isUrgent,
         "checkedInAt": a.checkedInAt.isoformat() if a.checkedInAt else None,
         "createdAt": a.createdAt.isoformat() if a.createdAt else None,
+        "branchId": a.branchId,
+        "branchName": a.branch.name if hasattr(a, "branch") and a.branch else None,
+    }
+
+
+@router.get("/config")
+def get_appointment_config(
+    branch_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    """Return AppointmentConfig for a branch (or global defaults if not set)."""
+    cfg = None
+    if branch_id:
+        cfg = db.query(models.AppointmentConfig).filter(
+            models.AppointmentConfig.branchId == branch_id
+        ).first()
+    if cfg:
+        return {
+            "branchId": cfg.branchId,
+            "startTime": cfg.startTime or "08:00",
+            "endTime": cfg.endTime or "17:00",
+            "workingDays": cfg.workingDays or ["MON", "TUE", "WED", "THU", "FRI"],
+            "slotDuration": cfg.slotDuration or 30,
+        }
+    return {
+        "branchId": branch_id,
+        "startTime": "08:00",
+        "endTime": "17:00",
+        "workingDays": ["MON", "TUE", "WED", "THU", "FRI"],
+        "slotDuration": 30,
     }
 
 
@@ -73,12 +105,14 @@ def get_appointments(
     startDate: Optional[str] = None,
     endDate: Optional[str] = None,
     patientId: Optional[str] = None,
+    branch_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
 ):
     query = db.query(models.Appointment).options(
         joinedload(models.Appointment.patient),
         joinedload(models.Appointment.doctor).joinedload(models.Doctor.user),
+        joinedload(models.Appointment.branch),
     )
 
     if status and status != "ALL":
@@ -87,6 +121,8 @@ def get_appointments(
         query = query.filter(models.Appointment.doctorId == doctorId)
     if patientId:
         query = query.filter(models.Appointment.patientId == patientId)
+    if branch_id and branch_id != "ALL":
+        query = query.filter(models.Appointment.branchId == branch_id)
 
     if date:
         if date == "today":
@@ -165,6 +201,7 @@ def create_appointment(
         notes=sanitize_string(body.notes),
         isUrgent=body.isUrgent or False,
         isWalkIn=body.isWalkIn or False,
+        branchId=body.branchId,
     )
     db.add(appointment)
 

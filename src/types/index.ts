@@ -134,6 +134,8 @@ export interface Appointment {
   isUrgent: boolean;
   checkedInAt?: string;
   createdAt: string;
+  branchId?: string | null;
+  branchName?: string | null;
 }
 
 export interface Consultation {

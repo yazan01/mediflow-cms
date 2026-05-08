@@ -173,6 +173,7 @@ class Appointment(Base):
 
     patient = relationship("Patient", back_populates="appointments")
     doctor = relationship("Doctor", back_populates="appointments")
+    branch = relationship("Branch", foreign_keys=[branchId], lazy="select")
     consultation = relationship("Consultation", back_populates="appointment", uselist=False)
     invoice = relationship("Invoice", back_populates="appointment", uselist=False)
 
