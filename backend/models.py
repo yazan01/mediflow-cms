@@ -1137,6 +1137,43 @@ class ApiKey(Base):
     createdAt = Column(DateTime, server_default=func.now())
 
 
+class NotificationTemplate(Base):
+    """Customisable email/SMS/WhatsApp templates per event type and channel."""
+    __tablename__ = "notification_templates"
+    __table_args__ = (
+        UniqueConstraint("branchId", "eventType", "channel", "language", name="uq_notif_tpl_branch_event_ch_lang"),
+        Index("ix_notif_tpl_branch", "branchId"),
+    )
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id", ondelete="CASCADE"), nullable=True)
+    eventType = Column(String(50), nullable=False)
+    channel = Column(String(20), nullable=False)
+    subject = Column(String(255))
+    body = Column(Text, nullable=False)
+    variables = Column(JSON, default=lambda: [])
+    language = Column(String(5), default="en")
+    isActive = Column(Boolean, default=True)
+    isDefault = Column(Boolean, default=False)
+    createdAt = Column(DateTime, default=datetime.now)
+    updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class WebhookEvent(Base):
+    """Incoming webhook events from WhatsApp and other integrations."""
+    __tablename__ = "webhook_events"
+    __table_args__ = (
+        Index("ix_webhook_events_branch_created", "branchId", "createdAt"),
+    )
+    id = Column(String(25), primary_key=True)
+    branchId = Column(String(25), ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
+    source = Column(String(30), default="whatsapp")
+    eventType = Column(String(50))
+    fromNumber = Column(String(50))
+    payload = Column(JSON)
+    processed = Column(Boolean, default=False)
+    createdAt = Column(DateTime, server_default=func.now())
+
+
 class TokenBlocklist(Base):
     """Revoked JWT tokens — checked on every authenticated request."""
     __tablename__ = "token_blocklist"

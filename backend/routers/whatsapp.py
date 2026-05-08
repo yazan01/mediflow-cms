@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json as _json_mod
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
@@ -276,8 +277,73 @@ async def webhook_receive(branch_id: str, request: Request, db: Session = Depend
         if not hmac.compare_digest(expected, signature):
             raise HTTPException(401, "Invalid webhook signature")
 
-    # Incoming message processing placeholder — extend with actual logic
+    # Parse payload and log webhook event
+    try:
+        payload_data = _json_mod.loads(body_bytes)
+    except Exception:
+        payload_data = {}
+
+    from_number = None
+    event_type = "unknown"
+    try:
+        entry = payload_data.get("entry", [{}])[0]
+        changes = entry.get("changes", [{}])[0]
+        value = changes.get("value", {})
+        messages = value.get("messages", [])
+        if messages:
+            event_type = messages[0].get("type", "message")
+            from_number = messages[0].get("from")
+        else:
+            statuses = value.get("statuses", [])
+            if statuses:
+                event_type = "status_" + statuses[0].get("status", "update")
+                from_number = statuses[0].get("recipient_id")
+    except Exception:
+        pass
+
+    from auth import generate_id
+    evt = models.WebhookEvent(
+        id=generate_id(),
+        branchId=branch_id,
+        source="whatsapp",
+        eventType=event_type,
+        fromNumber=from_number,
+        payload=payload_data,
+        processed=False,
+    )
+    db.add(evt)
+    db.commit()
+
     return {"status": "received"}
+
+
+# ─── Webhook event log (authenticated) ───────────────────────────────────────
+
+@router.get("/{branch_id}/webhook-events")
+def list_webhook_events(
+    branch_id: str,
+    limit: int = Query(50, le=200),
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles(*WA_ADMIN_ROLES)),
+):
+    _check_branch(branch_id, db)
+    events = (
+        db.query(models.WebhookEvent)
+        .filter(models.WebhookEvent.branchId == branch_id, models.WebhookEvent.source == "whatsapp")
+        .order_by(models.WebhookEvent.createdAt.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "eventType": e.eventType,
+            "fromNumber": e.fromNumber,
+            "processed": bool(e.processed),
+            "createdAt": e.createdAt.isoformat() if e.createdAt else None,
+        }
+        for e in events
+    ]
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────

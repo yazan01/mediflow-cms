@@ -13,6 +13,7 @@ from routers import pharmacy, hr, accounting, reports, users, dashboard, doctors
 from routers import laboratory, radiology, branches, shifts, notifications
 from routers import events, search, clinics, smtp
 from routers import whatsapp, sms_config, payment_gateway, feature_flags, api_keys
+from routers import notification_templates
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
@@ -81,6 +82,7 @@ app.include_router(sms_config.router)
 app.include_router(payment_gateway.router)
 app.include_router(feature_flags.router)
 app.include_router(api_keys.router)
+app.include_router(notification_templates.router)
 
 
 @app.get("/api/health")

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "integrations" | "history";
+type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history";
 
 type Settings = {
   clinicName: string; licenseNumber: string; phone: string; email: string;
@@ -73,6 +74,12 @@ type ApiKey = {
   key?: string;
 };
 
+type NotifTemplate = {
+  id: string; branchId: string | null; eventType: string; channel: string;
+  subject: string; body: string; variables: string[]; language: string;
+  isActive: boolean; isDefault: boolean; updatedAt: string | null;
+};
+
 const DEFAULT_SETTINGS: Settings = {
   clinicName: "", licenseNumber: "", phone: "", email: "", address: "",
   taxId: "", currency: "USD", timezone: "Asia/Amman", taxRate: 7,
@@ -116,6 +123,7 @@ const DAY_KEYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default function SettingsPage() {
   const { t } = useLanguage();
   const s = t.settings;
+  const router = useRouter();
 
   const [activeSection, setActiveSection] = useState<Section>("clinic");
   const [form, setForm] = useState<Settings>(DEFAULT_SETTINGS);
@@ -201,6 +209,13 @@ export default function SettingsPage() {
   const [apiKeyCreated, setApiKeyCreated] = useState<ApiKey | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
+  // Notification templates
+  const [templates, setTemplates] = useState<NotifTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [tplFilter, setTplFilter] = useState({ eventType: "", channel: "" });
+  const [tplEditing, setTplEditing] = useState<NotifTemplate | null>(null);
+  const [tplSaving, setTplSaving] = useState(false);
+
   // ── Loaders ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -231,6 +246,7 @@ export default function SettingsPage() {
     if (activeSection === "payment") loadPayment();
     if (activeSection === "features") loadFlags();
     if (activeSection === "apikeys") loadApiKeys();
+    if (activeSection === "templates") loadTemplates();
   }, [activeSection]);
 
   useEffect(() => {
@@ -327,6 +343,34 @@ export default function SettingsPage() {
       .then(setApiKeys)
       .catch(() => setApiKeys([]))
       .finally(() => setApiKeysLoading(false));
+  }
+
+  function loadTemplates(overrides?: { eventType?: string; channel?: string }) {
+    setTemplatesLoading(true);
+    const et = overrides?.eventType ?? tplFilter.eventType;
+    const ch = overrides?.channel ?? tplFilter.channel;
+    const params = new URLSearchParams();
+    if (et) params.set("event_type", et);
+    if (ch) params.set("channel", ch);
+    const qs = params.toString();
+    fetch(`/api/settings/notification-templates${qs ? `?${qs}` : ""}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then(setTemplates)
+      .catch(() => setTemplates([]))
+      .finally(() => setTemplatesLoading(false));
+  }
+
+  async function saveTplEdit() {
+    if (!tplEditing) return;
+    setTplSaving(true);
+    try {
+      const res = await fetch(`/api/settings/notification-templates/${tplEditing.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: tplEditing.subject, body: tplEditing.body, isActive: tplEditing.isActive }),
+      });
+      if (res.ok) { setTplEditing(null); loadTemplates(); }
+    } catch { /* silent */ }
+    finally { setTplSaving(false); }
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -550,11 +594,12 @@ export default function SettingsPage() {
     { key: "payment",       label: s.paymentConfig,       icon: "credit_card" },
     { key: "features",      label: s.featureFlags,        icon: "toggle_on" },
     { key: "apikeys",       label: s.apiKeys,             icon: "key" },
+    { key: "templates",     label: s.notifTemplates,      icon: "mail_outline" },
     { key: "integrations",  label: s.integrations,        icon: "cable" },
     { key: "history",       label: s.settingsHistory,     icon: "history" },
   ] as const;
 
-  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "integrations", "history"].includes(activeSection);
+  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history"].includes(activeSection);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -760,6 +805,9 @@ export default function SettingsPage() {
                                 </td>
                                 <td className="table-cell">
                                   <div className="flex items-center gap-1">
+                                    <button onClick={() => router.push(`/settings/branches/${b.id}`)} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg" aria-label={s.openBranchDetail} title={s.openBranchDetail}>
+                                      <span className="material-symbols-outlined text-[#1960a3] text-[16px]">open_in_new</span>
+                                    </button>
                                     <button onClick={() => openEditBranch(b)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg" aria-label={s.editBranch} title={s.editBranch}>
                                       <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
                                     </button>
@@ -1267,6 +1315,81 @@ export default function SettingsPage() {
                 </div>
               )}
 
+              {/* ── Notification Templates ── */}
+              {activeSection === "templates" && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                    <div className="p-5 border-b border-[#e3e2e6]">
+                      <h2 className="text-base font-semibold text-[#1a1c1e]">{s.notifTemplatesTitle}</h2>
+                      <p className="text-xs text-[#74777f] mt-0.5">{s.notifTemplatesDesc}</p>
+                    </div>
+                    {/* Filters */}
+                    <div className="px-5 py-3 border-b border-[#e3e2e6] flex items-center gap-4 flex-wrap">
+                      <select className="select-field w-48" value={tplFilter.eventType}
+                        onChange={e => { const v = e.target.value; setTplFilter(f => ({ ...f, eventType: v })); loadTemplates({ eventType: v }); }}>
+                        <option value="">{s.tplAllEvents}</option>
+                        {["appointment_reminder","appointment_confirmation","appointment_cancellation","lab_results","payment_receipt","password_reset","welcome","low_stock","leave_approved","leave_rejected"].map(ev => (
+                          <option key={ev} value={ev}>{ev.replace(/_/g, " ")}</option>
+                        ))}
+                      </select>
+                      <select className="select-field w-36" value={tplFilter.channel}
+                        onChange={e => { const v = e.target.value; setTplFilter(f => ({ ...f, channel: v })); loadTemplates({ channel: v }); }}>
+                        <option value="">{s.tplAllChannels}</option>
+                        <option value="email">Email</option>
+                        <option value="sms">SMS</option>
+                        <option value="whatsapp">WhatsApp</option>
+                      </select>
+                    </div>
+                    {templatesLoading ? (
+                      <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    ) : templates.length === 0 ? (
+                      <div className="p-12 flex flex-col items-center gap-3">
+                        <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">mail_outline</span>
+                        <p className="text-sm text-[#74777f]">{s.noNotifTemplates}</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead><tr className="bg-[#f8f7fb]">
+                            <th className="table-header">{s.tplEventType}</th>
+                            <th className="table-header">{s.tplChannel}</th>
+                            <th className="table-header">{s.tplLanguage}</th>
+                            <th className="table-header">{s.tplSubject}</th>
+                            <th className="table-header">{t.common.status}</th>
+                            <th className="table-header">{t.common.actions}</th>
+                          </tr></thead>
+                          <tbody>
+                            {templates.map(tpl => (
+                              <tr key={tpl.id} className="table-row">
+                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{tpl.eventType}</span></td>
+                                <td className="table-cell">
+                                  <span className={`badge text-[10px] ${tpl.channel === "email" ? "bg-[#d3e4ff] text-[#1960a3]" : tpl.channel === "sms" ? "bg-[#fff7ed] text-[#d97706]" : "bg-[#ccfbf1] text-[#0d9488]"}`}>
+                                    {tpl.channel}
+                                  </span>
+                                </td>
+                                <td className="table-cell text-[#74777f] text-xs">{tpl.language}</td>
+                                <td className="table-cell text-[#74777f] text-xs max-w-[200px] truncate">{tpl.subject || t.common.na}</td>
+                                <td className="table-cell">
+                                  <span className={`badge text-[10px] ${tpl.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                                    {tpl.isActive ? t.common.active : t.common.inactive}
+                                  </span>
+                                  {tpl.isDefault && <span className="ms-1 badge text-[10px] bg-[#d3e4ff] text-[#1960a3]">{s.tplDefault}</span>}
+                                </td>
+                                <td className="table-cell">
+                                  <button onClick={() => setTplEditing({ ...tpl })} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.edit}>
+                                    <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* ── Integrations ── */}
               {activeSection === "integrations" && (
                 <div className="space-y-4">
@@ -1404,6 +1527,64 @@ export default function SettingsPage() {
               <button onClick={() => setBranchModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={saveBranch} disabled={branchSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
                 {branchSaving ? <Spinner /> : null}{t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Template Edit Modal ── */}
+      {tplEditing && (
+        <div role="dialog" aria-modal="true" aria-labelledby="tpl-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setTplEditing(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+              <div>
+                <h2 id="tpl-modal-title" className="text-lg font-bold text-[#1a1c1e]">{s.tplEdit}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{tplEditing.eventType}</span>
+                  <span className={`badge text-[10px] ${tplEditing.channel === "email" ? "bg-[#d3e4ff] text-[#1960a3]" : tplEditing.channel === "sms" ? "bg-[#fff7ed] text-[#d97706]" : "bg-[#ccfbf1] text-[#0d9488]"}`}>{tplEditing.channel}</span>
+                  <span className="text-xs text-[#74777f]">{tplEditing.language}</span>
+                </div>
+              </div>
+              <button onClick={() => setTplEditing(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {tplEditing.channel === "email" && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.tplSubject}</label>
+                  <input className="input-field" value={tplEditing.subject} onChange={e => setTplEditing(tpl => tpl ? ({ ...tpl, subject: e.target.value }) : tpl)} />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.tplBody}</label>
+                <textarea className="input-field resize-none font-mono text-xs" rows={10} value={tplEditing.body} onChange={e => setTplEditing(tpl => tpl ? ({ ...tpl, body: e.target.value }) : tpl)} />
+              </div>
+              {tplEditing.variables.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.tplVariables}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {tplEditing.variables.map(v => (
+                      <code key={v} className="bg-[#f4f3f7] text-[#1960a3] text-[11px] px-2 py-0.5 rounded font-mono cursor-pointer hover:bg-[#d3e4ff]"
+                        onClick={() => navigator.clipboard.writeText(`{{${v}}}`)}
+                        title="Click to copy">
+                        {`{{${v}}}`}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between py-2 border-t border-[#e3e2e6]">
+                <span className="text-sm font-medium text-[#1a1c1e]">{t.common.active}</span>
+                <button onClick={() => setTplEditing(tpl => tpl ? ({ ...tpl, isActive: !tpl.isActive }) : tpl)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${tplEditing.isActive ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${tplEditing.isActive ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+              <button onClick={() => setTplEditing(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
+              <button onClick={saveTplEdit} disabled={tplSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
+                {tplSaving ? <Spinner /> : null}{t.common.save}
               </button>
             </div>
           </div>
