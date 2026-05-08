@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,8 @@ const LABEL =
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const { t } = useLanguage();
+  const b = t.billing;
 
   // Patient search
   const [patientQuery, setPatientQuery] = useState("");
@@ -94,6 +97,16 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState("");
+
+  // Category label map (inside component so it re-renders on language change)
+  const CAT_LABELS: Record<string, string> = {
+    Consultation: b.catConsultation,
+    Procedure: b.catProcedure,
+    Lab: b.catLab,
+    Radiology: b.catRadiology,
+    Medication: b.catMedication,
+    Other: b.catOther,
+  };
 
   // ── Patient search debounce ──────────────────────────────────────────────
 
@@ -143,7 +156,6 @@ export default function NewInvoicePage() {
     setSelectedPatient(p);
     setPatientQuery(`${p.firstName} ${p.lastName}`);
     setDropdownOpen(false);
-    // Pre-fill insurance from patient record if present
     if (p.insuranceProvider) {
       setInsuranceClaim(true);
       setInsuranceProvider(p.insuranceProvider);
@@ -178,7 +190,7 @@ export default function NewInvoicePage() {
 
   function removeItem(id: string) {
     setItems((prev) => {
-      if (prev.length === 1) return prev; // keep at least one row
+      if (prev.length === 1) return prev;
       return prev.filter((it) => it._id !== id);
     });
   }
@@ -187,7 +199,6 @@ export default function NewInvoicePage() {
 
   const subtotal = items.reduce((sum, it) => sum + itemTotal(it), 0);
 
-  // Invoice-level discount: flat amount takes precedence over rate
   const invoiceDiscount = (() => {
     const flat = parseFloat(discountAmount);
     if (!isNaN(flat) && flat > 0) return flat;
@@ -206,14 +217,15 @@ export default function NewInvoicePage() {
   // ── Submission ───────────────────────────────────────────────────────────
 
   async function submit(asDraft = false) {
+    if (saving || savingDraft) return;
     setError("");
     if (!selectedPatient) {
-      setError("Please select a patient before creating the invoice.");
+      setError(b.noPatientError);
       return;
     }
     const validItems = items.filter((it) => it.description.trim());
     if (validItems.length === 0) {
-      setError("Add at least one item with a description.");
+      setError(b.noItemsError);
       return;
     }
 
@@ -251,13 +263,13 @@ export default function NewInvoicePage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to create invoice.");
+        setError(data.detail ?? data.error ?? b.createFailed);
         return;
       }
 
       router.push(`/billing/${data.id}`);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.common.networkError);
     } finally {
       setSaving(false);
       setSavingDraft(false);
@@ -273,14 +285,13 @@ export default function NewInvoicePage() {
         <Link
           href="/billing"
           className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors text-[#74777f] hover:text-[#1a1c1e]"
+          aria-label={t.common.back}
         >
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">New Invoice</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">
-            Create a new billing invoice for a patient
-          </p>
+          <h1 className="text-2xl font-bold text-[#1a1c1e]">{b.newInvoice}</h1>
+          <p className="text-sm text-[#74777f] mt-0.5">{b.newInvoiceDesc}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button
@@ -294,7 +305,7 @@ export default function NewInvoicePage() {
             ) : (
               <span className="material-symbols-outlined text-[18px]">save</span>
             )}
-            Save as Draft
+            {b.saveAsDraft}
           </button>
           <button
             type="button"
@@ -307,7 +318,7 @@ export default function NewInvoicePage() {
             ) : (
               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
             )}
-            Create Invoice
+            {saving ? b.creatingInvoice : b.createInvoice}
           </button>
         </div>
       </div>
@@ -321,7 +332,8 @@ export default function NewInvoicePage() {
           <p className="text-sm text-[#93000a]">{error}</p>
           <button
             onClick={() => setError("")}
-            className="ml-auto p-1 hover:bg-[#ba1a1a]/10 rounded transition-colors"
+            className="ms-auto p-1 hover:bg-[#ba1a1a]/10 rounded transition-colors"
+            aria-label={t.common.close}
           >
             <span className="material-symbols-outlined text-[#ba1a1a] text-[18px]">close</span>
           </button>
@@ -335,19 +347,19 @@ export default function NewInvoicePage() {
           {/* ── Patient Search ── */}
           <div className={`${CARD} p-6`}>
             <h2 className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-4">
-              Patient
+              {b.patient}
             </h2>
 
             <div ref={searchRef} className="relative">
-              <label className={LABEL}>Search Patient *</label>
+              <label className={LABEL}>{b.searchPatientLabel} *</label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px] pointer-events-none">
                   search
                 </span>
                 <input
                   type="text"
-                  className={`${INPUT} pl-9 pr-9`}
-                  placeholder="Type patient name or MRN…"
+                  className={`${INPUT} ps-9 pe-9`}
+                  placeholder={b.searchPatientPlaceholder}
                   value={patientQuery}
                   onChange={(e) => {
                     setPatientQuery(e.target.value);
@@ -357,7 +369,7 @@ export default function NewInvoicePage() {
                   autoComplete="off"
                 />
                 {searchLoading && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2">
                     <span className="w-4 h-4 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin block" />
                   </span>
                 )}
@@ -365,7 +377,8 @@ export default function NewInvoicePage() {
                   <button
                     type="button"
                     onClick={clearPatient}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-[#e3e2e6] rounded transition-colors"
+                    className="absolute end-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-[#e3e2e6] rounded transition-colors"
+                    aria-label={t.common.close}
                   >
                     <span className="material-symbols-outlined text-[#74777f] text-[18px]">close</span>
                   </button>
@@ -410,7 +423,7 @@ export default function NewInvoicePage() {
                     <span className="material-symbols-outlined text-[#c4c6cf] text-2xl block mb-1">
                       person_search
                     </span>
-                    <p className="text-sm text-[#74777f]">No patients found</p>
+                    <p className="text-sm text-[#74777f]">{b.noPatientsFound}</p>
                   </div>
                 )}
             </div>
@@ -461,7 +474,7 @@ export default function NewInvoicePage() {
           <div className={`${CARD} overflow-hidden`}>
             <div className="px-6 py-4 border-b border-[#e3e2e6] flex items-center justify-between">
               <h2 className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">
-                Invoice Items
+                {b.invoiceItems}
               </h2>
               <button
                 type="button"
@@ -469,19 +482,19 @@ export default function NewInvoicePage() {
                 className="flex items-center gap-1.5 text-sm font-semibold text-[#1960a3] hover:bg-[#d3e4ff]/30 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                Add Item
+                {b.addItem}
               </button>
             </div>
 
             {/* Table header */}
             <div className="hidden md:grid grid-cols-[1fr_140px_68px_110px_80px_100px_36px] gap-2 px-4 py-2.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">
               {[
-                "Description",
-                "Category",
-                "Qty",
-                "Unit Price",
-                "Disc %",
-                "Total",
+                b.colDescription,
+                b.colCategory,
+                b.colQty,
+                b.colUnitPrice,
+                b.colDiscountPct,
+                b.total,
                 "",
               ].map((h, i) => (
                 <div
@@ -503,12 +516,12 @@ export default function NewInvoicePage() {
                   {/* Description */}
                   <div>
                     <label className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider">
-                      Description
+                      {b.colDescription}
                     </label>
                     <input
                       type="text"
                       className={INPUT}
-                      placeholder={`Item ${idx + 1} description…`}
+                      placeholder={`${b.colDescription} ${idx + 1}…`}
                       value={item.description}
                       onChange={(e) =>
                         updateItem(item._id, "description", e.target.value)
@@ -519,7 +532,7 @@ export default function NewInvoicePage() {
                   {/* Category */}
                   <div>
                     <label className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider">
-                      Category
+                      {b.colCategory}
                     </label>
                     <select
                       className={INPUT}
@@ -530,7 +543,7 @@ export default function NewInvoicePage() {
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
-                          {c}
+                          {CAT_LABELS[c] ?? c}
                         </option>
                       ))}
                     </select>
@@ -539,7 +552,7 @@ export default function NewInvoicePage() {
                   {/* Qty */}
                   <div>
                     <label className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider">
-                      Qty
+                      {b.colQty}
                     </label>
                     <input
                       type="number"
@@ -560,7 +573,7 @@ export default function NewInvoicePage() {
                   {/* Unit Price */}
                   <div>
                     <label className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider">
-                      Unit Price
+                      {b.colUnitPrice}
                     </label>
                     <div className="relative">
                       <span className="absolute start-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
@@ -570,7 +583,7 @@ export default function NewInvoicePage() {
                         type="number"
                         min={0}
                         step={0.01}
-                        className={`${INPUT} pl-6`}
+                        className={`${INPUT} ps-6`}
                         placeholder="0.00"
                         value={item.unitPrice === 0 ? "" : item.unitPrice}
                         onChange={(e) =>
@@ -587,7 +600,7 @@ export default function NewInvoicePage() {
                   {/* Discount % */}
                   <div>
                     <label className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider">
-                      Disc %
+                      {b.colDiscountPct}
                     </label>
                     <div className="relative">
                       <input
@@ -595,7 +608,7 @@ export default function NewInvoicePage() {
                         min={0}
                         max={100}
                         step={1}
-                        className={`${INPUT} pr-6`}
+                        className={`${INPUT} pe-6`}
                         placeholder="0"
                         value={item.discount === 0 ? "" : item.discount}
                         onChange={(e) =>
@@ -609,7 +622,7 @@ export default function NewInvoicePage() {
                           )
                         }
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
+                      <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
                         %
                       </span>
                     </div>
@@ -618,7 +631,7 @@ export default function NewInvoicePage() {
                   {/* Row total */}
                   <div className="text-sm font-semibold text-[#1a1c1e] tabular-nums text-right">
                     <span className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider block">
-                      Total
+                      {b.total}
                     </span>
                     {formatCurrency(itemTotal(item))}
                   </div>
@@ -630,7 +643,7 @@ export default function NewInvoicePage() {
                       onClick={() => removeItem(item._id)}
                       disabled={items.length === 1}
                       className="p-1.5 rounded-lg text-[#74777f] hover:text-[#ba1a1a] hover:bg-[#ffdad6] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Remove item"
+                      aria-label={t.common.delete}
                     >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
@@ -642,7 +655,7 @@ export default function NewInvoicePage() {
             {/* Subtotal row */}
             <div className="px-6 py-3 bg-[#f4f3f7] border-t border-[#e3e2e6] flex items-center justify-between">
               <span className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">
-                Items Subtotal
+                {b.itemsSubtotal}
               </span>
               <span className="text-sm font-bold text-[#1a1c1e] tabular-nums">
                 {formatCurrency(subtotal)}
@@ -653,12 +666,12 @@ export default function NewInvoicePage() {
           {/* ── Optional Fields ── */}
           <div className={`${CARD} p-6 space-y-5`}>
             <h2 className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">
-              Additional Details
+              {b.additionalDetails}
             </h2>
 
             {/* Due date */}
             <div>
-              <label className={LABEL}>Due Date</label>
+              <label className={LABEL}>{b.dueDateLabel}</label>
               <input
                 type="date"
                 className={INPUT}
@@ -693,17 +706,17 @@ export default function NewInvoicePage() {
                   <span className="material-symbols-outlined text-[18px] text-[#1960a3]">
                     health_and_safety
                   </span>
-                  Bill to Insurance
+                  {b.billToInsurance}
                 </label>
-                <p className="text-xs text-[#74777f] ml-auto hidden sm:block">
-                  An insurance claim will be attached to this invoice
+                <p className="text-xs text-[#74777f] ms-auto hidden sm:block">
+                  {b.insuranceClaimNote}
                 </p>
               </div>
 
               {insuranceClaim && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ps-1">
                   <div>
-                    <label className={LABEL}>Insurance Provider *</label>
+                    <label className={LABEL}>{b.insuranceProviderLabel} *</label>
                     <input
                       type="text"
                       className={INPUT}
@@ -713,11 +726,11 @@ export default function NewInvoicePage() {
                     />
                   </div>
                   <div>
-                    <label className={LABEL}>Policy / Member No.</label>
+                    <label className={LABEL}>{b.policyMemberNo}</label>
                     <input
                       type="text"
                       className={INPUT}
-                      placeholder="Policy number"
+                      placeholder={b.policyPlaceholder}
                       value={insurancePolicyNo}
                       onChange={(e) => setInsurancePolicyNo(e.target.value)}
                     />
@@ -728,11 +741,11 @@ export default function NewInvoicePage() {
 
             {/* Notes */}
             <div>
-              <label className={LABEL}>Notes</label>
+              <label className={LABEL}>{t.common.notes}</label>
               <textarea
                 className={`${INPUT} resize-none`}
                 rows={3}
-                placeholder="Any notes to include on the invoice…"
+                placeholder={b.notesPlaceholder}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -745,12 +758,12 @@ export default function NewInvoicePage() {
           {/* Totals panel */}
           <div className={`${CARD} p-6 space-y-4`}>
             <h2 className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">
-              Invoice Summary
+              {b.invoiceSummary}
             </h2>
 
             {/* Subtotal */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#74777f]">Subtotal</span>
+              <span className="text-sm text-[#74777f]">{b.subtotal}</span>
               <span className="text-sm font-semibold text-[#1a1c1e] tabular-nums">
                 {formatCurrency(subtotal)}
               </span>
@@ -759,7 +772,7 @@ export default function NewInvoicePage() {
             <div className="border-t border-[#e3e2e6] pt-4 space-y-3">
               {/* Invoice-level discount */}
               <div>
-                <label className={LABEL}>Invoice Discount</label>
+                <label className={LABEL}>{b.invoiceDiscountLabel}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <span className="absolute start-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
@@ -769,8 +782,8 @@ export default function NewInvoicePage() {
                       type="number"
                       min={0}
                       step={0.01}
-                      className={`${INPUT} pl-6`}
-                      placeholder="Flat amt"
+                      className={`${INPUT} ps-6`}
+                      placeholder={b.flatAmtPlaceholder}
                       value={discountAmount}
                       onChange={(e) => {
                         setDiscountAmount(e.target.value);
@@ -784,15 +797,15 @@ export default function NewInvoicePage() {
                       min={0}
                       max={100}
                       step={0.5}
-                      className={`${INPUT} pr-6`}
-                      placeholder="Rate"
+                      className={`${INPUT} pe-6`}
+                      placeholder={b.ratePlaceholder}
                       value={discountRate}
                       onChange={(e) => {
                         setDiscountRate(e.target.value);
                         if (e.target.value) setDiscountAmount("");
                       }}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
                       %
                     </span>
                   </div>
@@ -801,19 +814,19 @@ export default function NewInvoicePage() {
 
               {/* Tax rate */}
               <div>
-                <label className={LABEL}>Tax Rate</label>
+                <label className={LABEL}>{b.taxRateLabel}</label>
                 <div className="relative">
                   <input
                     type="number"
                     min={0}
                     max={100}
                     step={0.5}
-                    className={`${INPUT} pr-6`}
+                    className={`${INPUT} pe-6`}
                     placeholder="0"
                     value={taxRate}
                     onChange={(e) => setTaxRate(e.target.value)}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-[#74777f] pointer-events-none">
                     %
                   </span>
                 </div>
@@ -823,14 +836,14 @@ export default function NewInvoicePage() {
             {/* Calculated breakdown */}
             <div className="border-t border-[#e3e2e6] pt-4 space-y-2.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[#74777f]">Subtotal</span>
+                <span className="text-[#74777f]">{b.subtotal}</span>
                 <span className="tabular-nums">{formatCurrency(subtotal)}</span>
               </div>
 
               {invoiceDiscount > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[#74777f]">
-                    Discount
+                    {b.discount}
                     {discountRate && !discountAmount
                       ? ` (${discountRate}%)`
                       : ""}
@@ -843,21 +856,21 @@ export default function NewInvoicePage() {
 
               {taxAmount > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#74777f]">Tax ({taxRate}%)</span>
+                  <span className="text-[#74777f]">{b.tax} ({taxRate}%)</span>
                   <span className="tabular-nums">{formatCurrency(taxAmount)}</span>
                 </div>
               )}
 
               {/* Total */}
               <div className="flex items-center justify-between pt-3 border-t border-[#e3e2e6]">
-                <span className="text-base font-bold text-[#1a1c1e]">Total Amount</span>
+                <span className="text-base font-bold text-[#1a1c1e]">{b.totalAmount}</span>
                 <span className="text-xl font-bold text-[#002045] tabular-nums">
                   {formatCurrency(totalAmount)}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[#74777f] font-medium">Balance Due</span>
+                <span className="text-[#74777f] font-medium">{b.balanceDue}</span>
                 <span className="font-bold text-[#ba1a1a] tabular-nums">
                   {formatCurrency(totalAmount)}
                 </span>
@@ -869,7 +882,7 @@ export default function NewInvoicePage() {
           {selectedPatient ? (
             <div className={`${CARD} p-5`}>
               <h2 className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-4">
-                Bill To
+                {b.billTo}
               </h2>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -902,7 +915,7 @@ export default function NewInvoicePage() {
                     <span>
                       {insuranceProvider}
                       {insurancePolicyNo && (
-                        <span className="ml-1 text-[#43474e]">
+                        <span className="ms-1 text-[#43474e]">
                           #{insurancePolicyNo}
                         </span>
                       )}
@@ -917,7 +930,7 @@ export default function NewInvoicePage() {
                 person_search
               </span>
               <p className="text-sm text-[#74777f] text-center">
-                Select a patient to see their billing info
+                {b.selectPatientBilling}
               </p>
             </div>
           )}
@@ -926,7 +939,7 @@ export default function NewInvoicePage() {
           {items.some((it) => it.description.trim()) && (
             <div className={`${CARD} p-5`}>
               <h2 className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-3">
-                Items ({items.filter((it) => it.description.trim()).length})
+                {b.items} ({items.filter((it) => it.description.trim()).length})
               </h2>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {items
@@ -941,7 +954,7 @@ export default function NewInvoicePage() {
                           {it.description}
                         </p>
                         <p className="text-[10px] text-[#74777f]">
-                          {it.category} · {it.quantity} ×{" "}
+                          {CAT_LABELS[it.category] ?? it.category} · {it.quantity} ×{" "}
                           {formatCurrency(it.unitPrice)}
                           {it.discount > 0 && ` · ${it.discount}% off`}
                         </p>
@@ -968,7 +981,7 @@ export default function NewInvoicePage() {
               ) : (
                 <span className="material-symbols-outlined text-[18px]">receipt_long</span>
               )}
-              Create Invoice
+              {saving ? b.creatingInvoice : b.createInvoice}
             </button>
             <button
               type="button"
@@ -981,7 +994,7 @@ export default function NewInvoicePage() {
               ) : (
                 <span className="material-symbols-outlined text-[18px]">save</span>
               )}
-              Save as Draft
+              {savingDraft ? t.common.saving : b.saveAsDraft}
             </button>
           </div>
         </div>
