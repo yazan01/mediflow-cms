@@ -703,6 +703,13 @@ const en = {
     removeResult: "Remove",
     markCollected: "Mark Collected",
     collectedAt: "Collected At",
+    result: "Result",
+    refRange: "Ref. Range",
+    flag: "Flag",
+    normal: "NORMAL",
+    abnormal: "ABNORMAL",
+    critical: "CRITICAL",
+    noResultsYet: "No results recorded yet.",
   },
 
   radiology: {
@@ -2587,6 +2594,13 @@ export const ar: T = {
     removeResult: "حذف",
     markCollected: "تأكيد أخذ العينة",
     collectedAt: "وقت أخذ العينة",
+    result: "النتيجة",
+    refRange: "المرجع الطبيعي",
+    flag: "العلامة",
+    normal: "طبيعي",
+    abnormal: "غير طبيعي",
+    critical: "حرج",
+    noResultsYet: "لم يتم تسجيل نتائج بعد.",
   },
 
   radiology: {

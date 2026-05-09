@@ -52,6 +52,8 @@ export default function EMRPage() {
   const [activeTab, setActiveTab] = useState<Tab>("consultations");
   const [expandedConsult, setExpandedConsult] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [labModal, setLabModal] = useState<LabOrder | null>(null);
+  const [labModalLoading, setLabModalLoading] = useState(false);
 
   const labStatusLabel: Record<string, string> = {
     PENDING_COLLECTION: t.laboratory.pendingCollection,
@@ -65,6 +67,16 @@ export default function EMRPage() {
     URGENT:  t.laboratory.urgent,
     STAT:    t.laboratory.stat,
   };
+
+  async function openLabModal(order: LabOrder) {
+    setLabModalLoading(true);
+    setLabModal(order);
+    try {
+      const res = await fetch(`/api/laboratory/${order.id}`);
+      if (res.ok) setLabModal(await res.json());
+    } catch { /* keep existing order data */ }
+    finally { setLabModalLoading(false); }
+  }
 
   const fetchEMR = useCallback(async () => {
     setLoading(true);
@@ -655,6 +667,7 @@ export default function EMRPage() {
                         </td>
                         <td className="table-cell text-right">
                           <button
+                            onClick={() => openLabModal(order)}
                             className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]"
                             aria-label={t.emr.viewResults}
                             title={t.emr.viewResults}
@@ -798,6 +811,98 @@ export default function EMRPage() {
           </div>
           <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noDocuments}</p>
           <p className="text-xs text-[var(--txt2)]">{t.emr.uploadFromProfile}</p>
+        </div>
+      )}
+
+      {/* ─── LAB RESULTS MODAL ─── */}
+      {labModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setLabModal(null)}>
+          <div className="bg-white rounded-2xl border border-[var(--border)] shadow-[var(--sh-xl)] w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="lab-modal-title">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+              <div>
+                <h3 id="lab-modal-title" className="text-base font-bold text-[var(--txt1)]">
+                  {t.laboratory.enterResultsTitle}
+                </h3>
+                <p className="text-xs text-[var(--txt2)] mt-0.5">
+                  #{labModal.id.slice(-8).toUpperCase()} · {labModal.tests.join(", ")}
+                </p>
+              </div>
+              <button onClick={() => setLabModal(null)} aria-label={t.common.close}
+                className="p-1.5 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[20px] text-[var(--txt2)]">close</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              {labModalLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-8 h-8 border-2 border-[var(--blue)]/30 border-t-[var(--blue)] rounded-full animate-spin" />
+                </div>
+              ) : !labModal.results || labModal.results.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <span className="material-symbols-outlined text-4xl text-[var(--txt3)]">science</span>
+                  <p className="text-sm text-[var(--txt2)]">{t.laboratory.noResultsYet ?? "No results recorded yet."}</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr>
+                      {[t.laboratory.testName ?? "Test", t.laboratory.result ?? "Result",
+                        t.laboratory.unit ?? "Unit", t.laboratory.refRange ?? "Ref. Range", t.laboratory.flag ?? "Flag"]
+                        .map((h) => (
+                          <th key={h} className="text-start text-[10px] font-bold uppercase tracking-wider text-[var(--txt3)] bg-[var(--surface2)] px-3 py-2 border-b border-[var(--border)]">{h}</th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {labModal.results.map((r) => (
+                      <tr key={r.id} className="border-b border-[var(--border)] last:border-0"
+                        style={r.isCritical ? { background: "#fff1f0" } : r.isAbnormal ? { background: "#fffbeb" } : {}}>
+                        <td className="px-3 py-2.5 font-medium text-[var(--txt1)]">{r.testName}</td>
+                        <td className="px-3 py-2.5 font-bold"
+                          style={{ color: r.isCritical ? "#ba1a1a" : r.isAbnormal ? "#d97706" : "#0d9488" }}>
+                          {r.value}
+                        </td>
+                        <td className="px-3 py-2.5 text-[var(--txt3)] text-xs">{r.unit ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-[var(--txt3)] text-xs">{r.referenceRange ?? "—"}</td>
+                        <td className="px-3 py-2.5">
+                          {r.isCritical && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#ffdad6", color: "#ba1a1a" }}>
+                              {t.laboratory.critical ?? "CRITICAL"}
+                            </span>
+                          )}
+                          {!r.isCritical && r.isAbnormal && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#fff7ed", color: "#d97706" }}>
+                              {t.laboratory.abnormal ?? "ABNORMAL"}
+                            </span>
+                          )}
+                          {!r.isCritical && !r.isAbnormal && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#ccfbf1", color: "#0d9488" }}>
+                              {t.laboratory.normal ?? "NORMAL"}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[var(--border)] flex justify-between items-center">
+              <button onClick={() => setLabModal(null)} className="btn-secondary">{t.common.close}</button>
+              <button onClick={() => { setLabModal(null); printDocument(`/print/lab-order/${labModal.id}`); }}
+                className="btn-primary flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">print</span>
+                {t.billing.printInvoice.replace("Invoice", "Report")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
