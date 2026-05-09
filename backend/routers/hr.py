@@ -396,6 +396,17 @@ def create_employee(body: EmployeeCreate, db: Session = Depends(get_db), user=De
         db.add(new_user)
         db.flush()
         resolved_user_id = new_user.id
+
+        if "DOCTOR" in (nu.roles or []):
+            existing_doc = db.query(models.Doctor).filter(models.Doctor.userId == new_user.id).first()
+            if not existing_doc:
+                db.add(models.Doctor(
+                    id=generate_id(),
+                    userId=new_user.id,
+                    specialization="General Medicine",
+                    consultationFee=100,
+                    isAvailable=True,
+                ))
     elif body.userId:
         # ── Link to existing user ───────────────────────────────────────────
         resolved_user = db.query(models.User).filter(models.User.id == body.userId).first()

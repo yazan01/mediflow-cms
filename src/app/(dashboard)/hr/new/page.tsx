@@ -4,10 +4,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 type User = { id: string; name: string; email: string };
 type Department = { id: string; name: string };
 type Branch = { id: string; name: string };
+
+const ROLE_OPTIONS = [
+  { value: "DOCTOR",          label: "Doctor" },
+  { value: "NURSE",           label: "Nurse" },
+  { value: "RECEPTIONIST",    label: "Receptionist" },
+  { value: "PHARMACIST",      label: "Pharmacist" },
+  { value: "LAB_TECHNICIAN",  label: "Lab Technician" },
+  { value: "RADIOLOGIST",     label: "Radiologist" },
+  { value: "ACCOUNTANT",      label: "Accountant" },
+  { value: "HR_OFFICER",      label: "HR Officer" },
+  { value: "STAFF",           label: "Staff" },
+] as const;
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -24,7 +37,7 @@ export default function NewEmployeePage() {
     hireDate: "", annualLeaveBalance: "21", sickLeaveBalance: "14", branchId: "",
     bankName: "", bankAccount: "",
   });
-  const [newUser, setNewUser] = useState({ name: "", email: "", password: "" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "STAFF" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,22 +61,19 @@ export default function NewEmployeePage() {
     try {
       let userId = form.userId;
       if (userMode === "new") {
-        const userRes = await fetch("/api/users", {
+        const created = await apiFetch<{ id: string }>("/api/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newUser.name, email: newUser.email, password: newUser.password, roles: ["STAFF"] }),
+          body: JSON.stringify({
+            name: newUser.name,
+            email: newUser.email,
+            password: newUser.password,
+            roles: [newUser.role],
+          }),
         });
-        if (!userRes.ok) {
-          const err = await userRes.json().catch(() => ({}));
-          setError(err.detail || t.hr.createEmployeeFailed);
-          return;
-        }
-        const created = await userRes.json();
         userId = created.id;
       }
-      const res = await fetch("/api/hr/employees", {
+      await apiFetch("/api/hr/employees", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
           departmentId: form.departmentId,
@@ -81,14 +91,9 @@ export default function NewEmployeePage() {
           bankAccount: form.bankAccount || undefined,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setError(err.detail || t.common.error);
-        return;
-      }
       router.push("/hr");
-    } catch {
-      setError(t.common.error);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t.hr.createEmployeeFailed);
     } finally {
       setSaving(false);
     }
@@ -136,7 +141,7 @@ export default function NewEmployeePage() {
                 </select>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#f4f3f7] rounded-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#f4f3f7] rounded-xl">
                 <div>
                   <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.newUserName} *</label>
                   <input className="input-field" value={newUser.name} onChange={e => setNewUser(u => ({ ...u, name: e.target.value }))} placeholder="Full name" />
@@ -148,6 +153,14 @@ export default function NewEmployeePage() {
                 <div>
                   <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.newUserPassword} *</label>
                   <input type="password" className="input-field" value={newUser.password} onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))} placeholder="Min 8 characters" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.newUserRole} *</label>
+                  <select className="input-field" value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value }))}>
+                    {ROLE_OPTIONS.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}

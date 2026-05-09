@@ -299,11 +299,10 @@ def create_consultation(
             id=generate_id(),
             consultationId=consultation.id,
             patientId=patientId,
-            doctorId=doctorId,
+            orderedByDoctorId=doctorId,
             tests=lo.tests,
             priority=lo.priority or "ROUTINE",
             notes=lo.notes,
-            date=datetime.now(),
         ))
 
     for ro in (body.radiologyOrders or []):
@@ -311,7 +310,7 @@ def create_consultation(
             id=generate_id(),
             consultationId=consultation.id,
             patientId=patientId,
-            doctorId=doctorId,
+            orderedByDoctorId=doctorId,
             modality=ro.modality,
             study=ro.study,
             bodyPart=ro.bodyPart,
@@ -397,11 +396,10 @@ def update_consultation(
                 id=generate_id(),
                 consultationId=c.id,
                 patientId=c.patientId,
-                doctorId=c.doctorId,
+                orderedByDoctorId=c.doctorId,
                 tests=lo.tests,
                 priority=lo.priority or "ROUTINE",
                 notes=lo.notes,
-                date=datetime.now(),
             ))
 
     if "radiologyOrders" in update_data and body.radiologyOrders is not None:
@@ -410,7 +408,7 @@ def update_consultation(
                 id=generate_id(),
                 consultationId=c.id,
                 patientId=c.patientId,
-                doctorId=c.doctorId,
+                orderedByDoctorId=c.doctorId,
                 modality=ro.modality,
                 study=ro.study,
                 bodyPart=ro.bodyPart,

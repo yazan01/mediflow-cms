@@ -43,9 +43,41 @@ async def lifespan(app: FastAPI):
             "Set REDIS_URL=redis://localhost:6379/0 for distributed caching."
         )
 
-    from database import engine, Base
+    from database import engine, Base, SessionLocal
     import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # Backfill Doctor records for any existing users with DOCTOR role that lack one.
+    # Idempotent — safe to run on every startup.
+    try:
+        from auth import generate_id
+        db = SessionLocal()
+        doctor_users = (
+            db.query(models.User)
+            .filter(models.User.isActive == True)
+            .all()
+        )
+        created = 0
+        for u in doctor_users:
+            roles = u.roles if isinstance(u.roles, list) else []
+            if "DOCTOR" in roles:
+                exists = db.query(models.Doctor).filter(models.Doctor.userId == u.id).first()
+                if not exists:
+                    db.add(models.Doctor(
+                        id=generate_id(),
+                        userId=u.id,
+                        specialization="General Medicine",
+                        consultationFee=100,
+                        isAvailable=True,
+                    ))
+                    created += 1
+        if created:
+            db.commit()
+            _log.info("Backfilled %d missing Doctor record(s) for existing DOCTOR users.", created)
+        db.close()
+    except Exception as exc:  # pragma: no cover
+        _log.warning("Doctor backfill skipped: %s", exc)
+
     yield
 
 

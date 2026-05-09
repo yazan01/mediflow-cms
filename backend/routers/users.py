@@ -18,6 +18,19 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 import models
 
 
+def _ensure_doctor_record(db, user_id: str) -> None:
+    """Auto-create a Doctor record when a user has DOCTOR role and doesn't have one yet."""
+    existing = db.query(models.Doctor).filter(models.Doctor.userId == user_id).first()
+    if not existing:
+        db.add(models.Doctor(
+            id=generate_id(),
+            userId=user_id,
+            specialization="General Medicine",
+            consultationFee=100,
+            isAvailable=True,
+        ))
+
+
 def parse_roles(raw) -> list:
     if isinstance(raw, list):
         return raw
@@ -187,6 +200,9 @@ def create_user(body: UserCreate, db: Session = Depends(get_db), _user=Depends(r
     db.add(user)
     db.flush()
 
+    if "DOCTOR" in body.roles:
+        _ensure_doctor_record(db, user.id)
+
     STAFF_ROLES = {"DOCTOR", "NURSE", "RECEPTIONIST", "PHARMACIST", "LAB_TECHNICIAN", "RADIOLOGIST", "ACCOUNTANT", "HR_OFFICER"}
     if any(r in STAFF_ROLES for r in body.roles) and body.departmentId:
         from datetime import datetime
@@ -225,6 +241,9 @@ def update_user(
 
     for field, value in updates.items():
         setattr(user, field, value)
+
+    if "roles" in updates and "DOCTOR" in updates["roles"]:
+        _ensure_doctor_record(db, user.id)
 
     db.commit()
     db.refresh(user)

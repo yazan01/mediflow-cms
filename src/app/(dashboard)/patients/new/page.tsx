@@ -8,7 +8,7 @@ import { InsuranceProviderSelect } from "@/components/ui/InsuranceProviderSelect
 import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 type FormData = {
-  name: string; dob: string; gender: string; nationality: string; nationalId: string;
+  firstName: string; lastName: string; dateOfBirth: string; gender: string; nationality: string; nationalId: string;
   phone: string; email: string; address: string;
   bloodType: string; allergies: string; chronicConditions: string;
   emergencyContactName: string; emergencyContactPhone: string;
@@ -16,7 +16,7 @@ type FormData = {
 };
 
 const EMPTY: FormData = {
-  name: "", dob: "", gender: "", nationality: "", nationalId: "",
+  firstName: "", lastName: "", dateOfBirth: "", gender: "", nationality: "", nationalId: "",
   phone: "", email: "", address: "",
   bloodType: "", allergies: "", chronicConditions: "",
   emergencyContactName: "", emergencyContactPhone: "",
@@ -46,6 +46,7 @@ export default function NewPatientPage() {
         ...form,
         allergies: form.allergies.split(",").map((s) => s.trim()).filter(Boolean),
         chronicConditions: form.chronicConditions.split(",").map((s) => s.trim()).filter(Boolean),
+        insuranceExpiry: form.insuranceExpiry || undefined,
       };
       const data = await apiFetch("/api/patients", {
         method: "POST",
@@ -116,12 +117,16 @@ export default function NewPatientPage() {
             <div className="space-y-5">
               <h2 className="text-base font-semibold text-[#1a1c1e] pb-3 border-b border-[#e3e2e6]">{p.sectionPersonal}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label={`${p.fullNameLabel} *`}>
-                  <input required value={form.name} onChange={(e) => update("name", e.target.value)}
-                    className="input-field" placeholder={p.fullNamePlaceholder} />
+                <Field label={`${p.firstName} *`}>
+                  <input required value={form.firstName} onChange={(e) => update("firstName", e.target.value)}
+                    className="input-field" placeholder={p.firstName} />
+                </Field>
+                <Field label={`${p.lastName} *`}>
+                  <input required value={form.lastName} onChange={(e) => update("lastName", e.target.value)}
+                    className="input-field" placeholder={p.lastName} />
                 </Field>
                 <Field label={`${p.dateOfBirth} *`}>
-                  <input required type="date" value={form.dob} onChange={(e) => update("dob", e.target.value)}
+                  <input required type="date" value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)}
                     className="input-field" />
                 </Field>
                 <Field label={`${p.genderLabel} *`}>
