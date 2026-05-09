@@ -288,7 +288,7 @@ export default function AppointmentDetailPage() {
                     </p>
                   </div>
                   <Link
-                    href={`/billing?invoice=${appt.invoiceId}`}
+                    href={`/billing/${appt.invoiceId as string}`}
                     className="flex items-center gap-2 border border-[#c4c6cf] px-3 py-2 rounded-lg text-sm text-[#43474e] hover:bg-white transition-colors"
                   >
                     <span className="material-symbols-outlined text-[16px]">receipt_long</span>
@@ -306,7 +306,7 @@ export default function AppointmentDetailPage() {
                   <p className="text-xs text-[#74777f] text-center">Invoice will be auto-created when consultation is completed</p>
                 )}
                 <Link
-                  href={`/billing?patient=${appt.patientId}&appointment=${id}`}
+                  href={`/billing/new?patientId=${appt.patientId as string}`}
                   className="flex items-center gap-2 border border-[#c4c6cf] px-4 py-2 rounded-lg text-sm text-[#43474e] hover:bg-[#f4f3f7] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span>

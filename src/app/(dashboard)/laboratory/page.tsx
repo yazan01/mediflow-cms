@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
 import type { LabOrder } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -32,6 +33,7 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 
 export default function LaboratoryPage() {
   const { t } = useLanguage();
+  const router = useRouter();
 
   const STATUS_STYLES = {
     PENDING_COLLECTION: { label: t.laboratory.pendingCollection, bg: "bg-[#e9e7eb]",   text: "text-[var(--txt2)]" },
@@ -245,7 +247,12 @@ export default function LaboratoryPage() {
                         <span className="text-xs font-mono font-semibold text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded">{order.id.slice(0, 8).toUpperCase()}</span>
                       </td>
                       <td className="px-5 py-4 border-b border-[var(--border)]">
-                        <p className="text-sm font-semibold text-[var(--txt1)]">{order.patientName}</p>
+                        <button
+                          onClick={() => router.push(`/emr/${order.patientId}`)}
+                          className="text-sm font-semibold text-[var(--blue)] hover:underline text-start"
+                        >
+                          {order.patientName}
+                        </button>
                       </td>
                       <td className="px-5 py-4 border-b border-[var(--border)]">
                         <div className="flex flex-wrap gap-1 max-w-xs">

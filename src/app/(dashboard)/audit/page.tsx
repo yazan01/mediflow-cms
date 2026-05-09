@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
 import type { AuditLog } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -21,8 +22,22 @@ const MODULE_COLORS: Record<string, string> = {
 
 const MODULES = ["ALL", "AUTH", "PATIENTS", "APPOINTMENTS", "EMR", "BILLING", "PHARMACY", "HR", "ACCOUNTING", "USERS"];
 
+function getEntityLink(module: string, entityType: string | undefined, entityId: string | undefined): string | null {
+  if (!entityId) return null;
+  if (module === "PATIENTS" || entityType === "Patient") return `/patients/${entityId}`;
+  if (module === "APPOINTMENTS" || entityType === "Appointment") return `/appointments/${entityId}`;
+  if (module === "BILLING" || entityType === "Invoice") return `/billing/${entityId}`;
+  if (module === "EMR" || entityType === "Consultation") return `/emr/${entityId}`;
+  if (module === "HR" || entityType === "Employee") return `/hr`;
+  if (module === "USERS" || entityType === "User") return `/users`;
+  if (module === "PHARMACY") return `/pharmacy`;
+  if (module === "ACCOUNTING") return `/accounting`;
+  return null;
+}
+
 export default function AuditPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -156,7 +171,21 @@ export default function AuditPage() {
                       <p className="text-sm text-[var(--txt1)]">{log.action}</p>
                     </td>
                     <td className="px-5 py-3.5 border-b border-[var(--border)]">
-                      <p className="text-xs text-[var(--txt2)]">{log.entityType ? `${log.entityType} #${log.entityId?.slice(0, 8)}` : "—"}</p>
+                      {log.entityType && log.entityId ? (() => {
+                        const link = getEntityLink(log.module, log.entityType, log.entityId);
+                        return link ? (
+                          <button
+                            onClick={() => router.push(link)}
+                            className="text-xs font-semibold text-[var(--blue)] hover:underline text-start"
+                          >
+                            {log.entityType} #{log.entityId.slice(0, 8)}
+                          </button>
+                        ) : (
+                          <p className="text-xs text-[var(--txt2)]">{log.entityType} #{log.entityId.slice(0, 8)}</p>
+                        );
+                      })() : (
+                        <p className="text-xs text-[var(--txt2)]">—</p>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 border-b border-[var(--border)]">
                       <p className="text-xs font-mono text-[var(--txt2)]">{log.ipAddress ?? "—"}</p>

@@ -80,9 +80,13 @@ export default function PatientDetailPage() {
             <span className="material-symbols-outlined text-[18px]">edit</span>
             {t.patients.editPatient}
           </button>
-          <Link href={`/appointments/new?patientId=${id}`} className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+          <Link href={`/appointments?patientId=${id}&action=book`} className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
             <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
             {t.patients.bookAppt}
+          </Link>
+          <Link href={`/billing/new?patientId=${id}`} className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+            <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+            {t.billing.newInvoice}
           </Link>
           <Link href={`/emr/${id}`} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
             <span className="material-symbols-outlined text-[18px]">medical_information</span>
@@ -153,7 +157,7 @@ export default function PatientDetailPage() {
                 </thead>
                 <tbody>
                   {(appointments as Record<string, unknown>[]).map((a) => (
-                    <tr key={a.id as string} className="hover:bg-[#f4f3f7] transition-colors">
+                    <tr key={a.id as string} onClick={() => router.push(`/appointments/${a.id as string}`)} className="hover:bg-[#f4f3f7] transition-colors cursor-pointer">
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-xs font-mono text-[#43474e]">{formatDateTime(a.scheduledAt as string)}</td>
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#1a1c1e]">{((a.doctor as Record<string, unknown>)?.user as Record<string, unknown>)?.name as string ?? "—"}</td>
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#43474e]">{a.type as string}</td>
@@ -195,17 +199,29 @@ export default function PatientDetailPage() {
         {activeTab === "billing" && (
           <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
             {invoices.length === 0 ? (
-              <EmptyState icon="receipt_long" title="No invoices" subtitle="Billing records for this patient will appear here" />
+              <div className="py-12 flex flex-col items-center gap-3">
+                <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#74777f] text-2xl">receipt_long</span>
+                </div>
+                <p className="text-sm font-semibold text-[#1a1c1e]">No invoices</p>
+                <p className="text-xs text-[#74777f]">Billing records for this patient will appear here</p>
+                <Link href={`/billing/new?patientId=${id}`} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity mt-1">
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  {t.billing.newInvoice}
+                </Link>
+              </div>
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr>{["Invoice #", "Date", "Total", "Paid", "Balance", "Status"].map((h) => (
-                    <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{h}</th>
-                  ))}</tr>
+                  <tr>
+                    {["Invoice #", "Date", "Total", "Paid", "Balance", "Status", ""].map((h) => (
+                      <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{h}</th>
+                    ))}
+                  </tr>
                 </thead>
                 <tbody>
                   {(invoices as Record<string, unknown>[]).map((inv) => (
-                    <tr key={inv.id as string} className="hover:bg-[#f4f3f7] transition-colors cursor-pointer" onClick={() => router.push(`/billing/${inv.id}`)}>
+                    <tr key={inv.id as string} className="hover:bg-[#f4f3f7] transition-colors">
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-xs font-mono font-semibold text-[#43474e]">{inv.invoiceNo as string}</td>
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-xs text-[#74777f]">{formatDate(inv.createdAt as string)}</td>
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm font-semibold text-[#1a1c1e]">{Number(inv.totalAmount).toFixed(2)}</td>
@@ -213,6 +229,11 @@ export default function PatientDetailPage() {
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#ba1a1a]">{Number(inv.balance).toFixed(2)}</td>
                       <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${inv.status === "PAID" ? "bg-[#ccfbf1] text-[#0d9488]" : inv.status === "OVERDUE" ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#fffbeb] text-[#d97706]"}`}>{inv.status as string}</span>
+                      </td>
+                      <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
+                        <button onClick={() => router.push(`/billing/${inv.id as string}`)} className="text-xs text-[#1960a3] font-semibold hover:underline">
+                          {t.common.view}
+                        </button>
                       </td>
                     </tr>
                   ))}

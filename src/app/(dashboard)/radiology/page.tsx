@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
@@ -19,6 +20,7 @@ const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
 
 interface RadiologyOrder {
   id: string;
+  patientId: string;
   patientName: string;
   mrn: string;
   modality: string;
@@ -49,6 +51,7 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 
 export default function RadiologyPage() {
   const { t } = useLanguage();
+  const router = useRouter();
 
   const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
     PENDING:          { label: t.radiology.pendingStatus,    bg: "bg-[#e9e7eb]",   text: "text-[var(--txt2)]" },
@@ -263,7 +266,12 @@ export default function RadiologyPage() {
                         <span className="text-xs font-mono font-semibold text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded">{order.id.slice(0, 8).toUpperCase()}</span>
                       </td>
                       <td className="px-5 py-4 border-b border-[var(--border)]">
-                        <p className="text-sm font-semibold text-[var(--txt1)]">{order.patientName}</p>
+                        <button
+                          onClick={() => router.push(`/emr/${order.patientId}`)}
+                          className="text-sm font-semibold text-[var(--blue)] hover:underline text-start"
+                        >
+                          {order.patientName}
+                        </button>
                         <p className="text-xs text-[var(--txt2)]">{order.mrn}</p>
                       </td>
                       <td className="px-5 py-4 border-b border-[var(--border)]">

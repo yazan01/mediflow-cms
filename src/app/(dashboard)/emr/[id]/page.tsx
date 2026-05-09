@@ -243,6 +243,13 @@ export default function EMRPage() {
               {t.emr.newConsultation}
             </Link>
             <Link
+              href={`/billing/new?patientId=${id}`}
+              className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] text-[var(--txt1)] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+              {t.billing.newInvoice}
+            </Link>
+            <Link
               href={`/patients/${id}`}
               className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] text-[var(--txt1)] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors"
             >

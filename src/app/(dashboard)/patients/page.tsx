@@ -383,7 +383,7 @@ export default function PatientsPage() {
                           <span className="material-symbols-outlined" style={{ fontSize: 17 }}>clinical_notes</span>
                         </Link>
                         <Link
-                          href={`/appointments/new?patient=${patient.id}`}
+                          href={`/appointments?patientId=${patient.id}&action=book`}
                           className="btn-icon btn-sm"
                           title={t.patients.bookAppt}
                         >

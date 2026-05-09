@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -67,6 +67,7 @@ const LABEL =
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const b = t.billing;
 
@@ -109,6 +110,36 @@ export default function NewInvoicePage() {
     Medication: b.catMedication,
     Other: b.catOther,
   };
+
+  // ── Pre-fill patient from URL params (e.g. from patient profile or appointment) ──
+
+  useEffect(() => {
+    const patientId = searchParams.get("patientId");
+    if (!patientId) return;
+
+    fetch(`/api/patients/${patientId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(patient => {
+        if (!patient) return;
+        const p: PatientResult = {
+          id: patient.id,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          mrn: patient.mrn,
+          phone: patient.phone ?? "",
+          insuranceProvider: patient.insuranceProvider,
+          insurancePolicyNo: patient.insurancePolicyNo,
+        };
+        setSelectedPatient(p);
+        setPatientQuery(`${p.firstName} ${p.lastName}`);
+        if (p.insuranceProvider) {
+          setInsuranceClaim(true);
+          setInsuranceProvider(p.insuranceProvider);
+          setInsurancePolicyNo(p.insurancePolicyNo ?? "");
+        }
+      })
+      .catch(() => {});
+  }, [searchParams]);
 
   // ── Patient search debounce ──────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Appointment } from "@/types";
@@ -273,6 +273,7 @@ function SkeletonListRows() {
 export default function AppointmentsPage() {
   const { t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const calendarRef = useRef<HTMLDivElement>(null);
 
   const a = t.appointments;
@@ -330,6 +331,34 @@ export default function AppointmentsPage() {
   const [cpError, setCpError] = useState("");
 
   const debouncedSearch = useDebounce(qbPatientSearch, 300);
+
+  // ── Pre-fill QuickBook from URL params (e.g. from patient profile) ──────────
+
+  useEffect(() => {
+    const patientId = searchParams.get("patientId");
+    const action = searchParams.get("action");
+    if (!patientId || action !== "book") return;
+
+    fetch(`/api/patients/${patientId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(patient => {
+        if (!patient) return;
+        const now = new Date();
+        const h = now.getHours();
+        const m = now.getMinutes() < 30 ? 30 : 0;
+        const bookH = m === 0 ? (h + 1) % 24 : h;
+        const bookDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), bookH);
+
+        setQuickBook({ date: bookDate, hour: bookH, minute: m });
+        setQbTime(`${String(bookH).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+        setQbDoctor("");
+        setQbType("CONSULTATION");
+        setQbRoom(""); setQbNotes(""); setQbError("");
+        setQbSelectedPatient({ id: patient.id, firstName: patient.firstName, lastName: patient.lastName, mrn: patient.mrn });
+        setQbPatientSearch(`${patient.firstName} ${patient.lastName}`);
+      })
+      .catch(() => {});
+  }, [searchParams]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -23,6 +24,7 @@ const ease = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 export default function BillingPage() {
   const { t } = useLanguage();
+  const router = useRouter();
 
   const STATUS_STYLES: Record<InvoiceStatus, { label: string; cls: string; dot: string }> = {
     PAID:      { label: t.billing.paidStatus,    cls: "status-ok",    dot: "var(--teal)"    },
@@ -340,9 +342,13 @@ export default function BillingPage() {
 
                       {/* Patient */}
                       <td className="table-cell">
-                        <p className="text-[13.5px] font-semibold" style={{ color: "var(--txt1)" }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); router.push(`/patients/${inv.patientId}`); }}
+                          className="text-[13.5px] font-semibold hover:underline text-start"
+                          style={{ color: "var(--blue)" }}
+                        >
                           {inv.patientName}
-                        </p>
+                        </button>
                         {inv.insuranceClaim && (
                           <span className="badge badge-sm status-info mt-0.5">
                             {t.billing.insurance}

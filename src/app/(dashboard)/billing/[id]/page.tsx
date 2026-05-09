@@ -125,9 +125,16 @@ export default function InvoiceDetailPage() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-xs text-[#74777f]">{t.billing.patient}</p>
-            <p className="text-sm font-semibold text-[#1a1c1e] mt-0.5">
-              {patient ? `${patient.firstName} ${patient.lastName}` : "—"}
-            </p>
+            {patient ? (
+              <button
+                onClick={() => router.push(`/patients/${patient.id as string}`)}
+                className="text-sm font-semibold text-[#1960a3] mt-0.5 hover:underline text-start"
+              >
+                {`${patient.firstName} ${patient.lastName}`}
+              </button>
+            ) : (
+              <p className="text-sm font-semibold text-[#1a1c1e] mt-0.5">—</p>
+            )}
           </div>
           <div>
             <p className="text-xs text-[#74777f]">{t.billing.mrn}</p>
