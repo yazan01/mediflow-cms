@@ -9,6 +9,7 @@ import {
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { PurchaseOrder, Vendor, Asset } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import { ErrorBanner } from "@/components/ErrorBanner";
 
 // ─── Local types ──────────────────────────────────────────────────────────────
@@ -317,9 +318,7 @@ export default function AccountingPage() {
   async function poActionCall(poId: string, action: "submit" | "approve" | "cancel") {
     setActionLoading(true); setActionError("");
     try {
-      const res = await fetch(`/api/accounting/purchase-orders/${poId}/${action}`, { method: "POST" });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.detail ?? "Action failed");
+      await apiFetch(`/api/accounting/purchase-orders/${poId}/${action}`, { method: "POST" });
       fetchPos();
       setActionPO(null); setPoAction(null);
     } catch (err: unknown) {
@@ -349,8 +348,8 @@ export default function AccountingPage() {
 
   async function expenseAction(id: string, action: "approve" | "reject") {
     try {
-      const res = await fetch(`/api/accounting/expenses/${id}/${action}`, { method: "POST" });
-      if (res.ok) { fetchExpenses(); fetchOverview(); setActionExpense(null); }
+      await apiFetch(`/api/accounting/expenses/${id}/${action}`, { method: "POST" });
+      fetchExpenses(); fetchOverview(); setActionExpense(null);
     } catch { /* ignore */ }
   }
 

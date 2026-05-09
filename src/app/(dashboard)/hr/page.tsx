@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { Employee, LeaveRequest } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { PayslipModal } from "@/components/PayslipModal";
 
@@ -755,7 +756,7 @@ export default function HRPage() {
 
   async function confirmDeleteShift() {
     if (!confirmDeleteShiftId) return;
-    await fetch(`/api/shifts/${confirmDeleteShiftId}`, { method: "DELETE" });
+    await apiFetch(`/api/shifts/${confirmDeleteShiftId}`, { method: "DELETE" });
     setConfirmDeleteShiftId(null);
     fetchShifts();
   }
@@ -785,7 +786,7 @@ export default function HRPage() {
   }
 
   async function removeAssignment(id: string) {
-    await fetch(`/api/shifts/assignments/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/shifts/assignments/${id}`, { method: "DELETE" });
     if (assignModal) fetchAssignments(assignModal.id);
     fetchShifts();
   }
@@ -1386,8 +1387,7 @@ export default function HRPage() {
                               <button
                                 onClick={async () => {
                                   if (!confirm(t.hr.reverseConfirm)) return;
-                                  const res = await fetch(`/api/hr/payroll/${pr.id}/reverse`, { method: "PATCH" });
-                                  if (res.ok) fetchPayroll();
+                                  try { await apiFetch(`/api/hr/payroll/${pr.id}/reverse`, { method: "PATCH" }); fetchPayroll(); } catch { /* ignore */ }
                                 }}
                                 className="flex items-center gap-1 px-3 py-1.5 border border-[#ffdad6] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6]/30 transition-colors"
                                 title={t.hr.reversePayroll}
@@ -1523,9 +1523,10 @@ export default function HRPage() {
             <button
               onClick={async () => {
                 if (!confirm(t.hr.carryForwardConfirm)) return;
-                const res = await fetch("/api/hr/leaves/carry-forward", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-                if (res.ok) { alert(t.hr.carryForwardDone); fetchStats(); }
-                else alert(t.hr.carryForwardFailed);
+                try {
+                  await apiFetch("/api/hr/leaves/carry-forward", { method: "POST", body: JSON.stringify({}) });
+                  alert(t.hr.carryForwardDone); fetchStats();
+                } catch { alert(t.hr.carryForwardFailed); }
               }}
               className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors"
             >

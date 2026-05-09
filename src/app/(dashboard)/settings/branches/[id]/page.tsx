@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 type Tab = "profile" | "settings" | "branding" | "appointments" | "clinics" | "whatsapp" | "sms" | "payment" | "audit";
 
@@ -385,7 +386,7 @@ export default function BranchDetailPage() {
 
   async function toggleClinicStatus(c: Clinic) {
     const newStatus = c.status === "active" ? "inactive" : "active";
-    await fetch(`/api/clinics/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+    await apiFetch(`/api/clinics/${c.id}`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
     loadClinics();
   }
 
@@ -420,9 +421,9 @@ export default function BranchDetailPage() {
     if (!body.apiKey) delete body.apiKey;
     if (!body.apiSecret) delete body.apiSecret;
     try {
-      const res = await fetch(`/api/settings/sms/${branchId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      setSmsStatus(res.ok ? "saved" : "error");
-      if (res.ok) setTimeout(() => setSmsStatus("idle"), 3000);
+      await apiFetch(`/api/settings/sms/${branchId}`, { method: "PATCH", body: JSON.stringify(body) });
+      setSmsStatus("saved");
+      setTimeout(() => setSmsStatus("idle"), 3000);
     } catch { setSmsStatus("error"); }
     finally { setSmsSaving(false); }
   }
@@ -433,9 +434,9 @@ export default function BranchDetailPage() {
     if (paymentSecretKey) body.secretKey = paymentSecretKey;
     if (paymentWebhookSecret) body.webhookSecret = paymentWebhookSecret;
     try {
-      const res = await fetch(`/api/settings/payment/${branchId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      setPaymentStatus(res.ok ? "saved" : "error");
-      if (res.ok) { setTimeout(() => setPaymentStatus("idle"), 3000); setPaymentSecretKey(""); setPaymentWebhookSecret(""); }
+      await apiFetch(`/api/settings/payment/${branchId}`, { method: "PATCH", body: JSON.stringify(body) });
+      setPaymentStatus("saved");
+      setTimeout(() => setPaymentStatus("idle"), 3000); setPaymentSecretKey(""); setPaymentWebhookSecret("");
     } catch { setPaymentStatus("error"); }
     finally { setPaymentSaving(false); }
   }
@@ -467,9 +468,8 @@ export default function BranchDetailPage() {
   async function syncMetaTemplates() {
     setWaSyncing(true); setWaSyncMsg("");
     try {
-      const res = await fetch(`/api/settings/whatsapp/${branchId}/sync-templates`, { method: "POST" });
-      const d = res.ok ? await res.json() : null;
-      setWaSyncMsg(d ? `${s.waSyncSuccess} (${d.synced})` : s.waSyncFailed);
+      const d = await apiFetch<{ synced: number }>(`/api/settings/whatsapp/${branchId}/sync-templates`, { method: "POST" });
+      setWaSyncMsg(`${s.waSyncSuccess} (${d.synced})`);
     } catch { setWaSyncMsg(s.waSyncFailed); }
     finally { setWaSyncing(false); }
   }

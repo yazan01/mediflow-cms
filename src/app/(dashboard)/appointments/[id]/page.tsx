@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatDate, formatDateTime, calculateAge } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import EditLog from "@/components/layout/EditLog";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 const BLOOD_LABELS: Record<string, string> = {
   A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−",
@@ -57,8 +58,7 @@ export default function AppointmentDetailPage() {
     setSendingReminder(true);
     setReminderResult(null);
     try {
-      const res = await fetch(`/api/appointments/${id}/remind`, { method: "POST" });
-      const data = await res.json();
+      const data = await apiFetch<Record<string, unknown>>(`/api/appointments/${id}/remind`, { method: "POST" });
       setReminderResult(data);
     } catch { /* ignore */ }
     finally { setSendingReminder(false); }
@@ -70,12 +70,13 @@ export default function AppointmentDetailPage() {
     if (status === "CHECKED_IN") body.checkedInAt = new Date().toISOString();
     if (status === "COMPLETED")  body.completedAt  = new Date().toISOString();
     if (status === "CANCELLED")  body.cancelledAt  = new Date().toISOString();
-    const res = await fetch(`/api/appointments/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) setAppt(await res.json());
+    try {
+      const updated = await apiFetch<typeof appt>(`/api/appointments/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      setAppt(updated);
+    } catch { /* handled by existing error state */ }
     setUpdating(false);
   }
 
@@ -89,17 +90,16 @@ export default function AppointmentDetailPage() {
         router.push(`/emr/${appt.patientId}?consultation=${appt.consultationId}`);
         return;
       }
-      const res = await fetch("/api/consultations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId: id }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setConsultError(err.detail || "Failed to start consultation");
+      let data: { id: string };
+      try {
+        data = await apiFetch<{ id: string }>("/api/consultations", {
+          method: "POST",
+          body: JSON.stringify({ appointmentId: id }),
+        });
+      } catch (err: unknown) {
+        setConsultError(err instanceof Error ? err.message : "Failed to start consultation");
         return;
       }
-      const data = await res.json();
       // Refresh appointment data then navigate to EMR with consultation context
       await fetchAppt();
       router.push(`/emr/${appt.patientId}?consultation=${data.id}`);

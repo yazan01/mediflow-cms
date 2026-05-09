@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history" | "health" | "insurance";
 
@@ -427,7 +428,7 @@ export default function SettingsPage() {
 
   async function deleteProvider(id: string, name: string) {
     if (!confirm(s.confirmDeleteProvider)) return;
-    await fetch(`/api/insurance-providers/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/insurance-providers/${id}`, { method: "DELETE" });
     setInsuranceProviders((ps) => ps.filter((p) => p.id !== id));
     setProviderStatus("deleted");
     setTimeout(() => setProviderStatus("idle"), 3000);
@@ -548,7 +549,7 @@ export default function SettingsPage() {
   }
 
   async function toggleBranchActive(b: Branch) {
-    await fetch(`/api/branches/${b.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !b.isActive }) });
+    await apiFetch(`/api/branches/${b.id}`, { method: "PATCH", body: JSON.stringify({ isActive: !b.isActive }) });
     loadBranches();
   }
 
@@ -593,7 +594,7 @@ export default function SettingsPage() {
 
   async function toggleClinicStatus(c: ClinicRow) {
     const newStatus = c.status === "active" ? "inactive" : "active";
-    await fetch(`/api/clinics/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+    await apiFetch(`/api/clinics/${c.id}`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
     loadClinics(clinicBranchId);
   }
 
@@ -602,9 +603,9 @@ export default function SettingsPage() {
     const body: Record<string, unknown> = { ...smtp };
     if (!body.password) delete body.password;
     try {
-      const res = await fetch("/api/settings/smtp", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      setSmtpStatus(res.ok ? "saved" : "error");
-      if (res.ok) setTimeout(() => setSmtpStatus("idle"), 3000);
+      await apiFetch("/api/settings/smtp", { method: "PATCH", body: JSON.stringify(body) });
+      setSmtpStatus("saved");
+      setTimeout(() => setSmtpStatus("idle"), 3000);
     } catch { setSmtpStatus("error"); }
     finally { setSmtpSaving(false); }
   }
@@ -613,8 +614,8 @@ export default function SettingsPage() {
     if (!smtpTestEmail.trim()) return;
     setSmtpTesting(true); setSmtpTestMsg("");
     try {
-      const res = await fetch("/api/settings/smtp/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toEmail: smtpTestEmail }) });
-      setSmtpTestMsg(res.ok ? s.smtpTestSuccess : s.smtpTestFailed);
+      await apiFetch("/api/settings/smtp/test", { method: "POST", body: JSON.stringify({ toEmail: smtpTestEmail }) });
+      setSmtpTestMsg(s.smtpTestSuccess);
     } catch { setSmtpTestMsg(s.smtpTestFailed); }
     finally { setSmtpTesting(false); }
   }
@@ -651,9 +652,9 @@ export default function SettingsPage() {
     if (!body.apiKey) delete body.apiKey;
     if (!body.apiSecret) delete body.apiSecret;
     try {
-      const res = await fetch("/api/settings/sms", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      setSmsStatus(res.ok ? "saved" : "error");
-      if (res.ok) setTimeout(() => setSmsStatus("idle"), 3000);
+      await apiFetch("/api/settings/sms", { method: "PATCH", body: JSON.stringify(body) });
+      setSmsStatus("saved");
+      setTimeout(() => setSmsStatus("idle"), 3000);
     } catch { setSmsStatus("error"); }
     finally { setSmsSaving(false); }
   }
@@ -664,9 +665,9 @@ export default function SettingsPage() {
     if (paymentSecretKey) body.secretKey = paymentSecretKey;
     if (paymentWebhookSecret) body.webhookSecret = paymentWebhookSecret;
     try {
-      const res = await fetch("/api/settings/payment", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      setPaymentStatus(res.ok ? "saved" : "error");
-      if (res.ok) { setTimeout(() => setPaymentStatus("idle"), 3000); setPaymentSecretKey(""); setPaymentWebhookSecret(""); }
+      await apiFetch("/api/settings/payment", { method: "PATCH", body: JSON.stringify(body) });
+      setPaymentStatus("saved");
+      setTimeout(() => setPaymentStatus("idle"), 3000); setPaymentSecretKey(""); setPaymentWebhookSecret("");
     } catch { setPaymentStatus("error"); }
     finally { setPaymentSaving(false); }
   }
@@ -690,20 +691,17 @@ export default function SettingsPage() {
       const body: Record<string, unknown> = { name: apiKeyForm.name, scopes: apiKeyForm.scopes };
       if (apiKeyForm.branchId) body.branchId = apiKeyForm.branchId;
       if (apiKeyForm.expiresAt) body.expiresAt = apiKeyForm.expiresAt;
-      const res = await fetch("/api/settings/api-keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) {
-        const data: ApiKey = await res.json();
-        setApiKeyCreated(data);
-        setApiKeyModal(false);
-        setApiKeyForm({ name: "", scopes: [], branchId: "", expiresAt: "" });
-        loadApiKeys();
-      }
+      const data = await apiFetch<ApiKey>("/api/settings/api-keys", { method: "POST", body: JSON.stringify(body) });
+      setApiKeyCreated(data);
+      setApiKeyModal(false);
+      setApiKeyForm({ name: "", scopes: [], branchId: "", expiresAt: "" });
+      loadApiKeys();
     } catch { /* silent */ }
     finally { setApiKeyCreating(false); }
   }
 
   async function revokeApiKey(id: string) {
-    await fetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
     setApiKeys((ks) => ks.filter((k) => k.id !== id));
   }
 

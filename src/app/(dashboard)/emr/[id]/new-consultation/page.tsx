@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import ICD10Search from "@/components/layout/ICD10Search";
 
 /* ─── Sub-types ─── */
@@ -233,21 +234,16 @@ export default function NewConsultationPage() {
       const payload = buildPayload();
       if (cId) {
         /* PATCH existing */
-        const res = await fetch(`/api/consultations/${cId}`, {
+        await apiFetch(`/api/consultations/${cId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) { const d = await res.json(); throw new Error(d.detail ?? "Failed to update"); }
       } else {
         /* POST new */
-        const res = await fetch("/api/consultations", {
+        const data = await apiFetch<{ id: string }>("/api/consultations", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail ?? "Failed to save");
         cId = data.id;
         setConsultationId(data.id);
       }
@@ -268,9 +264,7 @@ export default function NewConsultationPage() {
     if (!cId) return;
     setLocking(true);
     try {
-      const res = await fetch(`/api/consultations/${cId}/lock`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? "Failed to lock");
+      await apiFetch(`/api/consultations/${cId}/lock`, { method: "POST" });
       setIsLocked(true);
       setSuccessMsg(t.emr.invoiceAutoCreated);
       setTimeout(() => router.push(`/emr/${patientId}?consultation=${cId}`), 1200);

@@ -1,0 +1,19 @@
+
+> mediflow-cms@0.1.0 dev
+> next dev --webpack
+
+⚠ Port 3000 is in use by process 34440, using available port 3001 instead.
+▲ Next.js 16.2.4 (webpack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.100.252:3001
+- Environments: .env.local
+✓ Ready in 319ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          34440
+- Dir:          C:\Users\YazanHamdan\Downloads\New folder\mediflow-cms
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 34440 /F to stop it.
+[?25h

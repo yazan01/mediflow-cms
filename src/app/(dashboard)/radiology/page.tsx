@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { formatDateTime } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import { ErrorBanner } from "@/components/ErrorBanner";
 
 const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
@@ -491,9 +492,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const res = await fetch(`/api/radiology/${orderId}/images`, { method: "POST", body: formData });
-        if (!res.ok) throw new Error();
-        const newImage = await res.json();
+        const newImage = await apiFetch<UploadedImage>(`/api/radiology/${orderId}/images`, { method: "POST", body: formData });
         setImages((prev) => [...prev, newImage]);
       } catch {
         setError(`${t.radiology.uploadFailed} ${file.name}`);
@@ -513,8 +512,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
 
   async function handleDelete(imageId: string) {
     try {
-      const res = await fetch(`/api/radiology/images/${imageId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await apiFetch(`/api/radiology/images/${imageId}`, { method: "DELETE" });
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch {
       setError(t.radiology.deleteFailed);

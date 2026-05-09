@@ -7,6 +7,7 @@ import type { Patient } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import type { FetchError } from "@/lib/hooks/useDataFetch";
 
 const BLOOD_LABELS: Record<string, string> = {
@@ -60,17 +61,20 @@ export default function PatientsPage() {
   }, [fetchPatients]);
 
   async function handleDeactivate(id: string) {
-    const res = await fetch(`/api/patients/${id}`, { method: "DELETE" });
-    if (res.ok) { setDeleteId(null); fetchPatients(); }
+    try {
+      await apiFetch(`/api/patients/${id}`, { method: "DELETE" });
+      setDeleteId(null); fetchPatients();
+    } catch { /* already soft-deleted or network error */ }
   }
 
   async function handleActivate(id: string) {
-    const res = await fetch(`/api/patients/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: true }),
-    });
-    if (res.ok) { setActivateId(null); fetchPatients(); }
+    try {
+      await apiFetch(`/api/patients/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: true }),
+      });
+      setActivateId(null); fetchPatients();
+    } catch { /* ignore */ }
   }
 
   const totalPages = Math.ceil(total / pageSize);

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDate, formatCurrency, getInitials } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import EditLog from "@/components/layout/EditLog";
 
 type Employee = Record<string, unknown>;
@@ -160,7 +161,7 @@ export default function EmployeeProfilePage() {
 
   async function handleDeleteDoc(docId: string) {
     if (!confirm(t.common.confirmDelete)) return;
-    await fetch(`/api/hr/documents/${docId}`, { method: "DELETE" });
+    await apiFetch(`/api/hr/documents/${docId}`, { method: "DELETE" });
     setDocs(ds => ds.filter(d => d.id !== docId));
   }
 

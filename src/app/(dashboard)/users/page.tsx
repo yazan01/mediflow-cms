@@ -7,6 +7,7 @@ import type { User, UserRole } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, [onClose]);
@@ -126,9 +127,8 @@ export default function UsersPage() {
     setTogglingId(confirmToggle.id);
     setConfirmToggle(null);
     try {
-      await fetch(`/api/users/${confirmToggle.id}`, {
+      await apiFetch(`/api/users/${confirmToggle.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !confirmToggle.isActive }),
       });
       fetchUsers();
@@ -138,11 +138,12 @@ export default function UsersPage() {
   }
 
   async function resetPassword(id: string) {
-    const res = await fetch(`/api/users/${id}/reset-password`, { method: "POST" });
-    setToast(res.ok
-      ? { message: t.users.passwordResetSent, type: "success" }
-      : { message: t.users.passwordResetFailed, type: "error" }
-    );
+    try {
+      await apiFetch(`/api/users/${id}/reset-password`, { method: "POST" });
+      setToast({ message: t.users.passwordResetSent, type: "success" });
+    } catch {
+      setToast({ message: t.users.passwordResetFailed, type: "error" });
+    }
   }
 
   const totalPages = Math.ceil(total / pageSize);
@@ -488,9 +489,7 @@ function AddUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed");
+      await apiFetch("/api/users", { method: "POST", body: JSON.stringify(form) });
       onSaved();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create user");

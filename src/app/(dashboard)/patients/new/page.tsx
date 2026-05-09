@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { InsuranceProviderSelect } from "@/components/ui/InsuranceProviderSelect";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 type FormData = {
   name: string; dob: string; gender: string; nationality: string; nationalId: string;
@@ -46,13 +47,10 @@ export default function NewPatientPage() {
         allergies: form.allergies.split(",").map((s) => s.trim()).filter(Boolean),
         chronicConditions: form.chronicConditions.split(",").map((s) => s.trim()).filter(Boolean),
       };
-      const res = await fetch("/api/patients", {
+      const data = await apiFetch("/api/patients", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? data.error ?? p.registrationFailed);
       router.push(`/patients/${data.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : p.registrationFailed);
