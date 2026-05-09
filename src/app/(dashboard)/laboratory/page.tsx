@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, printDocument } from "@/lib/utils";
 import type { LabOrder } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
@@ -289,7 +289,7 @@ export default function LaboratoryPage() {
                           <button
                             aria-label={t.laboratory.printOrder}
                             title={t.laboratory.printOrder}
-                            onClick={() => window.print()}
+                            onClick={() => printDocument(`/print/lab-order/${order.id}`)}
                             className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">print</span>

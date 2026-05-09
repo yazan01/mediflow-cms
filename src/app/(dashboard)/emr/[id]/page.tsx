@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { formatDate, formatDateTime, getInitials } from "@/lib/utils";
+import { formatDate, formatDateTime, getInitials, printDocument } from "@/lib/utils";
 import type { Patient, Consultation, LabOrder, Vitals, Prescription } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -472,7 +472,7 @@ export default function EMRPage() {
                               {t.emr.prescriptions}
                             </p>
                             <button
-                              onClick={() => window.open(`/print/prescription/${c.id}`, "_blank")}
+                              onClick={() => printDocument(`/print/prescription/${c.id}`)}
                               className="flex items-center gap-1 text-[10px] font-semibold text-[var(--blue)] border border-[#1960a3]/30 px-2 py-1 rounded-lg hover:bg-[var(--blue-bg)] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[13px]">print</span>
@@ -732,7 +732,7 @@ export default function EMRPage() {
               <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider">{t.emr.prescriptions}</p>
               {consultations.length > 0 && consultations[0]?.id && (
                 <button
-                  onClick={() => window.open(`/print/prescription/${consultations[0].id}`, "_blank")}
+                  onClick={() => printDocument(`/print/prescription/${consultations[0].id}`)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-[var(--blue)] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[var(--blue-bg)] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[15px]">print</span>

@@ -47,7 +47,15 @@ export default function InvoicePrintPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!loading && invoice) setTimeout(() => window.print(), 400);
+    if (!loading && invoice) {
+      setTimeout(() => {
+        if (window.self === window.top) {
+          window.print();
+        } else {
+          window.parent.postMessage({ type: "mediflow-ready-to-print" }, window.location.origin);
+        }
+      }, 400);
+    }
   }, [loading, invoice]);
 
   if (loading) return (
@@ -89,7 +97,7 @@ export default function InvoicePrintPage() {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
         }
-        body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1a1c1e; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1a1c1e; background: white; }
         table { border-collapse: collapse; width: 100%; }
         th, td { padding: 8px 12px; text-align: left; }
         th { background: #f4f3f7; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #43474e; font-weight: 700; }

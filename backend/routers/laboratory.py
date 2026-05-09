@@ -42,6 +42,7 @@ def order_to_dict(o: models.LabOrder) -> dict:
             }
             for r in (o.results or [])
         ],
+        "branchId": o.consultation.appointment.branchId if o.consultation and o.consultation.appointment else None,
         "createdAt": o.createdAt.isoformat() if o.createdAt else None,
     }
 
@@ -110,6 +111,24 @@ class LabOrderUpdate(BaseModel):
     specimenCollected: Optional[bool] = None
     notes: Optional[str] = Field(None, max_length=2000)
     results: Optional[List[LabResultInput]] = None
+
+
+@router.get("/{order_id}")
+def get_lab_order(order_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    order = (
+        db.query(models.LabOrder)
+        .options(
+            joinedload(models.LabOrder.patient),
+            joinedload(models.LabOrder.orderedByDoctor).joinedload(models.Doctor.user),
+            selectinload(models.LabOrder.results),
+            joinedload(models.LabOrder.consultation).joinedload(models.Consultation.appointment),
+        )
+        .filter(models.LabOrder.id == order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Lab order not found")
+    return order_to_dict(order)
 
 
 @router.patch("/{order_id}")

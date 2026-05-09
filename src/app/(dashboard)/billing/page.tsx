@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, printDocument } from "@/lib/utils";
 import type { Invoice, InvoiceStatus } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
@@ -435,7 +435,7 @@ export default function BillingPage() {
                             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>visibility</span>
                           </Link>
                           <button
-                            onClick={() => window.open(`/api/billing/${inv.id}/print`, "_blank")}
+                            onClick={() => printDocument(`/print/invoice/${inv.id}`)}
                             className="btn-icon btn-sm" title={t.billing.printInvoice}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>print</span>

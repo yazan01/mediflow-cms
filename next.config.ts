@@ -30,11 +30,26 @@ const securityHeaders = [
   },
 ];
 
+// Print pages are intentionally loaded in a same-origin iframe by printDocument()
+const printHeaders = securityHeaders
+  .filter((h) => h.key !== "X-Frame-Options")
+  .map((h) =>
+    h.key === "Content-Security-Policy"
+      ? { ...h, value: h.value.replace("frame-ancestors 'none'", "frame-ancestors 'self'") }
+      : h
+  );
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      // Print routes must allow same-origin iframing
       {
-        source: "/(.*)",
+        source: "/print/(.*)",
+        headers: printHeaders,
+      },
+      // All other routes keep the strict security headers
+      {
+        source: "/((?!print).*)",
         headers: securityHeaders,
       },
     ];

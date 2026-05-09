@@ -44,7 +44,15 @@ export default function PrescriptionPrintPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!loading && data) setTimeout(() => window.print(), 400);
+    if (!loading && data) {
+      setTimeout(() => {
+        if (window.self === window.top) {
+          window.print();
+        } else {
+          window.parent.postMessage({ type: "mediflow-ready-to-print" }, window.location.origin);
+        }
+      }, 400);
+    }
   }, [loading, data]);
 
   if (loading) return (
@@ -73,7 +81,7 @@ export default function PrescriptionPrintPage() {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
         }
-        body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1a1c1e; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1a1c1e; background: white; }
       `}</style>
 
       <div className="max-w-[680px] mx-auto px-6 py-6">

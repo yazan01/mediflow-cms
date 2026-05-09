@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency, printDocument } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import EditLog from "@/components/layout/EditLog";
 
@@ -110,7 +110,7 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-2">
           <span className={`text-sm font-semibold px-3 py-1.5 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
           <button
-            onClick={() => window.open(`/print/invoice/${id}`, "_blank")}
+            onClick={() => printDocument(`/print/invoice/${id}`)}
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">print</span>

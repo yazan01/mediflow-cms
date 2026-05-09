@@ -101,6 +101,7 @@ def invoice_to_dict(inv: models.Invoice) -> dict:
         "notes": inv.notes,
         "dueDate": inv.dueDate.isoformat() if inv.dueDate else None,
         "createdAt": inv.createdAt.isoformat() if inv.createdAt else None,
+        "branchId": inv.branchId,
         "items": [
             {
                 "id": it.id,

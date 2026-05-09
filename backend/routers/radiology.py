@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 from database import get_db
@@ -34,6 +34,7 @@ def order_to_dict(o: models.RadiologyOrder) -> dict:
         "imageUrls": o.imageUrls or [],
         "notes": o.notes,
         "orderedBy": o.orderedByDoctor.user.name if o.orderedByDoctor and o.orderedByDoctor.user else "",
+        "branchId": o.consultation.appointment.branchId if o.consultation and o.consultation.appointment else None,
         "date": o.createdAt.isoformat() if o.createdAt else None,
         "createdAt": o.createdAt.isoformat() if o.createdAt else None,
     }
@@ -87,6 +88,23 @@ class RadiologyOrderUpdate(BaseModel):
     scheduledAt: Optional[str] = Field(None, max_length=40)
     report: Optional[str] = None
     notes: Optional[str] = Field(None, max_length=2000)
+
+
+@router.get("/{order_id}")
+def get_radiology_order(order_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    order = (
+        db.query(models.RadiologyOrder)
+        .options(
+            joinedload(models.RadiologyOrder.patient),
+            joinedload(models.RadiologyOrder.orderedByDoctor).joinedload(models.Doctor.user),
+            joinedload(models.RadiologyOrder.consultation).joinedload(models.Consultation.appointment),
+        )
+        .filter(models.RadiologyOrder.id == order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Radiology order not found")
+    return order_to_dict(order)
 
 
 @router.patch("/{order_id}")

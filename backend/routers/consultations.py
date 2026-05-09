@@ -98,6 +98,7 @@ def _consultation_detail(c: models.Consultation) -> dict:
     return {
         "id": c.id,
         "appointmentId": c.appointmentId,
+        "branchId": c.appointment.branchId if c.appointment else None,
         "createdAt": c.createdAt.isoformat() if c.createdAt else None,
         "chiefComplaint": c.chiefComplaint,
         "subjective": c.subjective,
