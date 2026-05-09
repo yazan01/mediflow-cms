@@ -9,6 +9,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { QuickConsultationModal } from "@/components/QuickConsultationModal";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 // ── Local types ────────────────────────────────────────────────────────────────
 
@@ -531,13 +532,11 @@ export default function AppointmentsPage() {
     }
     setCpSaving(true); setCpError("");
     try {
-      const res = await fetch("/api/patients", {
+      const patient = await apiFetch<{ id: string; firstName: string; lastName: string; mrn: string }>("/api/patients", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName: cpForm.firstName, lastName: cpForm.lastName, phone: cpForm.phone, dateOfBirth: cpForm.dob, gender: cpForm.gender }),
-      });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); setCpError(err.detail || t.appointments.createPatientFailed); return; }
-      const patient = await res.json();
+      }).catch(async (e) => { setCpError(e?.message || t.appointments.createPatientFailed); return null; });
+      if (!patient) return;
       setQbSelectedPatient({ id: patient.id, firstName: patient.firstName, lastName: patient.lastName, mrn: patient.mrn });
       setCreatePatientModal(false);
       setCpForm({ firstName: "", lastName: "", phone: "", dob: "", gender: "MALE" });
@@ -559,10 +558,9 @@ export default function AppointmentsPage() {
         type: qbType, room: qbRoom || undefined, notes: qbNotes || undefined,
         branchId: filterBranch !== "ALL" ? filterBranch : undefined,
       };
-      const res = await fetch("/api/appointments", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      await apiFetch("/api/appointments", {
+        method: "POST", body: JSON.stringify(body),
       });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); setQbError(err.detail || a.createFailed); return; }
       setQuickBook(null);
       fetchAppointments();
     } catch { setQbError(a.networkError); }
@@ -571,8 +569,8 @@ export default function AppointmentsPage() {
 
   async function updateStatus(apptId: string, status: string) {
     try {
-      await fetch(`/api/appointments/${apptId}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
+      await apiFetch(`/api/appointments/${apptId}`, {
+        method: "PATCH", body: JSON.stringify({ status }),
       });
       fetchAppointments();
       setSelectedAppt(prev => prev ? { ...prev, status: status as Appointment["status"] } : null);

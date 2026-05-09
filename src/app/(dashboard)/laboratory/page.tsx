@@ -7,6 +7,7 @@ import type { LabOrder } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 interface LabResultInput {
   testName: string;
@@ -97,12 +98,10 @@ export default function LaboratoryPage() {
 
   async function handleStatusUpdate(orderId: string, status: string) {
     try {
-      const res = await fetch(`/api/laboratory/${orderId}`, {
+      await apiFetch(`/api/laboratory/${orderId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error();
       setToast({ message: t.laboratory.statusUpdated, type: "success" });
       fetchOrders();
     } catch {
@@ -132,12 +131,10 @@ export default function LaboratoryPage() {
     if (valid.length === 0) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/laboratory/${resultsModal.id}`, {
+      await apiFetch(`/api/laboratory/${resultsModal.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ results: valid, status: "RESULTS_READY" }),
       });
-      if (!res.ok) throw new Error();
       setToast({ message: t.laboratory.resultsEntered, type: "success" });
       setResultsModal(null);
       fetchOrders();

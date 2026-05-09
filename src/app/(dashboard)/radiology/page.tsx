@@ -111,12 +111,10 @@ export default function RadiologyPage() {
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   async function patchOrder(id: string, body: Record<string, unknown>) {
-    const res = await fetch(`/api/radiology/${id}`, {
+    await apiFetch(`/api/radiology/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error();
   }
 
   async function handleCancelOrder() {
