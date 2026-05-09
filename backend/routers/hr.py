@@ -2005,7 +2005,7 @@ def get_analytics(
         "leaveStats": {
             "pendingCount": pending_leaves,
             "approvedThisMonth": approved_this_month,
-            "byType": [{"type": r.type, "count": r.count} for r in leave_by_type],
+            "byType": {r.type: r.count for r in leave_by_type},
         },
         "payrollSummary": {
             "totalNetSalary": float(payroll_row.net or 0) if payroll_row else 0,
