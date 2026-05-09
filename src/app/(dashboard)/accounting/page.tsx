@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -74,10 +74,10 @@ interface DepreciationSchedule {
 }
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
-const CARD = "bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
-const TH = "px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase tracking-wider";
-const TD = "px-4 py-3 text-sm text-[#1a1c1e]";
-const INPUT = "w-full bg-white border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]";
+const CARD = "bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)]";
+const TH = "px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider";
+const TD = "px-4 py-3 text-sm text-[var(--txt1)]";
+const INPUT = "w-full bg-[var(--surface)] border border-[var(--border2)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]";
 const BTN_SM = "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ function Spinner() {
   return (
     <div className="flex flex-col items-center gap-3 py-20">
       <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
-      <p className="text-sm text-[#74777f]">Loading…</p>
+      <p className="text-sm text-[var(--txt2)]">Loading…</p>
     </div>
   );
 }
@@ -95,11 +95,11 @@ function EmptyRow({ cols, icon, label, sub }: { cols: number; icon: string; labe
   return (
     <tr><td colSpan={cols} className="py-20 text-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-          <span className="material-symbols-outlined text-[#74777f] text-3xl">{icon}</span>
+        <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+          <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">{icon}</span>
         </div>
-        <p className="text-sm font-semibold text-[#1a1c1e]">{label}</p>
-        {sub && <p className="text-xs text-[#74777f]">{sub}</p>}
+        <p className="text-sm font-semibold text-[var(--txt1)]">{label}</p>
+        {sub && <p className="text-xs text-[var(--txt2)]">{sub}</p>}
       </div>
     </td></tr>
   );
@@ -116,9 +116,9 @@ function KpiCard({ icon, iconBg, iconColor, label, value, sub, badge }: {
         </div>
         {badge && <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>}
       </div>
-      <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-bold text-[#1a1c1e]">{value}</p>
-      {sub && <p className="text-xs text-[#74777f] mt-0.5">{sub}</p>}
+      <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-2xl font-bold text-[var(--txt1)]">{value}</p>
+      {sub && <p className="text-xs text-[var(--txt2)] mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -130,7 +130,7 @@ function StarRating({ rating, onChange }: { rating: number; onChange?: (r: numbe
         <span
           key={i}
           onClick={() => onChange?.(i)}
-          className={`material-symbols-outlined text-[18px] ${onChange ? "cursor-pointer" : ""} ${i <= rating ? "text-[#d97706]" : "text-[#e3e2e6]"}`}
+          className={`material-symbols-outlined text-[18px] ${onChange ? "cursor-pointer" : ""} ${i <= rating ? "text-[var(--warn)]" : "text-[#e3e2e6]"}`}
         >star</span>
       ))}
     </div>
@@ -147,10 +147,10 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white rounded-2xl shadow-2xl flex flex-col ${wide ? "w-full max-w-4xl" : "w-full max-w-lg"} max-h-[90vh] overflow-y-auto`}>
-        <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6] z-10">
-          <h2 className="text-lg font-bold text-[#1a1c1e]">{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors" aria-label="Close">
+      <div className={`relative bg-[var(--surface)] rounded-2xl shadow-[var(--sh-xl)] flex flex-col ${wide ? "w-full max-w-4xl" : "w-full max-w-lg"} max-h-[90vh] overflow-y-auto`}>
+        <div className="sticky top-0 bg-[var(--surface)] flex items-center justify-between px-6 py-4 border-b border-[var(--border)] z-10">
+          <h2 className="text-lg font-bold text-[var(--txt1)]">{title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors" aria-label="Close">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
@@ -176,23 +176,23 @@ export default function AccountingPage() {
   ];
 
   const PO_STATUS: Record<string, { label: string; cls: string }> = {
-    DRAFT:              { label: t.accounting.draftStatus,       cls: "bg-[#e3e2e6] text-[#74777f]" },
-    SUBMITTED:          { label: t.accounting.submittedStatus,   cls: "bg-[#d3e4ff] text-[#1960a3]" },
-    APPROVED:           { label: t.accounting.approvedStatus,    cls: "bg-[#ccfbf1] text-[#0d9488]" },
-    PARTIALLY_RECEIVED: { label: t.accounting.partialReceived,   cls: "bg-[#fff7ed] text-[#d97706]" },
-    COMPLETED:          { label: t.accounting.completedStatus,   cls: "bg-[#e3e2e6] text-[#43474e]" },
-    CANCELLED:          { label: t.accounting.cancelledStatus,   cls: "bg-[#ffdad6] text-[#ba1a1a]" },
+    DRAFT:              { label: t.accounting.draftStatus,       cls: "bg-[#e3e2e6] text-[var(--txt2)]" },
+    SUBMITTED:          { label: t.accounting.submittedStatus,   cls: "bg-[var(--blue-bg)] text-[var(--blue)]" },
+    APPROVED:           { label: t.accounting.approvedStatus,    cls: "bg-[var(--ok-bg)] text-[var(--ok)]" },
+    PARTIALLY_RECEIVED: { label: t.accounting.partialReceived,   cls: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+    COMPLETED:          { label: t.accounting.completedStatus,   cls: "bg-[#e3e2e6] text-[var(--txt2)]" },
+    CANCELLED:          { label: t.accounting.cancelledStatus,   cls: "bg-[var(--err-bg)] text-[var(--err)]" },
   };
   const ASSET_STATUS: Record<string, { label: string; cls: string }> = {
-    ACTIVE:            { label: t.accounting.activeAsset,  cls: "bg-[#ccfbf1] text-[#0d9488]" },
-    UNDER_MAINTENANCE: { label: t.accounting.maintenance,  cls: "bg-[#fff7ed] text-[#d97706]" },
-    DISPOSED:          { label: t.accounting.disposed,     cls: "bg-[#ffdad6] text-[#ba1a1a]" },
-    TRANSFERRED:       { label: t.accounting.transferred,  cls: "bg-[#d3e4ff] text-[#1960a3]" },
+    ACTIVE:            { label: t.accounting.activeAsset,  cls: "bg-[var(--ok-bg)] text-[var(--ok)]" },
+    UNDER_MAINTENANCE: { label: t.accounting.maintenance,  cls: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+    DISPOSED:          { label: t.accounting.disposed,     cls: "bg-[var(--err-bg)] text-[var(--err)]" },
+    TRANSFERRED:       { label: t.accounting.transferred,  cls: "bg-[var(--blue-bg)] text-[var(--blue)]" },
   };
   const EXP_STATUS: Record<string, { label: string; cls: string }> = {
-    PENDING:  { label: t.accounting.pendingExpense,  cls: "bg-[#fff7ed] text-[#d97706]" },
-    APPROVED: { label: t.accounting.approvedExpense, cls: "bg-[#ccfbf1] text-[#0d9488]" },
-    REJECTED: { label: t.accounting.rejectedExpense, cls: "bg-[#ffdad6] text-[#ba1a1a]" },
+    PENDING:  { label: t.accounting.pendingExpense,  cls: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+    APPROVED: { label: t.accounting.approvedExpense, cls: "bg-[var(--ok-bg)] text-[var(--ok)]" },
+    REJECTED: { label: t.accounting.rejectedExpense, cls: "bg-[var(--err-bg)] text-[var(--err)]" },
   };
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -408,17 +408,17 @@ export default function AccountingPage() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.accounting.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{t.accounting.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.accounting.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{t.accounting.subtitle}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setActiveTab("expenses")} className="flex items-center gap-2 px-4 py-2.5 border border-[#c4c6cf] rounded-lg bg-white text-sm font-semibold text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
+          <button onClick={() => setActiveTab("expenses")} className="flex items-center gap-2 px-4 py-2.5 border border-[var(--border2)] rounded-lg bg-[var(--surface)] text-sm font-semibold text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors">
             <span className="material-symbols-outlined text-[18px]">receipt</span>{t.accounting.logExpense}
           </button>
-          <button onClick={() => setActiveTab("vendors")} className="flex items-center gap-2 px-4 py-2.5 border border-[#c4c6cf] rounded-lg bg-white text-sm font-semibold text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
+          <button onClick={() => setActiveTab("vendors")} className="flex items-center gap-2 px-4 py-2.5 border border-[var(--border2)] rounded-lg bg-[var(--surface)] text-sm font-semibold text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors">
             <span className="material-symbols-outlined text-[18px]">business</span>{t.accounting.addVendor}
           </button>
-          <Link href="/accounting/purchase-orders/new" className="flex items-center gap-2 px-4 py-2.5 bg-[#002045] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
+          <Link href="/accounting/purchase-orders/new" className="flex items-center gap-2 px-4 py-2.5 bg-[var(--brand)] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
             <span className="material-symbols-outlined text-[18px]">add</span>{t.accounting.newPO}
           </Link>
         </div>
@@ -427,10 +427,10 @@ export default function AccountingPage() {
       {fetchError && <ErrorBanner error={fetchError} onRetry={fetchOverview} />}
 
       {/* ── Tabs ── */}
-      <div className="flex items-center gap-1 bg-[#f4f3f7] p-1 rounded-xl w-fit flex-wrap">
+      <div className="flex items-center gap-1 bg-[var(--surface2)] p-1 rounded-xl w-fit flex-wrap">
         {TABS.map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.key ? "bg-white text-[#002045] shadow-sm" : "text-[#74777f] hover:text-[#1a1c1e]"}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.key ? "bg-white text-[#002045] shadow-sm" : "text-[var(--txt2)] hover:text-[var(--txt1)]"}`}>
             {tab.label}
           </button>
         ))}
@@ -445,46 +445,46 @@ export default function AccountingPage() {
             <>
               {/* KPI Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard icon="payments" iconBg="bg-[#d3e4ff]" iconColor="text-[#1960a3]"
+                <KpiCard icon="payments" iconBg="bg-[var(--blue-bg)]" iconColor="text-[var(--blue)]"
                   label={t.accounting.totalRevenue} value={formatCurrency(overview.totalRevenue)}
                   sub={`${t.accounting.monthlyRevenue}: ${formatCurrency(overview.monthlyRevenue)}`} />
-                <KpiCard icon="receipt_long" iconBg="bg-[#ffdad6]" iconColor="text-[#ba1a1a]"
+                <KpiCard icon="receipt_long" iconBg="bg-[var(--err-bg)]" iconColor="text-[var(--err)]"
                   label={t.accounting.totalExpenses} value={formatCurrency(overview.totalExpenses)}
                   sub={`${t.accounting.monthlyExpenses}: ${formatCurrency(overview.monthlyExpenses)}`} />
-                <KpiCard icon="trending_up" iconBg={overview.netProfit >= 0 ? "bg-[#ccfbf1]" : "bg-[#ffdad6]"} iconColor={overview.netProfit >= 0 ? "text-[#0d9488]" : "text-[#ba1a1a]"}
+                <KpiCard icon="trending_up" iconBg={overview.netProfit >= 0 ? "bg-[var(--ok-bg)]" : "bg-[var(--err-bg)]"} iconColor={overview.netProfit >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"}
                   label={t.accounting.netProfit} value={formatCurrency(overview.netProfit)}
-                  badge={overview.netProfit >= 0 ? { label: t.accounting.profitable, cls: "bg-[#ccfbf1] text-[#0d9488]" } : { label: t.accounting.loss, cls: "bg-[#ffdad6] text-[#ba1a1a]" }} />
-                <KpiCard icon="account_balance" iconBg="bg-[#fff7ed]" iconColor="text-[#d97706]"
+                  badge={overview.netProfit >= 0 ? { label: t.accounting.profitable, cls: "bg-[var(--ok-bg)] text-[var(--ok)]" } : { label: t.accounting.loss, cls: "bg-[var(--err-bg)] text-[var(--err)]" }} />
+                <KpiCard icon="account_balance" iconBg="bg-[var(--warn-bg)]" iconColor="text-[var(--warn)]"
                   label={t.accounting.accountsReceivable} value={formatCurrency(overview.accountsReceivable)}
                   sub={`AP: ${formatCurrency(overview.accountsPayable)}`} />
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className={`${CARD} p-5 flex items-center gap-4`}>
-                  <div className="p-3 bg-[#fff7ed] rounded-2xl">
-                    <span className="material-symbols-outlined text-[#d97706] text-[22px]">pending_actions</span>
+                  <div className="p-3 bg-[var(--warn-bg)] rounded-2xl">
+                    <span className="material-symbols-outlined text-[var(--warn)] text-[22px]">pending_actions</span>
                   </div>
                   <div>
-                    <p className="text-xs text-[#74777f] font-semibold uppercase tracking-wider">{t.accounting.pendingApproval}</p>
-                    <p className="text-2xl font-bold text-[#1a1c1e]">{overview.pendingExpenses}</p>
+                    <p className="text-xs text-[var(--txt2)] font-semibold uppercase tracking-wider">{t.accounting.pendingApproval}</p>
+                    <p className="text-2xl font-bold text-[var(--txt1)]">{overview.pendingExpenses}</p>
                   </div>
                 </div>
                 <div className={`${CARD} p-5 flex items-center gap-4`}>
-                  <div className="p-3 bg-[#ffdad6] rounded-2xl">
-                    <span className="material-symbols-outlined text-[#ba1a1a] text-[22px]">warning</span>
+                  <div className="p-3 bg-[var(--err-bg)] rounded-2xl">
+                    <span className="material-symbols-outlined text-[var(--err)] text-[22px]">warning</span>
                   </div>
                   <div>
-                    <p className="text-xs text-[#74777f] font-semibold uppercase tracking-wider">{t.accounting.overdueInvoices}</p>
-                    <p className="text-2xl font-bold text-[#1a1c1e]">{overview.overdueInvoices}</p>
+                    <p className="text-xs text-[var(--txt2)] font-semibold uppercase tracking-wider">{t.accounting.overdueInvoices}</p>
+                    <p className="text-2xl font-bold text-[var(--txt1)]">{overview.overdueInvoices}</p>
                   </div>
                 </div>
                 <div className={`${CARD} p-5 col-span-2 flex items-center justify-between gap-4`}>
                   <div>
-                    <p className="text-xs text-[#74777f] font-semibold uppercase tracking-wider mb-1">{t.accounting.quickReports}</p>
+                    <p className="text-xs text-[var(--txt2)] font-semibold uppercase tracking-wider mb-1">{t.accounting.quickReports}</p>
                     <div className="flex gap-2 flex-wrap">
                       {([["pl", t.accounting.plStatement], ["ar", t.accounting.arAgingReport], ["ap", t.accounting.apAgingReport], ["cf", t.accounting.cashFlowReport]] as const).map(([key, label]) => (
                         <button key={key} onClick={() => { setActiveTab("reports"); setReportTab(key as ReportTab); }}
-                          className="text-xs font-semibold text-[#1960a3] hover:underline">
+                          className="text-xs font-semibold text-[var(--blue)] hover:underline">
                           {label}
                         </button>
                       ))}
@@ -499,8 +499,8 @@ export default function AccountingPage() {
                 <div className={`${CARD} p-6`}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <h3 className="text-base font-bold text-[#1a1c1e]">{t.accounting.revenueVsExpenses}</h3>
-                      <p className="text-xs text-[#74777f]">{t.accounting.monthlyTrend}</p>
+                      <h3 className="text-base font-bold text-[var(--txt1)]">{t.accounting.revenueVsExpenses}</h3>
+                      <p className="text-xs text-[var(--txt2)]">{t.accounting.monthlyTrend}</p>
                     </div>
                   </div>
                   <ResponsiveContainer width="100%" height={260}>
@@ -531,16 +531,16 @@ export default function AccountingPage() {
               {/* Recent transactions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className={`${CARD} p-5`}>
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-3">{t.accounting.noExpenses.replace("No", "Recent")}</h3>
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-3">{t.accounting.noExpenses.replace("No", "Recent")}</h3>
                   <div className="space-y-2">
                     {overview.recentExpenses.map((e) => (
                       <div key={e.id} className="flex items-center justify-between py-2 border-b border-[#f4f3f7] last:border-0">
                         <div>
-                          <p className="text-sm font-semibold text-[#1a1c1e]">{e.description}</p>
-                          <p className="text-xs text-[#74777f]">{e.category} · {formatDate(e.date)}</p>
+                          <p className="text-sm font-semibold text-[var(--txt1)]">{e.description}</p>
+                          <p className="text-xs text-[var(--txt2)]">{e.category} · {formatDate(e.date)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-[#ba1a1a]">-{formatCurrency(e.amount)}</p>
+                          <p className="text-sm font-bold text-[var(--err)]">-{formatCurrency(e.amount)}</p>
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${EXP_STATUS[e.status]?.cls ?? ""}`}>{EXP_STATUS[e.status]?.label ?? e.status}</span>
                         </div>
                       </div>
@@ -548,17 +548,17 @@ export default function AccountingPage() {
                   </div>
                 </div>
                 <div className={`${CARD} p-5`}>
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-3">Recent Invoices</h3>
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-3">Recent Invoices</h3>
                   <div className="space-y-2">
                     {overview.recentInvoices.map((inv) => (
                       <div key={inv.id} className="flex items-center justify-between py-2 border-b border-[#f4f3f7] last:border-0">
                         <div>
-                          <p className="text-sm font-semibold text-[#1a1c1e]">{inv.invoiceNo}</p>
-                          <p className="text-xs text-[#74777f]">Total: {formatCurrency(inv.totalAmount)}</p>
+                          <p className="text-sm font-semibold text-[var(--txt1)]">{inv.invoiceNo}</p>
+                          <p className="text-xs text-[var(--txt2)]">Total: {formatCurrency(inv.totalAmount)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-[#1960a3]">{formatCurrency(inv.balance)}</p>
-                          <p className="text-xs text-[#74777f]">{inv.status}</p>
+                          <p className="text-sm font-bold text-[var(--blue)]">{formatCurrency(inv.balance)}</p>
+                          <p className="text-xs text-[var(--txt2)]">{inv.status}</p>
                         </div>
                       </div>
                     ))}
@@ -575,19 +575,19 @@ export default function AccountingPage() {
       ════════════════════════════════════════ */}
       {activeTab === "purchaseOrders" && (
         <div className={CARD}>
-          <div className="p-4 border-b border-[#e3e2e6] flex flex-wrap items-center gap-3">
-            <select value={posStatus} onChange={(e) => setPosStatus(e.target.value)} className="border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm bg-white">
+          <div className="p-4 border-b border-[var(--border)] flex flex-wrap items-center gap-3">
+            <select value={posStatus} onChange={(e) => setPosStatus(e.target.value)} className="border border-[var(--border2)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)]">
               <option value="ALL">{t.accounting.allStatuses}</option>
               {Object.entries(PO_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
             <div className="flex-1" />
-            <Link href="/accounting/purchase-orders/new" className="flex items-center gap-1.5 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+            <Link href="/accounting/purchase-orders/new" className="flex items-center gap-1.5 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
               <span className="material-symbols-outlined text-[18px]">add</span>{t.accounting.newPO}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#f4f3f7]">
+              <thead className="bg-[var(--surface2)]">
                 <tr>
                   <th className={TH}>{t.accounting.poId}</th>
                   <th className={TH}>{t.accounting.vendor}</th>
@@ -605,10 +605,10 @@ export default function AccountingPage() {
                 ) : pos.length === 0 ? (
                   <EmptyRow cols={8} icon="shopping_bag" label={t.accounting.noPOs} sub={t.accounting.noPOsDesc} />
                 ) : pos.map((po) => {
-                  const st = PO_STATUS[po.status] ?? { label: po.status, cls: "bg-[#e3e2e6] text-[#74777f]" };
+                  const st = PO_STATUS[po.status] ?? { label: po.status, cls: "bg-[#e3e2e6] text-[var(--txt2)]" };
                   return (
                     <tr key={po.id} className="hover:bg-[#f9f9fb] transition-colors">
-                      <td className={TD}><span className="font-mono text-xs font-bold text-[#1960a3]">{po.poNumber}</span></td>
+                      <td className={TD}><span className="font-mono text-xs font-bold text-[var(--blue)]">{po.poNumber}</span></td>
                       <td className={TD}><span className="font-semibold">{po.vendor?.name ?? "—"}</span></td>
                       <td className={TD}>{formatDate(po.date)}</td>
                       <td className={TD}>{po.expectedDelivery ? formatDate(po.expectedDelivery) : "—"}</td>
@@ -616,16 +616,16 @@ export default function AccountingPage() {
                       <td className={TD}><span className="font-bold">{formatCurrency(po.totalAmount)}</span></td>
                       <td className={TD}><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.cls}`}>{st.label}</span></td>
                       <td className={`${TD} space-x-1`}>
-                        <button onClick={() => { setActionPO(po); setPoAction("view"); }} className={`${BTN_SM} bg-[#f4f3f7] text-[#43474e] hover:bg-[#e3e2e6]`}>
+                        <button onClick={() => { setActionPO(po); setPoAction("view"); }} className={`${BTN_SM} bg-[var(--surface2)] text-[var(--txt2)] hover:bg-[#e3e2e6]`}>
                           <span className="material-symbols-outlined text-[14px]">visibility</span>{t.accounting.viewPO}
                         </button>
                         {po.status === "DRAFT" && (
-                          <button onClick={() => poActionCall(po.id, "submit")} className={`${BTN_SM} bg-[#d3e4ff] text-[#1960a3] hover:bg-[#bbd4ff]`}>
+                          <button onClick={() => poActionCall(po.id, "submit")} className={`${BTN_SM} bg-[var(--blue-bg)] text-[var(--blue)] hover:bg-[#bbd4ff]`}>
                             <span className="material-symbols-outlined text-[14px]">send</span>{t.accounting.submitPO}
                           </button>
                         )}
                         {po.status === "SUBMITTED" && (
-                          <button onClick={() => poActionCall(po.id, "approve")} className={`${BTN_SM} bg-[#ccfbf1] text-[#0d9488] hover:bg-[#a7f3d0]`}>
+                          <button onClick={() => poActionCall(po.id, "approve")} className={`${BTN_SM} bg-[var(--ok-bg)] text-[var(--ok)] hover:bg-[#a7f3d0]`}>
                             <span className="material-symbols-outlined text-[14px]">check_circle</span>{t.accounting.approvePO}
                           </button>
                         )}
@@ -635,12 +635,12 @@ export default function AccountingPage() {
                             const init: Record<string, number> = {};
                             po.items?.forEach((it) => { init[it.id] = 0; });
                             setReceiveItems(init);
-                          }} className={`${BTN_SM} bg-[#fff7ed] text-[#d97706] hover:bg-[#fed7aa]`}>
+                          }} className={`${BTN_SM} bg-[var(--warn-bg)] text-[var(--warn)] hover:bg-[#fed7aa]`}>
                             <span className="material-symbols-outlined text-[14px]">inventory</span>{t.accounting.receiveGoods}
                           </button>
                         )}
                         {!["COMPLETED", "CANCELLED"].includes(po.status) && (
-                          <button onClick={() => poActionCall(po.id, "cancel")} className={`${BTN_SM} bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffc8c2]`}>
+                          <button onClick={() => poActionCall(po.id, "cancel")} className={`${BTN_SM} bg-[var(--err-bg)] text-[var(--err)] hover:bg-[#ffc8c2]`}>
                             <span className="material-symbols-outlined text-[14px]">cancel</span>{t.accounting.cancelPO}
                           </button>
                         )}
@@ -659,18 +659,18 @@ export default function AccountingPage() {
       ════════════════════════════════════════ */}
       {activeTab === "vendors" && (
         <div className={CARD}>
-          <div className="p-4 border-b border-[#e3e2e6] flex items-center gap-3">
+          <div className="p-4 border-b border-[var(--border)] flex items-center gap-3">
             <div className="relative flex-1 max-w-xs">
-              <span className="material-symbols-outlined absolute start-3 top-2.5 text-[#74777f] text-[18px]">search</span>
-              <input value={vendorSearch} onChange={(e) => setVendorSearch(e.target.value)} placeholder={t.accounting.searchVendors} className="w-full ps-9 pe-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white" />
+              <span className="material-symbols-outlined absolute start-3 top-2.5 text-[var(--txt2)] text-[18px]">search</span>
+              <input value={vendorSearch} onChange={(e) => setVendorSearch(e.target.value)} placeholder={t.accounting.searchVendors} className="w-full ps-9 pe-4 py-2 border border-[var(--border2)] rounded-lg text-sm bg-[var(--surface)]" />
             </div>
-            <Link href="/accounting/vendors/new" className="flex items-center gap-1.5 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
+            <Link href="/accounting/vendors/new" className="flex items-center gap-1.5 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
               <span className="material-symbols-outlined text-[18px]">add</span>{t.accounting.addVendor}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#f4f3f7]">
+              <thead className="bg-[var(--surface2)]">
                 <tr>
                   <th className={TH}>{t.accounting.vendor}</th>
                   <th className={TH}>{t.accounting.contactPerson}</th>
@@ -689,27 +689,27 @@ export default function AccountingPage() {
                   <tr key={v.id} className="hover:bg-[#f9f9fb] transition-colors">
                     <td className={TD}>
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#d3e4ff] flex items-center justify-center text-xs font-bold text-[#1960a3]">
+                        <div className="w-9 h-9 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center text-xs font-bold text-[var(--blue)]">
                           {getInitials(v.name)}
                         </div>
                         <div>
                           <p className="font-semibold">{v.name}</p>
-                          {v.isPreferred && <span className="text-xs text-[#d97706] font-semibold">{t.accounting.preferred}</span>}
+                          {v.isPreferred && <span className="text-xs text-[var(--warn)] font-semibold">{t.accounting.preferred}</span>}
                         </div>
                       </div>
                     </td>
                     <td className={TD}>
                       <p>{(v as { contactPerson?: string }).contactPerson ?? "—"}</p>
-                      {(v as { phone?: string }).phone && <p className="text-xs text-[#74777f]">{(v as { phone?: string }).phone}</p>}
+                      {(v as { phone?: string }).phone && <p className="text-xs text-[var(--txt2)]">{(v as { phone?: string }).phone}</p>}
                     </td>
                     <td className={TD}>{(v as { paymentTerms?: string }).paymentTerms ?? "—"}</td>
                     <td className={TD}>{(v as { taxId?: string }).taxId ?? "—"}</td>
                     <td className={TD}><StarRating rating={(v as { rating?: number }).rating ?? 0} /></td>
                     <td className={`${TD} space-x-1`}>
-                      <button onClick={() => { setEditVendor(v); setVendorForm({ contactPerson: (v as { contactPerson?: string }).contactPerson, phone: (v as { phone?: string }).phone, email: (v as { email?: string }).email, paymentTerms: (v as { paymentTerms?: string }).paymentTerms, taxId: (v as { taxId?: string }).taxId, bankDetails: (v as { bankDetails?: string }).bankDetails, rating: (v as { rating?: number }).rating ?? 0, isPreferred: v.isPreferred, notes: (v as { notes?: string }).notes }); }} className={`${BTN_SM} bg-[#f4f3f7] text-[#43474e] hover:bg-[#e3e2e6]`}>
+                      <button onClick={() => { setEditVendor(v); setVendorForm({ contactPerson: (v as { contactPerson?: string }).contactPerson, phone: (v as { phone?: string }).phone, email: (v as { email?: string }).email, paymentTerms: (v as { paymentTerms?: string }).paymentTerms, taxId: (v as { taxId?: string }).taxId, bankDetails: (v as { bankDetails?: string }).bankDetails, rating: (v as { rating?: number }).rating ?? 0, isPreferred: v.isPreferred, notes: (v as { notes?: string }).notes }); }} className={`${BTN_SM} bg-[var(--surface2)] text-[var(--txt2)] hover:bg-[#e3e2e6]`}>
                         <span className="material-symbols-outlined text-[14px]">edit</span>{t.accounting.editVendor}
                       </button>
-                      <Link href={`/accounting/purchase-orders/new?vendorId=${v.id}`} className={`${BTN_SM} bg-[#d3e4ff] text-[#1960a3] hover:bg-[#bbd4ff]`}>
+                      <Link href={`/accounting/purchase-orders/new?vendorId=${v.id}`} className={`${BTN_SM} bg-[var(--blue-bg)] text-[var(--blue)] hover:bg-[#bbd4ff]`}>
                         <span className="material-symbols-outlined text-[14px]">add_shopping_cart</span>{t.accounting.newPO}
                       </Link>
                     </td>
@@ -726,22 +726,22 @@ export default function AccountingPage() {
       ════════════════════════════════════════ */}
       {activeTab === "expenses" && (
         <div className={CARD}>
-          <div className="p-4 border-b border-[#e3e2e6] flex flex-wrap items-center gap-3">
+          <div className="p-4 border-b border-[var(--border)] flex flex-wrap items-center gap-3">
             <div className="relative">
-              <span className="material-symbols-outlined absolute start-3 top-2.5 text-[#74777f] text-[18px]">search</span>
-              <input value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} placeholder="Search expenses…" className="ps-9 pe-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white w-64" />
+              <span className="material-symbols-outlined absolute start-3 top-2.5 text-[var(--txt2)] text-[18px]">search</span>
+              <input value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} placeholder="Search expenses…" className="ps-9 pe-4 py-2 border border-[var(--border2)] rounded-lg text-sm bg-[var(--surface)] w-64" />
             </div>
-            <select value={expenseStatus} onChange={(e) => setExpenseStatus(e.target.value)} className="border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm bg-white">
+            <select value={expenseStatus} onChange={(e) => setExpenseStatus(e.target.value)} className="border border-[var(--border2)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)]">
               <option value="ALL">{t.accounting.allExpenses}</option>
               {Object.entries(EXP_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
-            <Link href="/accounting/expenses/new" className="flex items-center gap-1.5 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
+            <Link href="/accounting/expenses/new" className="flex items-center gap-1.5 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
               <span className="material-symbols-outlined text-[18px]">add</span>{t.accounting.logExpense}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#f4f3f7]">
+              <thead className="bg-[var(--surface2)]">
                 <tr>
                   <th className={TH}>{t.accounting.expenseDate}</th>
                   <th className={TH}>{t.accounting.category}</th>
@@ -759,11 +759,11 @@ export default function AccountingPage() {
                 ) : expenses.length === 0 ? (
                   <EmptyRow cols={8} icon="receipt_long" label={t.accounting.noExpenses} sub={t.accounting.noExpensesDesc} />
                 ) : expenses.map((e) => {
-                  const st = EXP_STATUS[e.status] ?? { label: e.status, cls: "bg-[#e3e2e6] text-[#74777f]" };
+                  const st = EXP_STATUS[e.status] ?? { label: e.status, cls: "bg-[#e3e2e6] text-[var(--txt2)]" };
                   return (
                     <tr key={e.id} className="hover:bg-[#f9f9fb] transition-colors">
                       <td className={TD}>{formatDate(e.date)}</td>
-                      <td className={TD}><span className="text-xs font-semibold bg-[#f4f3f7] px-2 py-0.5 rounded-full">{e.category}</span></td>
+                      <td className={TD}><span className="text-xs font-semibold bg-[var(--surface2)] px-2 py-0.5 rounded-full">{e.category}</span></td>
                       <td className={TD}><p className="max-w-[200px] truncate">{e.description}</p></td>
                       <td className={TD}>{e.vendor?.name ?? "—"}</td>
                       <td className={TD}><span className="font-bold">{formatCurrency(e.amount)}</span></td>
@@ -772,15 +772,15 @@ export default function AccountingPage() {
                       <td className={`${TD} space-x-1`}>
                         {e.status === "PENDING" && (
                           <>
-                            <button onClick={() => expenseAction(e.id, "approve")} className={`${BTN_SM} bg-[#ccfbf1] text-[#0d9488] hover:bg-[#a7f3d0]`}>
+                            <button onClick={() => expenseAction(e.id, "approve")} className={`${BTN_SM} bg-[var(--ok-bg)] text-[var(--ok)] hover:bg-[#a7f3d0]`}>
                               <span className="material-symbols-outlined text-[14px]">check</span>{t.accounting.approveExpense}
                             </button>
-                            <button onClick={() => expenseAction(e.id, "reject")} className={`${BTN_SM} bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffc8c2]`}>
+                            <button onClick={() => expenseAction(e.id, "reject")} className={`${BTN_SM} bg-[var(--err-bg)] text-[var(--err)] hover:bg-[#ffc8c2]`}>
                               <span className="material-symbols-outlined text-[14px]">close</span>{t.accounting.rejectExpense}
                             </button>
                           </>
                         )}
-                        <button onClick={() => setActionExpense(e)} className={`${BTN_SM} bg-[#f4f3f7] text-[#43474e] hover:bg-[#e3e2e6]`}>
+                        <button onClick={() => setActionExpense(e)} className={`${BTN_SM} bg-[var(--surface2)] text-[var(--txt2)] hover:bg-[#e3e2e6]`}>
                           <span className="material-symbols-outlined text-[14px]">info</span>{t.accounting.viewDetails}
                         </button>
                       </td>
@@ -798,22 +798,22 @@ export default function AccountingPage() {
       ════════════════════════════════════════ */}
       {activeTab === "assets" && (
         <div className={CARD}>
-          <div className="p-4 border-b border-[#e3e2e6] flex flex-wrap items-center gap-3">
+          <div className="p-4 border-b border-[var(--border)] flex flex-wrap items-center gap-3">
             <div className="relative">
-              <span className="material-symbols-outlined absolute start-3 top-2.5 text-[#74777f] text-[18px]">search</span>
-              <input value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)} placeholder={t.accounting.searchAssets} className="ps-9 pe-4 py-2 border border-[#c4c6cf] rounded-lg text-sm bg-white w-64" />
+              <span className="material-symbols-outlined absolute start-3 top-2.5 text-[var(--txt2)] text-[18px]">search</span>
+              <input value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)} placeholder={t.accounting.searchAssets} className="ps-9 pe-4 py-2 border border-[var(--border2)] rounded-lg text-sm bg-[var(--surface)] w-64" />
             </div>
-            <select value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)} className="border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm bg-white">
+            <select value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)} className="border border-[var(--border2)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)]">
               <option value="ALL">{t.accounting.allStatuses}</option>
               {Object.entries(ASSET_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
-            <Link href="/accounting/assets/new" className="flex items-center gap-1.5 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
+            <Link href="/accounting/assets/new" className="flex items-center gap-1.5 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity ms-auto">
               <span className="material-symbols-outlined text-[18px]">add</span>{t.accounting.addAsset}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#f4f3f7]">
+              <thead className="bg-[var(--surface2)]">
                 <tr>
                   <th className={TH}>{t.accounting.asset}</th>
                   <th className={TH}>{t.accounting.assetCategory}</th>
@@ -832,7 +832,7 @@ export default function AccountingPage() {
                 ) : assets.length === 0 ? (
                   <EmptyRow cols={9} icon="inventory_2" label={t.accounting.noAssets} sub={t.accounting.noAssetsDesc} />
                 ) : assets.map((a) => {
-                  const st = ASSET_STATUS[a.status] ?? { label: a.status, cls: "bg-[#e3e2e6] text-[#74777f]" };
+                  const st = ASSET_STATUS[a.status] ?? { label: a.status, cls: "bg-[#e3e2e6] text-[var(--txt2)]" };
                   const warrantyExpired = a.warrantyExpiry && new Date(a.warrantyExpiry) < new Date();
                   const purchasePrice = (a as { purchasePrice?: number }).purchasePrice ?? 0;
                   const currentValue = (a as { currentValue?: number }).currentValue ?? 0;
@@ -841,7 +841,7 @@ export default function AccountingPage() {
                     <tr key={a.id} className="hover:bg-[#f9f9fb] transition-colors">
                       <td className={TD}>
                         <p className="font-semibold">{a.name}</p>
-                        {(a as { assetCode?: string }).assetCode && <p className="text-xs text-[#74777f] font-mono">{(a as { assetCode?: string }).assetCode}</p>}
+                        {(a as { assetCode?: string }).assetCode && <p className="text-xs text-[var(--txt2)] font-mono">{(a as { assetCode?: string }).assetCode}</p>}
                       </td>
                       <td className={TD}>{a.category}</td>
                       <td className={TD}><span className="font-mono text-xs">{(a as { serialNumber?: string }).serialNumber ?? "—"}</span></td>
@@ -849,19 +849,19 @@ export default function AccountingPage() {
                       <td className={TD}>{currentValue ? formatCurrency(currentValue) : "—"}</td>
                       <td className={TD}>
                         {depreciated > 0 ? (
-                          <span className="text-xs font-semibold text-[#d97706]">-{formatCurrency(depreciated)}</span>
+                          <span className="text-xs font-semibold text-[var(--warn)]">-{formatCurrency(depreciated)}</span>
                         ) : "—"}
                       </td>
                       <td className={TD}>
                         {a.warrantyExpiry ? (
-                          <span className={warrantyExpired ? "text-[#ba1a1a] text-xs font-semibold" : "text-xs"}>
+                          <span className={warrantyExpired ? "text-[var(--err)] text-xs font-semibold" : "text-xs"}>
                             {warrantyExpired ? `⚠ ${t.accounting.expired}` : formatDate(a.warrantyExpiry)}
                           </span>
                         ) : "—"}
                       </td>
                       <td className={TD}><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.cls}`}>{st.label}</span></td>
                       <td className={`${TD} space-x-1`}>
-                        <button onClick={() => { setViewAsset(a); loadDepreciation(a.id); }} className={`${BTN_SM} bg-[#f4f3f7] text-[#43474e] hover:bg-[#e3e2e6]`}>
+                        <button onClick={() => { setViewAsset(a); loadDepreciation(a.id); }} className={`${BTN_SM} bg-[var(--surface2)] text-[var(--txt2)] hover:bg-[#e3e2e6]`}>
                           <span className="material-symbols-outlined text-[14px]">trending_down</span>{t.accounting.depreciationSchedule}
                         </button>
                       </td>
@@ -883,7 +883,7 @@ export default function AccountingPage() {
           <div className="flex items-center gap-1 flex-wrap">
             {([["pl", t.accounting.profitLoss], ["ar", t.accounting.arAgingReport], ["ap", t.accounting.apAgingReport], ["cf", t.accounting.cashFlowReport]] as const).map(([key, label]) => (
               <button key={key} onClick={() => setReportTab(key as ReportTab)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${reportTab === key ? "bg-[#002045] text-white border-[#002045]" : "bg-white text-[#74777f] border-[#e3e2e6] hover:border-[#1960a3]"}`}>
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${reportTab === key ? "bg-[var(--brand)] text-white border-[#002045]" : "bg-white text-[var(--txt2)] border-[var(--border)] hover:border-[#1960a3]"}`}>
                 {label}
               </button>
             ))}
@@ -893,21 +893,21 @@ export default function AccountingPage() {
           {(reportTab === "pl" || reportTab === "cf") && (
             <div className={`${CARD} p-4 flex flex-wrap items-end gap-4`}>
               <div>
-                <label className="block text-xs font-semibold text-[#74777f] mb-1">{t.accounting.fromDate}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] mb-1">{t.accounting.fromDate}</label>
                 <input type="date" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} className={INPUT + " w-44"} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#74777f] mb-1">{t.accounting.toDate}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] mb-1">{t.accounting.toDate}</label>
                 <input type="date" value={reportTo} onChange={(e) => setReportTo(e.target.value)} className={INPUT + " w-44"} />
               </div>
-              <button onClick={generateReport} disabled={reportLoading} className="flex items-center gap-2 bg-[#1960a3] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
+              <button onClick={generateReport} disabled={reportLoading} className="flex items-center gap-2 bg-[var(--blue)] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
                 {reportLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">bar_chart</span>}
                 {t.accounting.generateReport}
               </button>
             </div>
           )}
           {(reportTab === "ar" || reportTab === "ap") && (
-            <button onClick={generateReport} disabled={reportLoading} className="flex items-center gap-2 bg-[#1960a3] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
+            <button onClick={generateReport} disabled={reportLoading} className="flex items-center gap-2 bg-[var(--blue)] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
               {reportLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">refresh</span>}
               {t.accounting.generateReport}
             </button>
@@ -917,25 +917,25 @@ export default function AccountingPage() {
           {reportTab === "pl" && plReport && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard icon="payments" iconBg="bg-[#d3e4ff]" iconColor="text-[#1960a3]" label={t.accounting.revenue} value={formatCurrency(plReport.revenue.total)} />
-                <KpiCard icon="receipt_long" iconBg="bg-[#ffdad6]" iconColor="text-[#ba1a1a]" label={t.accounting.totalExpenses} value={formatCurrency(plReport.expenses.total)} />
-                <KpiCard icon="trending_up" iconBg={plReport.grossProfit >= 0 ? "bg-[#ccfbf1]" : "bg-[#ffdad6]"} iconColor={plReport.grossProfit >= 0 ? "text-[#0d9488]" : "text-[#ba1a1a]"} label={t.accounting.grossProfit} value={formatCurrency(plReport.grossProfit)} />
-                <KpiCard icon="percent" iconBg="bg-[#fff7ed]" iconColor="text-[#d97706]" label={t.accounting.profitMargin} value={`${plReport.grossProfitMargin.toFixed(1)}%`} />
+                <KpiCard icon="payments" iconBg="bg-[var(--blue-bg)]" iconColor="text-[var(--blue)]" label={t.accounting.revenue} value={formatCurrency(plReport.revenue.total)} />
+                <KpiCard icon="receipt_long" iconBg="bg-[var(--err-bg)]" iconColor="text-[var(--err)]" label={t.accounting.totalExpenses} value={formatCurrency(plReport.expenses.total)} />
+                <KpiCard icon="trending_up" iconBg={plReport.grossProfit >= 0 ? "bg-[var(--ok-bg)]" : "bg-[var(--err-bg)]"} iconColor={plReport.grossProfit >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"} label={t.accounting.grossProfit} value={formatCurrency(plReport.grossProfit)} />
+                <KpiCard icon="percent" iconBg="bg-[var(--warn-bg)]" iconColor="text-[var(--warn)]" label={t.accounting.profitMargin} value={`${plReport.grossProfitMargin.toFixed(1)}%`} />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className={`${CARD} p-5`}>
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-3">{t.accounting.revenue} {t.accounting.breakdown}</h3>
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-3">{t.accounting.revenue} {t.accounting.breakdown}</h3>
                   <div className="space-y-2">
                     {plReport.revenue.breakdown.map((r, i) => (
                       <div key={i} className="flex justify-between py-2 border-b border-[#f4f3f7] last:border-0">
-                        <span className="text-sm text-[#43474e]">{r.method}</span>
-                        <span className="text-sm font-bold text-[#1960a3]">{formatCurrency(r.amount)}</span>
+                        <span className="text-sm text-[var(--txt2)]">{r.method}</span>
+                        <span className="text-sm font-bold text-[var(--blue)]">{formatCurrency(r.amount)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className={`${CARD} p-5`}>
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-3">{t.accounting.totalExpenses} {t.accounting.breakdown}</h3>
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-3">{t.accounting.totalExpenses} {t.accounting.breakdown}</h3>
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={plReport.expenses.breakdown} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -962,24 +962,24 @@ export default function AccountingPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className={`${CARD} p-5`}>
-                  <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider mb-2">{t.accounting.operatingActivities}</p>
+                  <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{t.accounting.operatingActivities}</p>
                   <div className="space-y-2">
-                    <div className="flex justify-between"><span className="text-sm text-[#43474e]">{t.accounting.inflows}</span><span className="text-sm font-bold text-[#0d9488]">+{formatCurrency(cfReport.operating.inflows)}</span></div>
-                    <div className="flex justify-between"><span className="text-sm text-[#43474e]">{t.accounting.outflows}</span><span className="text-sm font-bold text-[#ba1a1a]">-{formatCurrency(cfReport.operating.outflows)}</span></div>
-                    <div className="flex justify-between pt-2 border-t border-[#e3e2e6]"><span className="text-sm font-bold">Net</span><span className={`text-sm font-bold ${cfReport.operating.net >= 0 ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{formatCurrency(cfReport.operating.net)}</span></div>
+                    <div className="flex justify-between"><span className="text-sm text-[var(--txt2)]">{t.accounting.inflows}</span><span className="text-sm font-bold text-[var(--ok)]">+{formatCurrency(cfReport.operating.inflows)}</span></div>
+                    <div className="flex justify-between"><span className="text-sm text-[var(--txt2)]">{t.accounting.outflows}</span><span className="text-sm font-bold text-[var(--err)]">-{formatCurrency(cfReport.operating.outflows)}</span></div>
+                    <div className="flex justify-between pt-2 border-t border-[var(--border)]"><span className="text-sm font-bold">Net</span><span className={`text-sm font-bold ${cfReport.operating.net >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{formatCurrency(cfReport.operating.net)}</span></div>
                   </div>
                 </div>
                 <div className={`${CARD} p-5`}>
-                  <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider mb-2">{t.accounting.investingActivities}</p>
+                  <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{t.accounting.investingActivities}</p>
                   <div className="space-y-2">
-                    <div className="flex justify-between"><span className="text-sm text-[#43474e]">{t.accounting.assetPurchases}</span><span className="text-sm font-bold text-[#ba1a1a]">-{formatCurrency(cfReport.investing.assetPurchases)}</span></div>
-                    <div className="flex justify-between"><span className="text-sm text-[#43474e]">{t.accounting.poPayments}</span><span className="text-sm font-bold text-[#ba1a1a]">-{formatCurrency(cfReport.investing.poPayments)}</span></div>
-                    <div className="flex justify-between pt-2 border-t border-[#e3e2e6]"><span className="text-sm font-bold">Net</span><span className={`text-sm font-bold ${cfReport.investing.net >= 0 ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{formatCurrency(cfReport.investing.net)}</span></div>
+                    <div className="flex justify-between"><span className="text-sm text-[var(--txt2)]">{t.accounting.assetPurchases}</span><span className="text-sm font-bold text-[var(--err)]">-{formatCurrency(cfReport.investing.assetPurchases)}</span></div>
+                    <div className="flex justify-between"><span className="text-sm text-[var(--txt2)]">{t.accounting.poPayments}</span><span className="text-sm font-bold text-[var(--err)]">-{formatCurrency(cfReport.investing.poPayments)}</span></div>
+                    <div className="flex justify-between pt-2 border-t border-[var(--border)]"><span className="text-sm font-bold">Net</span><span className={`text-sm font-bold ${cfReport.investing.net >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{formatCurrency(cfReport.investing.net)}</span></div>
                   </div>
                 </div>
                 <div className={`${CARD} p-5 flex flex-col items-center justify-center`}>
-                  <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider mb-2">{t.accounting.netCashFlow}</p>
-                  <p className={`text-3xl font-bold ${cfReport.netCashFlow >= 0 ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{formatCurrency(cfReport.netCashFlow)}</p>
+                  <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{t.accounting.netCashFlow}</p>
+                  <p className={`text-3xl font-bold ${cfReport.netCashFlow >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{formatCurrency(cfReport.netCashFlow)}</p>
                 </div>
               </div>
             </div>
@@ -994,15 +994,15 @@ export default function AccountingPage() {
       {/* PO View / Receive Modal */}
       {actionPO && poAction && (
         <Modal title={poAction === "receive" ? t.accounting.receiveModal : `PO — ${actionPO.poNumber}`} onClose={() => { setActionPO(null); setPoAction(null); setActionError(""); }} wide>
-          {actionError && <div className="flex items-center gap-2 text-[#ba1a1a] text-sm bg-[#ffdad6] rounded-lg px-3 py-2"><span className="material-symbols-outlined text-[16px]">error</span>{actionError}</div>}
+          {actionError && <div className="flex items-center gap-2 text-[var(--err)] text-sm bg-[var(--err-bg)] rounded-lg px-3 py-2"><span className="material-symbols-outlined text-[16px]">error</span>{actionError}</div>}
           <div className="grid grid-cols-2 gap-4 text-sm mb-2">
-            <div><p className="text-xs text-[#74777f]">{t.accounting.vendor}</p><p className="font-semibold">{actionPO.vendor?.name}</p></div>
-            <div><p className="text-xs text-[#74777f]">{t.accounting.date}</p><p className="font-semibold">{formatDate(actionPO.date)}</p></div>
-            <div><p className="text-xs text-[#74777f]">Status</p><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PO_STATUS[actionPO.status]?.cls}`}>{PO_STATUS[actionPO.status]?.label}</span></div>
-            <div><p className="text-xs text-[#74777f]">Total</p><p className="font-bold text-[#002045]">{formatCurrency(actionPO.totalAmount)}</p></div>
+            <div><p className="text-xs text-[var(--txt2)]">{t.accounting.vendor}</p><p className="font-semibold">{actionPO.vendor?.name}</p></div>
+            <div><p className="text-xs text-[var(--txt2)]">{t.accounting.date}</p><p className="font-semibold">{formatDate(actionPO.date)}</p></div>
+            <div><p className="text-xs text-[var(--txt2)]">Status</p><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PO_STATUS[actionPO.status]?.cls}`}>{PO_STATUS[actionPO.status]?.label}</span></div>
+            <div><p className="text-xs text-[var(--txt2)]">Total</p><p className="font-bold text-[#002045]">{formatCurrency(actionPO.totalAmount)}</p></div>
           </div>
-          <table className="w-full text-sm border border-[#e3e2e6] rounded-xl overflow-hidden">
-            <thead className="bg-[#f4f3f7]">
+          <table className="w-full text-sm border border-[var(--border)] rounded-xl overflow-hidden">
+            <thead className="bg-[var(--surface2)]">
               <tr>
                 <th className={TH}>Item</th>
                 <th className={TH}>{t.accounting.ordered}</th>
@@ -1024,7 +1024,7 @@ export default function AccountingPage() {
                         type="number" min={0} max={item.quantity - (item.receivedQty ?? 0)}
                         value={receiveItems[item.id] ?? 0}
                         onChange={(e) => setReceiveItems((prev) => ({ ...prev, [item.id]: parseInt(e.target.value) || 0 }))}
-                        className="w-20 border border-[#c4c6cf] rounded-lg px-2 py-1 text-sm"
+                        className="w-20 border border-[var(--border2)] rounded-lg px-2 py-1 text-sm"
                       />
                     </td>
                   )}
@@ -1033,7 +1033,7 @@ export default function AccountingPage() {
             </tbody>
           </table>
           {poAction === "receive" && (
-            <button onClick={() => submitReceive(actionPO.id)} disabled={actionLoading} className="w-full flex items-center justify-center gap-2 bg-[#0d9488] text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
+            <button onClick={() => submitReceive(actionPO.id)} disabled={actionLoading} className="w-full flex items-center justify-center gap-2 bg-[var(--ok)] text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
               {actionLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">inventory</span>}
               {t.accounting.confirmReceive}
             </button>
@@ -1046,21 +1046,21 @@ export default function AccountingPage() {
         <Modal title={actionExpense.description} onClose={() => setActionExpense(null)}>
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div><p className="text-xs text-[#74777f]">Date</p><p className="font-semibold">{formatDate(actionExpense.date)}</p></div>
-              <div><p className="text-xs text-[#74777f]">{t.accounting.amount}</p><p className="font-bold text-[#1a1c1e]">{formatCurrency(actionExpense.amount)}</p></div>
-              <div><p className="text-xs text-[#74777f]">{t.accounting.category}</p><p className="font-semibold">{actionExpense.category}</p></div>
-              <div><p className="text-xs text-[#74777f]">{t.accounting.vendor}</p><p className="font-semibold">{actionExpense.vendor?.name ?? "—"}</p></div>
-              <div><p className="text-xs text-[#74777f]">Payment Method</p><p className="font-semibold">{actionExpense.paymentMethod ?? "—"}</p></div>
-              <div><p className="text-xs text-[#74777f]">Reference</p><p className="font-semibold font-mono">{actionExpense.referenceNo ?? "—"}</p></div>
+              <div><p className="text-xs text-[var(--txt2)]">Date</p><p className="font-semibold">{formatDate(actionExpense.date)}</p></div>
+              <div><p className="text-xs text-[var(--txt2)]">{t.accounting.amount}</p><p className="font-bold text-[var(--txt1)]">{formatCurrency(actionExpense.amount)}</p></div>
+              <div><p className="text-xs text-[var(--txt2)]">{t.accounting.category}</p><p className="font-semibold">{actionExpense.category}</p></div>
+              <div><p className="text-xs text-[var(--txt2)]">{t.accounting.vendor}</p><p className="font-semibold">{actionExpense.vendor?.name ?? "—"}</p></div>
+              <div><p className="text-xs text-[var(--txt2)]">Payment Method</p><p className="font-semibold">{actionExpense.paymentMethod ?? "—"}</p></div>
+              <div><p className="text-xs text-[var(--txt2)]">Reference</p><p className="font-semibold font-mono">{actionExpense.referenceNo ?? "—"}</p></div>
             </div>
-            <div><p className="text-xs text-[#74777f]">Status</p><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${EXP_STATUS[actionExpense.status]?.cls}`}>{EXP_STATUS[actionExpense.status]?.label}</span></div>
-            {actionExpense.approvedBy && <div><p className="text-xs text-[#74777f]">{t.accounting.approvedBy}</p><p className="font-semibold">{actionExpense.approvedBy.name} · {formatDate(actionExpense.approvedAt!)}</p></div>}
+            <div><p className="text-xs text-[var(--txt2)]">Status</p><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${EXP_STATUS[actionExpense.status]?.cls}`}>{EXP_STATUS[actionExpense.status]?.label}</span></div>
+            {actionExpense.approvedBy && <div><p className="text-xs text-[var(--txt2)]">{t.accounting.approvedBy}</p><p className="font-semibold">{actionExpense.approvedBy.name} · {formatDate(actionExpense.approvedAt!)}</p></div>}
             {actionExpense.status === "PENDING" && (
               <div className="flex gap-3 pt-2">
-                <button onClick={() => expenseAction(actionExpense.id, "approve")} className="flex-1 flex items-center justify-center gap-2 bg-[#0d9488] text-white py-2.5 rounded-xl text-sm font-bold hover:opacity-90">
+                <button onClick={() => expenseAction(actionExpense.id, "approve")} className="flex-1 flex items-center justify-center gap-2 bg-[var(--ok)] text-white py-2.5 rounded-xl text-sm font-bold hover:opacity-90">
                   <span className="material-symbols-outlined text-[18px]">check_circle</span>{t.accounting.approveExpense}
                 </button>
-                <button onClick={() => expenseAction(actionExpense.id, "reject")} className="flex-1 flex items-center justify-center gap-2 bg-[#ba1a1a] text-white py-2.5 rounded-xl text-sm font-bold hover:opacity-90">
+                <button onClick={() => expenseAction(actionExpense.id, "reject")} className="flex-1 flex items-center justify-center gap-2 bg-[var(--err)] text-white py-2.5 rounded-xl text-sm font-bold hover:opacity-90">
                   <span className="material-symbols-outlined text-[18px]">cancel</span>{t.accounting.rejectExpense}
                 </button>
               </div>
@@ -1075,12 +1075,12 @@ export default function AccountingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([["contactPerson", t.accounting.contactPerson], ["phone", "Phone"], ["email", "Email"], ["paymentTerms", t.accounting.paymentTerms], ["taxId", t.accounting.taxId], ["bankDetails", t.accounting.bankDetails]] as const).map(([field, label]) => (
               <div key={field}>
-                <label className="block text-xs font-semibold text-[#74777f] mb-1">{label}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] mb-1">{label}</label>
                 <input type="text" value={(vendorForm as Record<string, string>)[field] ?? ""} onChange={(e) => setVendorForm((f) => ({ ...f, [field]: e.target.value }))} className={INPUT} />
               </div>
             ))}
             <div>
-              <label className="block text-xs font-semibold text-[#74777f] mb-1">{t.accounting.rating}</label>
+              <label className="block text-xs font-semibold text-[var(--txt2)] mb-1">{t.accounting.rating}</label>
               <StarRating rating={vendorForm.rating ?? 0} onChange={(r) => setVendorForm((f) => ({ ...f, rating: r }))} />
             </div>
             <div className="flex items-center gap-2 pt-4">
@@ -1088,7 +1088,7 @@ export default function AccountingPage() {
               <label htmlFor="preferred" className="text-sm font-semibold">{t.accounting.preferred}</label>
             </div>
           </div>
-          <button onClick={saveVendor} disabled={vendorSaving} className="w-full flex items-center justify-center gap-2 bg-[#002045] text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 mt-2">
+          <button onClick={saveVendor} disabled={vendorSaving} className="w-full flex items-center justify-center gap-2 bg-[var(--brand)] text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 mt-2">
             {vendorSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">save</span>}
             {t.accounting.saveChanges}
           </button>
@@ -1101,10 +1101,10 @@ export default function AccountingPage() {
           {deprLoading ? <Spinner /> : deprSchedule ? (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div><p className="text-xs text-[#74777f]">{t.accounting.purchaseCost}</p><p className="font-bold">{formatCurrency(deprSchedule.cost)}</p></div>
-                <div><p className="text-xs text-[#74777f]">Salvage Value</p><p className="font-bold">{formatCurrency(deprSchedule.salvageValue)}</p></div>
-                <div><p className="text-xs text-[#74777f]">Useful Life</p><p className="font-bold">{deprSchedule.usefulLifeYears} years</p></div>
-                <div><p className="text-xs text-[#74777f]">Method</p><p className="font-bold text-xs">{deprSchedule.depreciationMethod.replace("_", " ")}</p></div>
+                <div><p className="text-xs text-[var(--txt2)]">{t.accounting.purchaseCost}</p><p className="font-bold">{formatCurrency(deprSchedule.cost)}</p></div>
+                <div><p className="text-xs text-[var(--txt2)]">Salvage Value</p><p className="font-bold">{formatCurrency(deprSchedule.salvageValue)}</p></div>
+                <div><p className="text-xs text-[var(--txt2)]">Useful Life</p><p className="font-bold">{deprSchedule.usefulLifeYears} years</p></div>
+                <div><p className="text-xs text-[var(--txt2)]">Method</p><p className="font-bold text-xs">{deprSchedule.depreciationMethod.replace("_", " ")}</p></div>
               </div>
               <div className="mb-4">
                 <ResponsiveContainer width="100%" height={180}>
@@ -1120,7 +1120,7 @@ export default function AccountingPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-[#f4f3f7]">
+                  <thead className="bg-[var(--surface2)]">
                     <tr>
                       <th className={TH}>Year</th>
                       <th className={TH}>{t.accounting.annualDepreciation}</th>
@@ -1132,16 +1132,16 @@ export default function AccountingPage() {
                     {deprSchedule.schedule.map((row) => (
                       <tr key={row.year}>
                         <td className={TD}>{row.year}</td>
-                        <td className={TD}><span className="text-[#d97706] font-semibold">{formatCurrency(row.depreciation)}</span></td>
+                        <td className={TD}><span className="text-[var(--warn)] font-semibold">{formatCurrency(row.depreciation)}</span></td>
                         <td className={TD}>{formatCurrency(row.accumulatedDepreciation)}</td>
-                        <td className={TD}><span className="font-bold text-[#1960a3]">{formatCurrency(row.bookValue)}</span></td>
+                        <td className={TD}><span className="font-bold text-[var(--blue)]">{formatCurrency(row.bookValue)}</span></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </>
-          ) : <p className="text-sm text-[#74777f] text-center py-8">{t.accounting.noPurchasePrice}</p>}
+          ) : <p className="text-sm text-[var(--txt2)] text-center py-8">{t.accounting.noPurchasePrice}</p>}
         </Modal>
       )}
     </div>
@@ -1155,11 +1155,11 @@ function AgingTable({ report, label, t, valueKey }: {
   valueKey: "balance" | "totalAmount";
 }) {
   const BUCKET_LABELS = [
-    { key: "current", label: t.accounting.current, cls: "bg-[#ccfbf1] text-[#0d9488]", data: report.detail.current, summary: report.summary.current },
-    { key: "1_30", label: t.accounting.days1_30, cls: "bg-[#fff7ed] text-[#d97706]", data: report.detail["1_30"], summary: report.summary.days1_30 },
+    { key: "current", label: t.accounting.current, cls: "bg-[var(--ok-bg)] text-[var(--ok)]", data: report.detail.current, summary: report.summary.current },
+    { key: "1_30", label: t.accounting.days1_30, cls: "bg-[var(--warn-bg)] text-[var(--warn)]", data: report.detail["1_30"], summary: report.summary.days1_30 },
     { key: "31_60", label: t.accounting.days31_60, cls: "bg-[#fed7aa] text-[#c2410c]", data: report.detail["31_60"], summary: report.summary.days31_60 },
-    { key: "61_90", label: t.accounting.days61_90, cls: "bg-[#ffdad6] text-[#ba1a1a]", data: report.detail["61_90"], summary: report.summary.days61_90 },
-    { key: "over_90", label: t.accounting.over90, cls: "bg-[#ba1a1a] text-white", data: report.detail.over_90, summary: report.summary.over90 },
+    { key: "61_90", label: t.accounting.days61_90, cls: "bg-[var(--err-bg)] text-[var(--err)]", data: report.detail["61_90"], summary: report.summary.days61_90 },
+    { key: "over_90", label: t.accounting.over90, cls: "bg-[var(--err)] text-white", data: report.detail.over_90, summary: report.summary.over90 },
   ];
 
   return (
@@ -1174,34 +1174,34 @@ function AgingTable({ report, label, t, valueKey }: {
           </div>
         ))}
       </div>
-      <div className={`text-end text-sm font-bold text-[#1a1c1e] pe-2`}>
+      <div className={`text-end text-sm font-bold text-[var(--txt1)] pe-2`}>
         {t.accounting.grandTotal}: {formatCurrency(report.summary.grandTotal)}
       </div>
       {/* Detail table */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] overflow-x-auto">
+      <div className="bg-white rounded-xl border border-[var(--border)] overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[#f4f3f7]">
+          <thead className="bg-[var(--surface2)]">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">{label}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">Patient / Vendor</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">{t.accounting.dueDateCol}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">{t.accounting.amount}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">{t.accounting.balanceCol}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">{t.accounting.ageDays}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#74777f] uppercase">{t.accounting.poStatus}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">{label}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">Patient / Vendor</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">{t.accounting.dueDateCol}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">{t.accounting.amount}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">{t.accounting.balanceCol}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">{t.accounting.ageDays}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--txt2)] uppercase">{t.accounting.poStatus}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f4f3f7]">
             {BUCKET_LABELS.flatMap((b) =>
               b.data.map((entry, i) => (
                 <tr key={`${b.key}-${i}`} className="hover:bg-[#f9f9fb]">
-                  <td className="px-4 py-3 font-mono text-xs font-bold text-[#1960a3]">{entry.invoiceNo ?? entry.poNumber ?? "—"}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-bold text-[var(--blue)]">{entry.invoiceNo ?? entry.poNumber ?? "—"}</td>
                   <td className="px-4 py-3">{entry.patient ?? entry.vendor ?? "—"}</td>
                   <td className="px-4 py-3 text-xs">{entry.dueDate ? new Date(entry.dueDate).toLocaleDateString() : entry.expectedDelivery ? new Date(entry.expectedDelivery).toLocaleDateString() : "—"}</td>
                   <td className="px-4 py-3 font-semibold">{formatCurrency((entry[valueKey as keyof AgingEntry] as number) ?? 0)}</td>
-                  <td className="px-4 py-3 font-bold text-[#ba1a1a]">{valueKey === "balance" ? formatCurrency(entry.balance ?? 0) : "—"}</td>
+                  <td className="px-4 py-3 font-bold text-[var(--err)]">{valueKey === "balance" ? formatCurrency(entry.balance ?? 0) : "—"}</td>
                   <td className="px-4 py-3"><span className={`text-xs font-bold px-2 py-0.5 rounded-full ${b.cls}`}>{entry.ageDays}d</span></td>
-                  <td className="px-4 py-3"><span className="text-xs text-[#74777f]">{entry.status}</span></td>
+                  <td className="px-4 py-3"><span className="text-xs text-[var(--txt2)]">{entry.status}</span></td>
                 </tr>
               ))
             )}

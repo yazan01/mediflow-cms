@@ -197,8 +197,8 @@ function SessionTimeoutModal({ countdown, onStay, onLogout }: {
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
     >
       <div className="bg-[var(--surface)] rounded-2xl shadow-[var(--sh-xl)] max-w-sm w-full p-6 text-center border border-[var(--border)] animate-scale-in">
-        <div className="w-16 h-16 rounded-full bg-[#fff7ed] flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-[32px] text-[#d97706]" aria-hidden="true">timer</span>
+        <div className="w-16 h-16 rounded-full bg-[var(--warn-bg)] flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-[32px] text-[var(--warn)]" aria-hidden="true">timer</span>
         </div>
         <h2 id="session-timeout-title" className="text-lg font-bold text-[var(--txt1)] mb-2">
           {t.topbar.sessionExpiring}
@@ -206,7 +206,7 @@ function SessionTimeoutModal({ countdown, onStay, onLogout }: {
         <p className="text-sm text-[var(--txt3)] mb-4">
           {t.topbar.sessionExpiringDesc}
         </p>
-        <div className="text-3xl font-bold text-[#1960a3] mb-6 tabular-nums" aria-live="polite">
+        <div className="text-3xl font-bold text-[var(--blue)] mb-6 tabular-nums" aria-live="polite">
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </div>
         <div className="flex gap-3">

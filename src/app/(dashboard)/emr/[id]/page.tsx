@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -13,16 +13,16 @@ const BLOOD_LABELS: Record<string, string> = {
 };
 
 const LAB_STATUS_CSS: Record<string, { bg: string; text: string }> = {
-  PENDING_COLLECTION: { bg: "bg-[#e9e7eb]", text: "text-[#43474e]" },
-  IN_PROGRESS:        { bg: "bg-[#d3e4ff]", text: "text-[#00477f]" },
-  RESULTS_READY:      { bg: "bg-[#ccfbf1]", text: "text-[#0d9488]" },
-  CANCELLED:          { bg: "bg-[#ffdad6]", text: "text-[#ba1a1a]" },
+  PENDING_COLLECTION: { bg: "bg-[#e9e7eb]", text: "text-[var(--txt2)]" },
+  IN_PROGRESS:        { bg: "bg-[var(--blue-bg)]", text: "text-[#00477f]" },
+  RESULTS_READY:      { bg: "bg-[var(--ok-bg)]", text: "text-[var(--ok)]" },
+  CANCELLED:          { bg: "bg-[var(--err-bg)]", text: "text-[var(--err)]" },
 };
 
 const PRIORITY_CSS: Record<string, { bg: string; text: string }> = {
-  ROUTINE: { bg: "bg-[#e9e7eb]", text: "text-[#43474e]" },
+  ROUTINE: { bg: "bg-[#e9e7eb]", text: "text-[var(--txt2)]" },
   URGENT:  { bg: "bg-[#ffddba]", text: "text-[#633f0f]" },
-  STAT:    { bg: "bg-[#ffdad6]", text: "text-[#ba1a1a]" },
+  STAT:    { bg: "bg-[var(--err-bg)]", text: "text-[var(--err)]" },
 };
 
 type RadiologyOrder = {
@@ -106,7 +106,7 @@ export default function EMRPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <div className="w-10 h-10 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-        <p className="text-sm text-[#74777f]">{t.common.loading}</p>
+        <p className="text-sm text-[var(--txt2)]">{t.common.loading}</p>
       </div>
     );
   }
@@ -114,11 +114,11 @@ export default function EMRPage() {
   if (error || !emr) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
-        <div className="w-16 h-16 bg-[#ffdad6] rounded-2xl flex items-center justify-center">
-          <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">error</span>
+        <div className="w-16 h-16 bg-[var(--err-bg)] rounded-2xl flex items-center justify-center">
+          <span className="material-symbols-outlined text-[var(--err)] text-3xl">error</span>
         </div>
-        <p className="text-sm font-semibold text-[#1a1c1e]">{error || t.emr.patientNotFound}</p>
-        <Link href="/patients" className="text-sm text-[#1960a3] font-semibold hover:underline">
+        <p className="text-sm font-semibold text-[var(--txt1)]">{error || t.emr.patientNotFound}</p>
+        <Link href="/patients" className="text-sm text-[var(--blue)] font-semibold hover:underline">
           {t.emr.backToPatients}
         </Link>
       </div>
@@ -133,16 +133,16 @@ export default function EMRPage() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[#74777f]">
-        <Link href="/patients" className="hover:text-[#1960a3] transition-colors">{t.nav.patients}</Link>
+      <div className="flex items-center gap-2 text-sm text-[var(--txt2)]">
+        <Link href="/patients" className="hover:text-[var(--blue)] transition-colors">{t.nav.patients}</Link>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-        <Link href={`/patients/${id}`} className="hover:text-[#1960a3] transition-colors">{patient.firstName} {patient.lastName}</Link>
+        <Link href={`/patients/${id}`} className="hover:text-[var(--blue)] transition-colors">{patient.firstName} {patient.lastName}</Link>
         <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-        <span className="text-[#1a1c1e] font-semibold">{t.nav.emr}</span>
+        <span className="text-[var(--txt1)] font-semibold">{t.nav.emr}</span>
       </div>
 
       {/* Patient Header */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+      <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
         <div className="flex flex-col lg:flex-row lg:items-start gap-5">
           {/* Avatar + Identity */}
           <div className="flex items-center gap-4">
@@ -150,31 +150,31 @@ export default function EMRPage() {
               <img
                 src={patient.photo}
                 alt={`${patient.firstName} ${patient.lastName}`}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-[#e3e2e6] flex-shrink-0"
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-[var(--border)] flex-shrink-0"
               />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-[#002045] text-white flex items-center justify-center text-lg font-bold flex-shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-[var(--brand)] text-white flex items-center justify-center text-lg font-bold flex-shrink-0">
                 {getInitials(`${patient.firstName} ${patient.lastName}`)}
               </div>
             )}
             <div>
-              <h1 className="text-xl font-bold text-[#1a1c1e]">{patient.firstName} {patient.lastName}</h1>
+              <h1 className="text-xl font-bold text-[var(--txt1)]">{patient.firstName} {patient.lastName}</h1>
               <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <span className="text-xs font-mono font-semibold text-[#43474e] bg-[#f4f3f7] px-2 py-1 rounded border border-[#e3e2e6]">
+                <span className="text-xs font-mono font-semibold text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded border border-[var(--border)]">
                   {t.patients.mrn}: {patient.mrn}
                 </span>
-                <span className="text-xs text-[#74777f]">
+                <span className="text-xs text-[var(--txt2)]">
                   {patient.gender === "MALE" ? t.patients.male : t.patients.female}
                   {patient.dateOfBirth && ` · ${t.patients.dob}: ${formatDate(patient.dateOfBirth)}`}
                 </span>
                 {patient.bloodType && (
-                  <span className="text-xs font-bold text-[#ba1a1a] bg-[#ffdad6] px-2 py-1 rounded">
+                  <span className="text-xs font-bold text-[var(--err)] bg-[var(--err-bg)] px-2 py-1 rounded">
                     {BLOOD_LABELS[patient.bloodType] ?? patient.bloodType}
                   </span>
                 )}
                 <span
                   className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                    patient.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e3e2e6] text-[#74777f]"
+                    patient.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[#e3e2e6] text-[var(--txt2)]"
                   }`}
                 >
                   {patient.isActive ? t.emr.activePatient : t.emr.inactivePatient}
@@ -187,39 +187,39 @@ export default function EMRPage() {
           <div className="lg:ms-6 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Allergies */}
             <div className="p-3 bg-[#fff8f7] border border-[#ffdad6] rounded-xl">
-              <p className="text-xs font-bold text-[#ba1a1a] uppercase tracking-wider mb-2 flex items-center gap-1">
+              <p className="text-xs font-bold text-[var(--err)] uppercase tracking-wider mb-2 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">warning</span>
                 {t.patients.allergies}
               </p>
               {patient.allergies.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {patient.allergies.map((a, i) => (
-                    <span key={i} className="text-xs bg-[#ffdad6] text-[#93000a] px-2 py-0.5 rounded-full font-semibold">
+                    <span key={i} className="text-xs bg-[var(--err-bg)] text-[#93000a] px-2 py-0.5 rounded-full font-semibold">
                       {a}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#74777f]">{t.emr.noKnownAllergies}</p>
+                <p className="text-xs text-[var(--txt2)]">{t.emr.noKnownAllergies}</p>
               )}
             </div>
 
             {/* Chronic Conditions */}
-            <div className="p-3 bg-[#eff6ff] border border-[#1960a3]/20 rounded-xl">
-              <p className="text-xs font-bold text-[#1960a3] uppercase tracking-wider mb-2 flex items-center gap-1">
+            <div className="p-3 bg-[var(--blue-bg)] border border-[#1960a3]/20 rounded-xl">
+              <p className="text-xs font-bold text-[var(--blue)] uppercase tracking-wider mb-2 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">symptoms</span>
                 {t.patients.conditions}
               </p>
               {patient.chronicConditions.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {patient.chronicConditions.map((c, i) => (
-                    <span key={i} className="text-xs bg-[#d3e4ff] text-[#00477f] px-2 py-0.5 rounded-full font-semibold">
+                    <span key={i} className="text-xs bg-[var(--blue-bg)] text-[#00477f] px-2 py-0.5 rounded-full font-semibold">
                       {c}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#74777f]">{t.emr.noChronicConditions}</p>
+                <p className="text-xs text-[var(--txt2)]">{t.emr.noChronicConditions}</p>
               )}
             </div>
           </div>
@@ -228,23 +228,23 @@ export default function EMRPage() {
           <div className="flex items-center gap-2 lg:flex-col lg:items-end flex-shrink-0">
             {/* Visit count badge */}
             {consultations.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-[#eff6ff] border border-[#1960a3]/20 px-3 py-1.5 rounded-full">
-                <span className="material-symbols-outlined text-[14px] text-[#1960a3]">history</span>
-                <span className="text-xs font-bold text-[#1960a3]">
+              <div className="flex items-center gap-1.5 bg-[var(--blue-bg)] border border-[#1960a3]/20 px-3 py-1.5 rounded-full">
+                <span className="material-symbols-outlined text-[14px] text-[var(--blue)]">history</span>
+                <span className="text-xs font-bold text-[var(--blue)]">
                   {consultations.length} {t.emr.visitCount}
                 </span>
               </div>
             )}
             <Link
               href={`/emr/${id}/new-consultation`}
-              className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+              className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
               {t.emr.newConsultation}
             </Link>
             <Link
               href={`/patients/${id}`}
-              className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
+              className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] text-[var(--txt1)] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">person</span>
               {t.emr.patientProfile}
@@ -254,15 +254,15 @@ export default function EMRPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-white border border-[#e3e2e6] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-x-auto">
+      <div className="flex gap-1 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === tab.key
-                ? "bg-[#002045] text-white shadow-sm"
-                : "text-[#74777f] hover:text-[#1a1c1e] hover:bg-[#f4f3f7]"
+                ? "bg-[var(--brand)] text-white shadow-sm"
+                : "text-[var(--txt2)] hover:text-[var(--txt1)] hover:bg-[var(--surface2)]"
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
@@ -276,15 +276,15 @@ export default function EMRPage() {
       {activeTab === "consultations" && (
         <div className="space-y-4">
           {consultations.length === 0 ? (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#74777f] text-3xl">clinical_notes</span>
+            <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
+              <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">clinical_notes</span>
               </div>
-              <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noConsultations}</p>
-              <p className="text-xs text-[#74777f]">{t.emr.startFirstConsultation}</p>
+              <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noConsultations}</p>
+              <p className="text-xs text-[var(--txt2)]">{t.emr.startFirstConsultation}</p>
               <Link
                 href={`/emr/${id}/new-consultation`}
-                className="mt-1 flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+                className="mt-1 flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
                 {t.emr.newConsultation}
@@ -296,29 +296,29 @@ export default function EMRPage() {
               return (
                 <div
                   key={c.id}
-                  className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden"
+                  className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden"
                 >
                   {/* Consultation header */}
                   <button
                     onClick={() => setExpandedConsult(isOpen ? null : c.id)}
                     className={`w-full flex items-center justify-between px-5 py-4 hover:bg-[#faf9fd] transition-colors text-left ${
-                      focusConsultationId === c.id ? "bg-[#eff6ff]" : ""
+                      focusConsultationId === c.id ? "bg-[var(--blue-bg)]" : ""
                     }`}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        focusConsultationId === c.id ? "bg-[#1960a3]" : "bg-[#eff6ff]"
+                        focusConsultationId === c.id ? "bg-[var(--blue)]" : "bg-[var(--blue-bg)]"
                       }`}>
                         <span className={`material-symbols-outlined text-[20px] ${
-                          focusConsultationId === c.id ? "text-white" : "text-[#1960a3]"
+                          focusConsultationId === c.id ? "text-white" : "text-[var(--blue)]"
                         }`}>clinical_notes</span>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-[#1a1c1e]">
+                        <p className="text-sm font-bold text-[var(--txt1)]">
                           {c.chiefComplaint ?? t.appointments.consultation}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <p className="text-xs text-[#74777f]">
+                          <p className="text-xs text-[var(--txt2)]">
                             {formatDateTime(c.createdAt)}
                             {c.diagnoses.length > 0 && (
                               <> &middot; {c.diagnoses.length} {c.diagnoses.length > 1 ? t.emr.diagnoses_ : t.emr.diagnosis}</>
@@ -328,14 +328,14 @@ export default function EMRPage() {
                             <Link
                               href={`/appointments/${c.appointmentId}`}
                               onClick={e => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1960a3] bg-[#eff6ff] px-2 py-0.5 rounded-full hover:underline"
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--blue)] bg-[var(--blue-bg)] px-2 py-0.5 rounded-full hover:underline"
                             >
                               <span className="material-symbols-outlined text-[11px]">event</span>
                               {t.emr.linkedAppointment}
                             </Link>
                           )}
                           {c.isLocked && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#002045] bg-[#d3e4ff] px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#002045] bg-[var(--blue-bg)] px-2 py-0.5 rounded-full">
                               <span className="material-symbols-outlined text-[11px]">lock</span>
                               {t.emr.locked}
                             </span>
@@ -349,15 +349,15 @@ export default function EMRPage() {
                           {c.diagnoses.slice(0, 3).map((d, i) => (
                             <span key={i} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                               d.type === "PRIMARY"
-                                ? "bg-[#002045] text-white"
-                                : "bg-[#f4f3f7] text-[#43474e]"
+                                ? "bg-[var(--brand)] text-white"
+                                : "bg-[var(--surface2)] text-[var(--txt2)]"
                             }`}>
                               {d.icdCode}
                             </span>
                           ))}
                         </div>
                       )}
-                      <span className={`material-symbols-outlined text-[20px] text-[#74777f] transition-transform ${isOpen ? "rotate-180" : ""}`}>
+                      <span className={`material-symbols-outlined text-[20px] text-[var(--txt2)] transition-transform ${isOpen ? "rotate-180" : ""}`}>
                         expand_more
                       </span>
                     </div>
@@ -365,19 +365,19 @@ export default function EMRPage() {
 
                   {/* SOAP notes expanded */}
                   {isOpen && (
-                    <div className="border-t border-[#e3e2e6] p-5 space-y-5">
+                    <div className="border-t border-[var(--border)] p-5 space-y-5">
                       {/* Doctor attribution + action buttons */}
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[16px] text-[#74777f]">stethoscope</span>
-                          <span className="text-xs font-semibold text-[#74777f]">
-                            {t.emr.doctor}: <span className="text-[#1a1c1e]">{c.doctorName || "—"}</span>
+                          <span className="material-symbols-outlined text-[16px] text-[var(--txt2)]">stethoscope</span>
+                          <span className="text-xs font-semibold text-[var(--txt2)]">
+                            {t.emr.doctor}: <span className="text-[var(--txt1)]">{c.doctorName || "—"}</span>
                           </span>
                         </div>
                         {!c.isLocked && (
                           <Link
                             href={`/emr/${id}/new-consultation?consultation=${c.id}&appointment=${c.appointmentId ?? ""}`}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-[#1960a3] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[#eff6ff] transition-colors"
+                            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--blue)] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[var(--blue-bg)] transition-colors"
                           >
                             <span className="material-symbols-outlined text-[14px]">edit</span>
                             Edit
@@ -387,26 +387,26 @@ export default function EMRPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {/* Chief Complaint */}
                         {c.chiefComplaint && (
-                          <SOAPSection icon="report" label={t.emr.chiefComplaint} color="text-[#ba1a1a]">
-                            <p className="text-sm text-[#1a1c1e]">{c.chiefComplaint}</p>
+                          <SOAPSection icon="report" label={t.emr.chiefComplaint} color="text-[var(--err)]">
+                            <p className="text-sm text-[var(--txt1)]">{c.chiefComplaint}</p>
                           </SOAPSection>
                         )}
                         {/* HPI */}
                         {c.hpi && (
-                          <SOAPSection icon="history" label={t.emr.hpi} color="text-[#1960a3]">
-                            <p className="text-sm text-[#1a1c1e] whitespace-pre-wrap">{c.hpi}</p>
+                          <SOAPSection icon="history" label={t.emr.hpi} color="text-[var(--blue)]">
+                            <p className="text-sm text-[var(--txt1)] whitespace-pre-wrap">{c.hpi}</p>
                           </SOAPSection>
                         )}
                         {/* Examination */}
                         {c.examination && (
-                          <SOAPSection icon="medical_information" label={t.emr.examination} color="text-[#0d9488]">
-                            <p className="text-sm text-[#1a1c1e] whitespace-pre-wrap">{c.examination}</p>
+                          <SOAPSection icon="medical_information" label={t.emr.examination} color="text-[var(--ok)]">
+                            <p className="text-sm text-[var(--txt1)] whitespace-pre-wrap">{c.examination}</p>
                           </SOAPSection>
                         )}
                         {/* Plan */}
                         {c.plan && (
                           <SOAPSection icon="assignment" label={t.emr.plan} color="text-[#633f0f]">
-                            <p className="text-sm text-[#1a1c1e] whitespace-pre-wrap">{c.plan}</p>
+                            <p className="text-sm text-[var(--txt1)] whitespace-pre-wrap">{c.plan}</p>
                           </SOAPSection>
                         )}
                       </div>
@@ -414,23 +414,23 @@ export default function EMRPage() {
                       {/* Diagnoses */}
                       {c.diagnoses.length > 0 && (
                         <div>
-                          <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[var(--txt2)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[14px]">diagnosis</span>
                             {t.emr.diagnoses} (ICD-10)
                           </p>
                           <div className="space-y-2">
                             {c.diagnoses.map((d, i) => (
-                              <div key={i} className="flex items-start gap-3 p-3 bg-[#f4f3f7] rounded-lg">
+                              <div key={i} className="flex items-start gap-3 p-3 bg-[var(--surface2)] rounded-lg">
                                 <span className={`text-xs font-bold px-2 py-1 rounded-lg font-mono ${
                                   d.type === "PRIMARY"
-                                    ? "bg-[#002045] text-white"
-                                    : "bg-[#e9e7eb] text-[#43474e]"
+                                    ? "bg-[var(--brand)] text-white"
+                                    : "bg-[#e9e7eb] text-[var(--txt2)]"
                                 }`}>
                                   {d.icdCode}
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-[#1a1c1e]">{d.description}</p>
-                                  <p className="text-xs text-[#74777f]">{d.type === "PRIMARY" ? t.emr.primaryDx : t.emr.secondaryDx}</p>
+                                  <p className="text-sm text-[var(--txt1)]">{d.description}</p>
+                                  <p className="text-xs text-[var(--txt2)]">{d.type === "PRIMARY" ? t.emr.primaryDx : t.emr.secondaryDx}</p>
                                 </div>
                               </div>
                             ))}
@@ -441,7 +441,7 @@ export default function EMRPage() {
                       {/* Vitals snapshot */}
                       {c.vitals && (
                         <div>
-                          <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[var(--txt2)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[14px]">monitor_heart</span>
                             {t.emr.vitalsAtConsultation}
                           </p>
@@ -460,13 +460,13 @@ export default function EMRPage() {
                       {c.prescriptions.length > 0 && (
                         <div>
                           <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-[var(--txt2)] uppercase tracking-wider flex items-center gap-1.5">
                               <span className="material-symbols-outlined text-[14px]">medication</span>
                               {t.emr.prescriptions}
                             </p>
                             <button
                               onClick={() => window.open(`/print/prescription/${c.id}`, "_blank")}
-                              className="flex items-center gap-1 text-[10px] font-semibold text-[#1960a3] border border-[#1960a3]/30 px-2 py-1 rounded-lg hover:bg-[#eff6ff] transition-colors"
+                              className="flex items-center gap-1 text-[10px] font-semibold text-[var(--blue)] border border-[#1960a3]/30 px-2 py-1 rounded-lg hover:bg-[var(--blue-bg)] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[13px]">print</span>
                               {t.emr.printRx}
@@ -474,15 +474,15 @@ export default function EMRPage() {
                           </div>
                           <div className="space-y-2">
                             {c.prescriptions.map((rx, i) => (
-                              <div key={i} className="flex items-start gap-3 p-3 bg-[#f4f3f7] rounded-lg">
-                                <span className="material-symbols-outlined text-[#1960a3] text-[20px] flex-shrink-0 mt-0.5">medication</span>
+                              <div key={i} className="flex items-start gap-3 p-3 bg-[var(--surface2)] rounded-lg">
+                                <span className="material-symbols-outlined text-[var(--blue)] text-[20px] flex-shrink-0 mt-0.5">medication</span>
                                 <div>
-                                  <p className="text-sm font-semibold text-[#1a1c1e]">{rx.medicationName}</p>
-                                  <p className="text-xs text-[#74777f]">
+                                  <p className="text-sm font-semibold text-[var(--txt1)]">{rx.medicationName}</p>
+                                  <p className="text-xs text-[var(--txt2)]">
                                     {rx.dosage} &middot; {rx.frequency} &middot; {rx.duration}
                                   </p>
                                   {rx.instructions && (
-                                    <p className="text-xs text-[#43474e] mt-0.5">{rx.instructions}</p>
+                                    <p className="text-xs text-[var(--txt2)] mt-0.5">{rx.instructions}</p>
                                   )}
                                 </div>
                               </div>
@@ -493,11 +493,11 @@ export default function EMRPage() {
 
                       {/* Follow-up */}
                       {c.followUpDate && (
-                        <div className="flex items-center gap-3 p-3 bg-[#eff6ff] border border-[#1960a3]/20 rounded-lg">
-                          <span className="material-symbols-outlined text-[#1960a3] text-[20px]">event</span>
+                        <div className="flex items-center gap-3 p-3 bg-[var(--blue-bg)] border border-[#1960a3]/20 rounded-lg">
+                          <span className="material-symbols-outlined text-[var(--blue)] text-[20px]">event</span>
                           <div>
-                            <p className="text-xs font-semibold text-[#1960a3]">{t.emr.followUp}</p>
-                            <p className="text-sm text-[#1a1c1e]">{formatDate(c.followUpDate)}</p>
+                            <p className="text-xs font-semibold text-[var(--blue)]">{t.emr.followUp}</p>
+                            <p className="text-sm text-[var(--txt1)]">{formatDate(c.followUpDate)}</p>
                           </div>
                         </div>
                       )}
@@ -512,14 +512,14 @@ export default function EMRPage() {
 
       {/* ─── VITALS ─── */}
       {activeTab === "vitals" && (
-        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
           {vitals.length === 0 ? (
             <div className="py-20 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#74777f] text-3xl">monitor_heart</span>
+              <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">monitor_heart</span>
               </div>
-              <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noVitals}</p>
-              <p className="text-xs text-[#74777f]">{t.emr.vitalsRecorded}</p>
+              <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noVitals}</p>
+              <p className="text-xs text-[var(--txt2)]">{t.emr.vitalsRecorded}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -533,27 +533,27 @@ export default function EMRPage() {
                 </thead>
                 <tbody>
                   {vitals.map((v, i) => (
-                    <tr key={i} className="hover:bg-[#f4f3f7] transition-colors">
-                      <td className="table-cell font-medium text-[#1a1c1e] whitespace-nowrap">
+                    <tr key={i} className="hover:bg-[var(--surface2)] transition-colors">
+                      <td className="table-cell font-medium text-[var(--txt1)] whitespace-nowrap">
                         {formatDateTime(v.recordedAt)}
                       </td>
                       <td className="table-cell">
                         {v.bpSystolic != null && v.bpDiastolic != null ? (
-                          <span className={`font-semibold ${v.bpSystolic > 140 ? "text-[#ba1a1a]" : "text-[#1a1c1e]"}`}>
+                          <span className={`font-semibold ${v.bpSystolic > 140 ? "text-[var(--err)]" : "text-[var(--txt1)]"}`}>
                             {v.bpSystolic}/{v.bpDiastolic} mmHg
                           </span>
                         ) : <span className="text-[#c4c6cf]">—</span>}
                       </td>
                       <td className="table-cell">
                         {v.heartRate != null ? (
-                          <span className={v.heartRate > 100 || v.heartRate < 60 ? "text-[#ba1a1a] font-semibold" : "text-[#1a1c1e]"}>
+                          <span className={v.heartRate > 100 || v.heartRate < 60 ? "text-[var(--err)] font-semibold" : "text-[var(--txt1)]"}>
                             {v.heartRate} bpm
                           </span>
                         ) : <span className="text-[#c4c6cf]">—</span>}
                       </td>
                       <td className="table-cell">
                         {v.temperature != null ? (
-                          <span className={v.temperature > 37.5 ? "text-[#ba1a1a] font-semibold" : "text-[#1a1c1e]"}>
+                          <span className={v.temperature > 37.5 ? "text-[var(--err)] font-semibold" : "text-[var(--txt1)]"}>
                             {v.temperature}°C
                           </span>
                         ) : <span className="text-[#c4c6cf]">—</span>}
@@ -562,7 +562,7 @@ export default function EMRPage() {
                       <td className="table-cell">
                         {v.bmi != null ? (
                           <span className={`font-semibold ${
-                            v.bmi >= 30 ? "text-[#ba1a1a]" : v.bmi >= 25 ? "text-[#d97706]" : "text-[#0d9488]"
+                            v.bmi >= 30 ? "text-[var(--err)]" : v.bmi >= 25 ? "text-[var(--warn)]" : "text-[var(--ok)]"
                           }`}>
                             {v.bmi.toFixed(1)}
                           </span>
@@ -570,7 +570,7 @@ export default function EMRPage() {
                       </td>
                       <td className="table-cell">
                         {v.spo2 != null ? (
-                          <span className={v.spo2 < 95 ? "text-[#ba1a1a] font-semibold" : "text-[#1a1c1e]"}>
+                          <span className={v.spo2 < 95 ? "text-[var(--err)] font-semibold" : "text-[var(--txt1)]"}>
                             {v.spo2}%
                           </span>
                         ) : <span className="text-[#c4c6cf]">—</span>}
@@ -589,14 +589,14 @@ export default function EMRPage() {
 
       {/* ─── LAB RESULTS ─── */}
       {activeTab === "labs" && (
-        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
           {labOrders.length === 0 ? (
             <div className="py-20 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#74777f] text-3xl">science</span>
+              <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">science</span>
               </div>
-              <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noLabOrders}</p>
-              <p className="text-xs text-[#74777f]">{t.emr.labsCreated}</p>
+              <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noLabOrders}</p>
+              <p className="text-xs text-[var(--txt2)]">{t.emr.labsCreated}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -623,23 +623,23 @@ export default function EMRPage() {
                     const stLabel = labStatusLabel[order.status] ?? order.status;
                     const prLabel = priorityLabel[order.priority] ?? order.priority;
                     return (
-                      <tr key={order.id} className="hover:bg-[#f4f3f7] transition-colors">
+                      <tr key={order.id} className="hover:bg-[var(--surface2)] transition-colors">
                         <td className="table-cell">
-                          <span className="text-xs font-mono text-[#43474e] bg-[#f4f3f7] px-2 py-1 rounded">
+                          <span className="text-xs font-mono text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded">
                             #{order.id.slice(-8).toUpperCase()}
                           </span>
                         </td>
                         <td className="table-cell max-w-[220px]">
                           <div className="flex flex-wrap gap-1">
                             {order.tests.map((test, i) => (
-                              <span key={i} className="text-xs bg-[#f4f3f7] text-[#43474e] px-2 py-0.5 rounded-full border border-[#e3e2e6]">
+                              <span key={i} className="text-xs bg-[var(--surface2)] text-[var(--txt2)] px-2 py-0.5 rounded-full border border-[var(--border)]">
                                 {test}
                               </span>
                             ))}
                           </div>
                         </td>
-                        <td className="table-cell whitespace-nowrap text-[#43474e]">{formatDate(order.date)}</td>
-                        <td className="table-cell text-[#43474e]">{order.orderedBy}</td>
+                        <td className="table-cell whitespace-nowrap text-[var(--txt2)]">{formatDate(order.date)}</td>
+                        <td className="table-cell text-[var(--txt2)]">{order.orderedBy}</td>
                         <td className="table-cell">
                           <span className={`badge ${prCss.bg} ${prCss.text}`}>{prLabel}</span>
                         </td>
@@ -648,7 +648,7 @@ export default function EMRPage() {
                         </td>
                         <td className="table-cell text-right">
                           <button
-                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
+                            className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]"
                             aria-label={t.emr.viewResults}
                             title={t.emr.viewResults}
                           >
@@ -667,14 +667,14 @@ export default function EMRPage() {
 
       {/* ─── RADIOLOGY ─── */}
       {activeTab === "radiology" && (
-        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
           {radiologyOrders.length === 0 ? (
             <div className="py-20 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#74777f] text-3xl">image_search</span>
+              <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">image_search</span>
               </div>
-              <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noRadiology}</p>
-              <p className="text-xs text-[#74777f]">{t.emr.radiologyCreated}</p>
+              <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noRadiology}</p>
+              <p className="text-xs text-[var(--txt2)]">{t.emr.radiologyCreated}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -696,18 +696,18 @@ export default function EMRPage() {
                 </thead>
                 <tbody>
                   {radiologyOrders.map((ro) => (
-                    <tr key={ro.id} className="hover:bg-[#f4f3f7] transition-colors">
-                      <td className="table-cell"><span className="text-xs font-mono bg-[#f4f3f7] px-2 py-1 rounded">#{ro.id.slice(-8).toUpperCase()}</span></td>
-                      <td className="table-cell"><span className="text-xs font-bold bg-[#d3e4ff] text-[#00477f] px-2 py-1 rounded-full">{ro.modality}</span></td>
-                      <td className="table-cell text-sm text-[#1a1c1e]">{ro.study}</td>
-                      <td className="table-cell text-sm text-[#43474e]">{ro.bodyPart}</td>
+                    <tr key={ro.id} className="hover:bg-[var(--surface2)] transition-colors">
+                      <td className="table-cell"><span className="text-xs font-mono bg-[var(--surface2)] px-2 py-1 rounded">#{ro.id.slice(-8).toUpperCase()}</span></td>
+                      <td className="table-cell"><span className="text-xs font-bold bg-[var(--blue-bg)] text-[#00477f] px-2 py-1 rounded-full">{ro.modality}</span></td>
+                      <td className="table-cell text-sm text-[var(--txt1)]">{ro.study}</td>
+                      <td className="table-cell text-sm text-[var(--txt2)]">{ro.bodyPart}</td>
                       <td className="table-cell">
-                        <span className={`badge ${priorityLabel[ro.priority] ? PRIORITY_CSS[ro.priority]?.bg ?? "bg-[#f4f3f7]" : "bg-[#f4f3f7]"} ${priorityLabel[ro.priority] ? PRIORITY_CSS[ro.priority]?.text ?? "text-[#74777f]" : "text-[#74777f]"}`}>
+                        <span className={`badge ${priorityLabel[ro.priority] ? PRIORITY_CSS[ro.priority]?.bg ?? "bg-[var(--surface2)]" : "bg-[var(--surface2)]"} ${priorityLabel[ro.priority] ? PRIORITY_CSS[ro.priority]?.text ?? "text-[var(--txt2)]" : "text-[var(--txt2)]"}`}>
                           {priorityLabel[ro.priority] ?? ro.priority}
                         </span>
                       </td>
-                      <td className="table-cell"><span className="badge bg-[#d3e4ff] text-[#00477f]">{ro.status.replace(/_/g, " ")}</span></td>
-                      <td className="table-cell text-xs text-[#74777f] whitespace-nowrap">{formatDate(ro.createdAt)}</td>
+                      <td className="table-cell"><span className="badge bg-[var(--blue-bg)] text-[#00477f]">{ro.status.replace(/_/g, " ")}</span></td>
+                      <td className="table-cell text-xs text-[var(--txt2)] whitespace-nowrap">{formatDate(ro.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -719,14 +719,14 @@ export default function EMRPage() {
 
       {/* ─── PRESCRIPTIONS ─── */}
       {activeTab === "prescriptions" && (
-        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
           {allPrescriptions.length > 0 && (
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#e3e2e6] bg-[#f8f9ff]">
-              <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">{t.emr.prescriptions}</p>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[#f8f9ff]">
+              <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider">{t.emr.prescriptions}</p>
               {consultations.length > 0 && consultations[0]?.id && (
                 <button
                   onClick={() => window.open(`/print/prescription/${consultations[0].id}`, "_blank")}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-[#1960a3] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[#eff6ff] transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[var(--blue)] border border-[#1960a3]/30 px-3 py-1.5 rounded-lg hover:bg-[var(--blue-bg)] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[15px]">print</span>
                   {t.emr.printLatestRx}
@@ -736,11 +736,11 @@ export default function EMRPage() {
           )}
           {allPrescriptions.length === 0 ? (
             <div className="py-20 flex flex-col items-center gap-3">
-              <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#74777f] text-3xl">medication</span>
+              <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">medication</span>
               </div>
-              <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noPrescriptions}</p>
-              <p className="text-xs text-[#74777f]">{t.emr.prescriptionsCreated}</p>
+              <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noPrescriptions}</p>
+              <p className="text-xs text-[var(--txt2)]">{t.emr.prescriptionsCreated}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -762,15 +762,15 @@ export default function EMRPage() {
                 </thead>
                 <tbody>
                   {allPrescriptions.map((rx) => (
-                    <tr key={rx.id} className="hover:bg-[#f4f3f7] transition-colors">
-                      <td className="table-cell font-semibold text-[#1a1c1e]">{rx.medicationName}</td>
-                      <td className="table-cell text-sm text-[#43474e]">{rx.dosage}</td>
-                      <td className="table-cell text-sm text-[#43474e]">{rx.frequency}</td>
-                      <td className="table-cell text-sm text-[#43474e]">{rx.duration}</td>
-                      <td className="table-cell text-xs text-[#74777f] max-w-[180px] truncate">{rx.instructions ?? "—"}</td>
-                      <td className="table-cell text-xs text-[#74777f] whitespace-nowrap">{rx.consultDate ? formatDate(rx.consultDate) : "—"}</td>
+                    <tr key={rx.id} className="hover:bg-[var(--surface2)] transition-colors">
+                      <td className="table-cell font-semibold text-[var(--txt1)]">{rx.medicationName}</td>
+                      <td className="table-cell text-sm text-[var(--txt2)]">{rx.dosage}</td>
+                      <td className="table-cell text-sm text-[var(--txt2)]">{rx.frequency}</td>
+                      <td className="table-cell text-sm text-[var(--txt2)]">{rx.duration}</td>
+                      <td className="table-cell text-xs text-[var(--txt2)] max-w-[180px] truncate">{rx.instructions ?? "—"}</td>
+                      <td className="table-cell text-xs text-[var(--txt2)] whitespace-nowrap">{rx.consultDate ? formatDate(rx.consultDate) : "—"}</td>
                       <td className="table-cell">
-                        <span className={`badge ${rx.isDispensed ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e9e7eb] text-[#43474e]"}`}>
+                        <span className={`badge ${rx.isDispensed ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[#e9e7eb] text-[var(--txt2)]"}`}>
                           {rx.isDispensed ? t.emr.dispensed : t.emr.pendingDispense}
                         </span>
                       </td>
@@ -785,12 +785,12 @@ export default function EMRPage() {
 
       {/* ─── DOCUMENTS ─── */}
       {activeTab === "documents" && (
-        <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
-          <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-[#74777f] text-3xl">folder_open</span>
+        <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
+          <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+            <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">folder_open</span>
           </div>
-          <p className="text-sm font-semibold text-[#1a1c1e]">{t.emr.noDocuments}</p>
-          <p className="text-xs text-[#74777f]">{t.emr.uploadFromProfile}</p>
+          <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noDocuments}</p>
+          <p className="text-xs text-[var(--txt2)]">{t.emr.uploadFromProfile}</p>
         </div>
       )}
     </div>
@@ -810,7 +810,7 @@ function SOAPSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-4 bg-[#faf9fd] rounded-xl border border-[#e3e2e6]">
+    <div className="p-4 bg-[#faf9fd] rounded-xl border border-[var(--border)]">
       <p className={`text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${color}`}>
         <span className="material-symbols-outlined text-[14px]">{icon}</span>
         {label}
@@ -823,11 +823,11 @@ function SOAPSection({
 function VitalChip({ label, value, unit }: { label: string; value?: string; unit: string }) {
   if (!value) return null;
   return (
-    <div className="p-3 bg-[#f4f3f7] rounded-lg text-center">
-      <p className="text-[10px] text-[#74777f] font-semibold uppercase tracking-wider">{label}</p>
-      <p className="text-base font-bold text-[#1a1c1e] mt-0.5">
+    <div className="p-3 bg-[var(--surface2)] rounded-lg text-center">
+      <p className="text-[10px] text-[var(--txt2)] font-semibold uppercase tracking-wider">{label}</p>
+      <p className="text-base font-bold text-[var(--txt1)] mt-0.5">
         {value}
-        {unit && <span className="text-xs font-normal text-[#74777f] ms-1">{unit}</span>}
+        {unit && <span className="text-xs font-normal text-[var(--txt2)] ms-1">{unit}</span>}
       </p>
     </div>
   );

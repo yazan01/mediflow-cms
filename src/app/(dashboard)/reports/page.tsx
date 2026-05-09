@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { formatCurrency } from "@/lib/utils";
@@ -224,10 +224,10 @@ export default function ReportsPage() {
   }
 
   const kpiCards = [
-    { label: t.reports.revenueMTD,      value: stats ? formatCurrency(stats.revenueMTD)    : "—", icon: "payments",       change: stats?.revenueChange,      iconBg: "bg-[#d3e4ff]", iconColor: "text-[#1960a3]" },
+    { label: t.reports.revenueMTD,      value: stats ? formatCurrency(stats.revenueMTD)    : "—", icon: "payments",       change: stats?.revenueChange,      iconBg: "bg-[var(--blue-bg)]", iconColor: "text-[var(--blue)]" },
     { label: t.reports.patientsMTD,     value: stats ? String(stats.patientsMTD)           : "—", icon: "person",         change: stats?.patientsChange,     iconBg: "bg-[#d6e3ff]", iconColor: "text-[#002045]" },
     { label: t.reports.appointmentsMTD, value: stats ? String(stats.appointmentsMTD)       : "—", icon: "calendar_today", change: stats?.appointmentsChange, iconBg: "bg-[#ffddba]", iconColor: "text-[#633f0f]" },
-    { label: t.reports.noShowRate,      value: stats ? `${(stats.noShowRate ?? 0).toFixed(1)}%` : "—", icon: "event_busy", change: stats?.noShowChange, iconBg: "bg-[#ffdad6]", iconColor: "text-[#ba1a1a]" },
+    { label: t.reports.noShowRate,      value: stats ? `${(stats.noShowRate ?? 0).toFixed(1)}%` : "—", icon: "event_busy", change: stats?.noShowChange, iconBg: "bg-[var(--err-bg)]", iconColor: "text-[var(--err)]" },
   ];
 
   const tabs = [
@@ -255,14 +255,14 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.reports.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{t.reports.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.reports.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{t.reports.subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={dateRange}
             onChange={(e) => { setDateRange(e.target.value as DateRange); setDateFrom(""); setDateTo(""); }}
-            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             aria-label={t.reports.dateRange}
           >
             <option value="this_month">{t.reports.thisMonth}</option>
@@ -274,27 +274,27 @@ export default function ReportsPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             aria-label={t.reports.dateFrom}
           />
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             aria-label={t.reports.dateTo}
           />
           <button
             onClick={() => handleOverviewExport("xlsx")}
             disabled={exporting}
-            className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">table_chart</span>
             {exporting ? t.reports.exporting : t.reports.exportExcelBtn}
           </button>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors print:hidden"
+            className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors print:hidden"
           >
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
             PDF
@@ -303,7 +303,7 @@ export default function ReportsPage() {
       </div>
 
       {exportError && (
-        <div className="flex items-center gap-3 p-3 bg-[#ffdad6] text-[#ba1a1a] rounded-xl text-sm font-semibold">
+        <div className="flex items-center gap-3 p-3 bg-[var(--err-bg)] text-[var(--err)] rounded-xl text-sm font-semibold">
           <span className="material-symbols-outlined text-[18px]">error</span>
           {exportError}
           <button onClick={() => setExportError(null)} className="ms-auto opacity-70 hover:opacity-100 p-1" aria-label={t.common.close}>
@@ -313,15 +313,15 @@ export default function ReportsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 p-1 bg-[#f4f3f7] rounded-xl w-fit">
+      <div className="flex flex-wrap gap-1 p-1 bg-[var(--surface2)] rounded-xl w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
               activeTab === tab.key
-                ? "bg-white text-[#1960a3] shadow-sm"
-                : "text-[#74777f] hover:text-[#1a1c1e]"
+                ? "bg-white text-[var(--blue)] shadow-sm"
+                : "text-[var(--txt2)] hover:text-[var(--txt1)]"
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
@@ -335,14 +335,14 @@ export default function ReportsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpiCards.map((card) => (
-              <div key={card.label} className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+              <div key={card.label} className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
                 <div className="flex justify-between items-start mb-4">
                   <div className={`p-3 ${card.iconBg} rounded-2xl`}>
                     <span className={`material-symbols-outlined ${card.iconColor} text-[22px]`}>{card.icon}</span>
                   </div>
                   {card.change !== undefined && (
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                      card.change >= 0 ? "bg-[#ccfbf1]/60 text-[#0d9488]" : "bg-[#ffdad6] text-[#93000a]"
+                      card.change >= 0 ? "bg-[var(--ok-bg)]/60 text-[var(--ok)]" : "bg-[var(--err-bg)] text-[#93000a]"
                     }`}>
                       <span className="material-symbols-outlined text-[12px]">
                         {card.change >= 0 ? "trending_up" : "trending_down"}
@@ -351,11 +351,11 @@ export default function ReportsPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider mb-1">{card.label}</p>
+                <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1">{card.label}</p>
                 {statsLoading ? (
-                  <div className="h-8 w-24 bg-[#f4f3f7] rounded animate-pulse"></div>
+                  <div className="h-8 w-24 bg-[var(--surface2)] rounded animate-pulse"></div>
                 ) : (
-                  <p className="text-3xl font-bold text-[#1a1c1e]">{card.value}</p>
+                  <p className="text-3xl font-bold text-[var(--txt1)]">{card.value}</p>
                 )}
               </div>
             ))}
@@ -364,15 +364,15 @@ export default function ReportsPage() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Revenue vs Expenses — Recharts BarChart */}
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+            <div className="bg-white rounded-xl border border-[var(--border)] p-6 shadow-[var(--sh-sm)]">
               <div className="flex justify-between items-center mb-5">
                 <div>
-                  <h3 className="text-base font-semibold text-[#1a1c1e]">{t.reports.revenueVsExpenses}</h3>
-                  <p className="text-xs text-[#74777f]">{t.reports.monthlyComparison}</p>
+                  <h3 className="text-base font-semibold text-[var(--txt1)]">{t.reports.revenueVsExpenses}</h3>
+                  <p className="text-xs text-[var(--txt2)]">{t.reports.monthlyComparison}</p>
                 </div>
                 <button
                   onClick={() => handleOverviewExport("xlsx")}
-                  className="flex items-center gap-1 text-xs text-[#1960a3] font-semibold border border-[#c4c6cf] px-3 py-1.5 rounded-lg hover:bg-[#f4f3f7]"
+                  className="flex items-center gap-1 text-xs text-[var(--blue)] font-semibold border border-[var(--border2)] px-3 py-1.5 rounded-lg hover:bg-[var(--surface2)]"
                   disabled={exporting}
                 >
                   <span className="material-symbols-outlined text-[14px]">download</span>
@@ -403,21 +403,21 @@ export default function ReportsPage() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-52 rounded-lg border border-[#e3e2e6] bg-[#faf9fd] flex items-center justify-center">
+                <div className="h-52 rounded-lg border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center">
                   <div className="text-center">
                     <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">bar_chart</span>
-                    <p className="text-xs text-[#74777f] mt-2">{t.reports.noChartData}</p>
+                    <p className="text-xs text-[var(--txt2)] mt-2">{t.reports.noChartData}</p>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Revenue trend — AreaChart */}
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+            <div className="bg-white rounded-xl border border-[var(--border)] p-6 shadow-[var(--sh-sm)]">
               <div className="flex justify-between items-center mb-5">
                 <div>
-                  <h3 className="text-base font-semibold text-[#1a1c1e]">{t.reports.patientVolume}</h3>
-                  <p className="text-xs text-[#74777f]">{t.reports.newVsReturning}</p>
+                  <h3 className="text-base font-semibold text-[var(--txt1)]">{t.reports.patientVolume}</h3>
+                  <p className="text-xs text-[var(--txt2)]">{t.reports.newVsReturning}</p>
                 </div>
               </div>
               {chartData.length > 0 ? (
@@ -443,10 +443,10 @@ export default function ReportsPage() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-52 rounded-lg border border-[#e3e2e6] bg-[#faf9fd] flex items-center justify-center">
+                <div className="h-52 rounded-lg border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center">
                   <div className="text-center">
                     <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">area_chart</span>
-                    <p className="text-xs text-[#74777f] mt-2">{t.reports.noChartData}</p>
+                    <p className="text-xs text-[var(--txt2)] mt-2">{t.reports.noChartData}</p>
                   </div>
                 </div>
               )}
@@ -504,14 +504,14 @@ export default function ReportsPage() {
       {activeTab === "data" && (
         <div className="space-y-4">
           {/* Viewer filters bar */}
-          <div className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex flex-wrap gap-3 items-end shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="bg-white rounded-xl border border-[var(--border)] p-4 flex flex-wrap gap-3 items-end shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             {/* Report type selector */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-[#74777f]">{t.reports.dataViewer}</label>
+              <label className="text-xs font-semibold text-[var(--txt2)]">{t.reports.dataViewer}</label>
               <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value as ReportType)}
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[160px]"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[160px]"
               >
                 {REPORT_TYPE_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -521,32 +521,32 @@ export default function ReportsPage() {
 
             {/* Date range */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-[#74777f]">{t.reports.dateFrom}</label>
+              <label className="text-xs font-semibold text-[var(--txt2)]">{t.reports.dateFrom}</label>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-[#74777f]">{t.reports.dateTo}</label>
+              <label className="text-xs font-semibold text-[var(--txt2)]">{t.reports.dateTo}</label>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
               />
             </div>
 
             {/* Doctor filter (appointments only) */}
             {reportType === "appointments" && (
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-[#74777f]">{t.reports.doctor}</label>
+                <label className="text-xs font-semibold text-[var(--txt2)]">{t.reports.doctor}</label>
                 <select
                   value={dvDoctorId}
                   onChange={(e) => setDvDoctorId(e.target.value)}
-                  className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[150px]"
+                  className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[150px]"
                 >
                   <option value="ALL">{t.reports.allDoctors}</option>
                   {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -556,11 +556,11 @@ export default function ReportsPage() {
 
             {/* Branch filter */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-[#74777f]">{t.reports.branch}</label>
+              <label className="text-xs font-semibold text-[var(--txt2)]">{t.reports.branch}</label>
               <select
                 value={dvBranchId}
                 onChange={(e) => setDvBranchId(e.target.value)}
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[140px]"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[140px]"
               >
                 <option value="ALL">{t.reports.allBranches}</option>
                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -569,11 +569,11 @@ export default function ReportsPage() {
 
             {/* Status filter */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-[#74777f]">{t.common.status}</label>
+              <label className="text-xs font-semibold text-[var(--txt2)]">{t.common.status}</label>
               <select
                 value={dvStatus}
                 onChange={(e) => setDvStatus(e.target.value)}
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[130px]"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 min-w-[130px]"
               >
                 <option value="ALL">{t.reports.allStatuses}</option>
                 {STATUS_OPTIONS[reportType].map(s => <option key={s} value={s}>{s}</option>)}
@@ -582,15 +582,15 @@ export default function ReportsPage() {
 
             {/* Search */}
             <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
-              <label className="text-xs font-semibold text-[#74777f]">{t.common.search}</label>
+              <label className="text-xs font-semibold text-[var(--txt2)]">{t.common.search}</label>
               <div className="relative">
-                <span className="material-symbols-outlined absolute start-3 top-2.5 text-[16px] text-[#74777f]">search</span>
+                <span className="material-symbols-outlined absolute start-3 top-2.5 text-[16px] text-[var(--txt2)]">search</span>
                 <input
                   type="text"
                   value={dvSearch}
                   onChange={(e) => setDvSearch(e.target.value)}
                   placeholder={t.reports.reportSearch}
-                  className="border border-[#c4c6cf] bg-white rounded-lg ps-9 pe-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                  className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg ps-9 pe-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
                 />
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function ReportsPage() {
               <button
                 onClick={() => handleExport("xlsx")}
                 disabled={exporting}
-                className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[16px]">table_chart</span>
                 {t.reports.exportExcelBtn}
@@ -608,7 +608,7 @@ export default function ReportsPage() {
               <button
                 onClick={() => handleExport("csv")}
                 disabled={exporting}
-                className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[16px]">csv</span>
                 {t.reports.exportCsvBtn}
@@ -618,19 +618,19 @@ export default function ReportsPage() {
 
           {/* Total count */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#74777f]">
-              {t.reports.totalRecords}: <strong className="text-[#1a1c1e]">{dvTotal.toLocaleString()}</strong>
+            <span className="text-sm text-[var(--txt2)]">
+              {t.reports.totalRecords}: <strong className="text-[var(--txt1)]">{dvTotal.toLocaleString()}</strong>
             </span>
           </div>
 
           {/* Data table */}
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#e3e2e6] bg-[#f4f3f7]">
+                  <tr className="border-b border-[var(--border)] bg-[var(--surface2)]">
                     {dvColumns.map(col => (
-                      <th key={col} className="table-header py-3 px-4 text-start font-semibold text-[#43474e]">
+                      <th key={col} className="table-header py-3 px-4 text-start font-semibold text-[var(--txt2)]">
                         {COL_LABELS[col] ?? col}
                       </th>
                     ))}
@@ -639,26 +639,26 @@ export default function ReportsPage() {
                 <tbody>
                   {dvLoading ? (
                     Array.from({ length: 8 }).map((_, i) => (
-                      <tr key={i} className="border-b border-[#e3e2e6]">
+                      <tr key={i} className="border-b border-[var(--border)]">
                         {(dvColumns.length > 0 ? dvColumns : Array.from({ length: 5 })).map((_, j) => (
                           <td key={j} className="px-4 py-3">
-                            <div className="h-4 bg-[#f4f3f7] rounded animate-pulse w-full max-w-[120px]" />
+                            <div className="h-4 bg-[var(--surface2)] rounded animate-pulse w-full max-w-[120px]" />
                           </td>
                         ))}
                       </tr>
                     ))
                   ) : dvData.length === 0 ? (
                     <tr>
-                      <td colSpan={dvColumns.length || 5} className="text-center py-16 text-[#74777f]">
+                      <td colSpan={dvColumns.length || 5} className="text-center py-16 text-[var(--txt2)]">
                         <span className="material-symbols-outlined text-4xl text-[#c4c6cf] block mb-2">table_rows</span>
                         {t.common.noData}
                       </td>
                     </tr>
                   ) : (
                     dvData.map((row, ri) => (
-                      <tr key={ri} className="table-row border-b border-[#e3e2e6] hover:bg-[#faf9fd] transition-colors">
+                      <tr key={ri} className="table-row border-b border-[var(--border)] hover:bg-[var(--bg)] transition-colors">
                         {dvColumns.map(col => (
-                          <td key={col} className="table-cell px-4 py-3 text-[#1a1c1e]">
+                          <td key={col} className="table-cell px-4 py-3 text-[var(--txt1)]">
                             {renderCell(col, row[col])}
                           </td>
                         ))}
@@ -671,15 +671,15 @@ export default function ReportsPage() {
 
             {/* Pagination */}
             {dvTotalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-[#e3e2e6]">
-                <span className="text-xs text-[#74777f]">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
+                <span className="text-xs text-[var(--txt2)]">
                   {t.common.page} {dvPage} {t.common.of} {dvTotalPages}
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setDvPage(p => Math.max(1, p - 1))}
                     disabled={dvPage === 1}
-                    className="flex items-center gap-1 border border-[#c4c6cf] px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1 border border-[var(--border2)] px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     <span className="material-symbols-outlined text-[16px]">chevron_left</span>
                     {t.common.previous}
@@ -687,7 +687,7 @@ export default function ReportsPage() {
                   <button
                     onClick={() => setDvPage(p => Math.min(dvTotalPages, p + 1))}
                     disabled={dvPage === dvTotalPages}
-                    className="flex items-center gap-1 border border-[#c4c6cf] px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1 border border-[var(--border2)] px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t.common.next}
                     <span className="material-symbols-outlined text-[16px]">chevron_right</span>
@@ -724,20 +724,20 @@ function ReportCard({
   }, []);
 
   return (
-    <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow">
+    <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow">
       <div className="flex items-start gap-3 mb-4">
-        <div className="p-2.5 bg-[#d3e4ff]/40 rounded-xl flex-shrink-0">
-          <span className="material-symbols-outlined text-[#1960a3] text-[22px]">{icon}</span>
+        <div className="p-2.5 bg-[var(--blue-bg)]/40 rounded-xl flex-shrink-0">
+          <span className="material-symbols-outlined text-[var(--blue)] text-[22px]">{icon}</span>
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-[#1a1c1e]">{label}</h3>
-          <p className="text-xs text-[#74777f] mt-0.5">{desc}</p>
+          <h3 className="text-sm font-semibold text-[var(--txt1)]">{label}</h3>
+          <p className="text-xs text-[var(--txt2)] mt-0.5">{desc}</p>
         </div>
       </div>
       <div className="flex gap-2">
         <button
           onClick={onViewData}
-          className="flex-1 flex items-center justify-center gap-2 border border-[#c4c6cf] py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors text-[#1a1c1e]"
+          className="flex-1 flex items-center justify-center gap-2 border border-[var(--border2)] py-2 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors text-[var(--txt1)]"
         >
           <span className="material-symbols-outlined text-[16px]">table_view</span>
           {viewDataLabel}
@@ -745,7 +745,7 @@ function ReportCard({
         <div className="relative" ref={ref}>
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex items-center justify-center gap-2 bg-[#002045] text-white py-2 px-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+            className="flex items-center justify-center gap-2 bg-[var(--brand)] text-white py-2 px-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
             aria-haspopup="true"
             aria-expanded={open}
           >
@@ -753,14 +753,14 @@ function ReportCard({
             {generateLabel}
           </button>
           {open && (
-            <div className="absolute bottom-full end-0 mb-1 w-36 bg-white border border-[#e3e2e6] rounded-xl shadow-[0_8px_32px_rgba(26,54,93,0.15)] overflow-hidden z-10">
+            <div className="absolute bottom-full end-0 mb-1 w-36 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[var(--sh-xl)] overflow-hidden z-10">
               {(["excel", "csv", "pdf"] as const).map((fmt) => (
                 <button
                   key={fmt}
                   onClick={() => { setOpen(false); onExport(fmt); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors font-medium text-start"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors font-medium text-start"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-[#74777f]">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--txt2)]">
                     {fmt === "pdf" ? "picture_as_pdf" : fmt === "excel" ? "table_chart" : "csv"}
                   </span>
                   {fmt === "pdf" ? exportLabels.pdf : fmt === "excel" ? exportLabels.excel : exportLabels.csv}

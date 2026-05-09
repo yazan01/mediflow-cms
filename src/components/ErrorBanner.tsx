@@ -23,8 +23,8 @@ export function ErrorBanner({ error, onRetry }: Props) {
   const isNetwork = fe.type === "network";
   const status = fe.type === "api" ? fe.status : undefined;
   const icon = isNetwork ? "wifi_off" : status === 403 ? "lock" : "error_outline";
-  const color = status === 403 ? "text-[#d97706]" : "text-[#ba1a1a]";
-  const bg = status === 403 ? "bg-[#fff7ed] border-[#d97706]/20" : "bg-[#ffdad6]/40 border-[#ba1a1a]/20";
+  const color = status === 403 ? "text-[var(--warn)]" : "text-[var(--err)]";
+  const bg = status === 403 ? "bg-[var(--warn-bg)] border-[#d97706]/20" : "bg-[var(--err-bg)]/40 border-[#ba1a1a]/20";
 
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${bg} mb-4`} role="alert">
@@ -33,7 +33,7 @@ export function ErrorBanner({ error, onRetry }: Props) {
       {onRetry && (
         <button
           onClick={onRetry}
-          className="text-xs font-semibold text-[#1960a3] hover:underline flex-shrink-0"
+          className="text-xs font-semibold text-[var(--blue)] hover:underline flex-shrink-0"
         >
           {t.common.retry}
         </button>

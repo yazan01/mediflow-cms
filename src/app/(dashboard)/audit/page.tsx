@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/lib/utils";
@@ -8,15 +8,15 @@ import { useDebounce } from "@/lib/hooks/useDebounce";
 import { ErrorBanner } from "@/components/ErrorBanner";
 
 const MODULE_COLORS: Record<string, string> = {
-  AUTH: "bg-[#d3e4ff] text-[#00477f]",
-  PATIENTS: "bg-[#ccfbf1] text-[#0d9488]",
+  AUTH: "bg-[var(--blue-bg)] text-[#00477f]",
+  PATIENTS: "bg-[var(--ok-bg)] text-[var(--ok)]",
   APPOINTMENTS: "bg-[#ffddba] text-[#633f0f]",
-  EMR: "bg-[#dbeafe] text-[#1960a3]",
+  EMR: "bg-[var(--blue-bg)] text-[var(--blue)]",
   BILLING: "bg-[#d6e3ff] text-[#002045]",
   PHARMACY: "bg-[#fdf4ff] text-[#9333ea]",
   HR: "bg-[#f0fdf4] text-[#16a34a]",
-  ACCOUNTING: "bg-[#fffbeb] text-[#d97706]",
-  USERS: "bg-[#e9e7eb] text-[#43474e]",
+  ACCOUNTING: "bg-[#fffbeb] text-[var(--warn)]",
+  USERS: "bg-[#e9e7eb] text-[var(--txt2)]",
 };
 
 const MODULES = ["ALL", "AUTH", "PATIENTS", "APPOINTMENTS", "EMR", "BILLING", "PHARMACY", "HR", "ACCOUNTING", "USERS"];
@@ -61,10 +61,10 @@ export default function AuditPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.audit.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{t.audit.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.audit.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{t.audit.subtitle}</p>
         </div>
-        <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+        <button className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors">
           <span className="material-symbols-outlined text-[18px]">download</span>
           {t.audit.export}
         </button>
@@ -73,15 +73,15 @@ export default function AuditPage() {
       {fetchError && <ErrorBanner error={fetchError} onRetry={fetchLogs} />}
 
       <div className="bg-[#fffbeb] border border-[#d97706]/20 rounded-xl p-4 flex items-center gap-3">
-        <span className="material-symbols-outlined text-[#d97706] text-[20px]">lock</span>
-        <p className="text-sm text-[#1a1c1e]">{t.audit.immutableNotice}</p>
+        <span className="material-symbols-outlined text-[var(--warn)] text-[20px]">lock</span>
+        <p className="text-sm text-[var(--txt1)]">{t.audit.immutableNotice}</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex flex-col sm:flex-row gap-3">
+      <div className="bg-white rounded-xl border border-[var(--border)] p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[var(--txt2)] text-[18px]">search</span>
           <input
-            className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            className="w-full bg-[var(--surface2)] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             placeholder={t.audit.searchPlaceholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -90,14 +90,14 @@ export default function AuditPage() {
         <select
           value={moduleFilter}
           onChange={(e) => { setModuleFilter(e.target.value); setPage(1); }}
-          className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+          className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
         >
           {MODULES.map((m) => <option key={m} value={m}>{m === "ALL" ? t.audit.allModules : m}</option>)}
         </select>
         <select
           value={actionFilter}
           onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-          className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+          className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
         >
           <option value="ALL">{t.audit.allActions}</option>
           <option value="CREATE">{t.audit.actionCreate}</option>
@@ -109,16 +109,16 @@ export default function AuditPage() {
       </div>
 
       {total > 0 && (
-        <p className="text-xs text-[#74777f]">{t.audit.showing} {total} {t.audit.totalEntries}</p>
+        <p className="text-xs text-[var(--txt2)]">{t.audit.showing} {total} {t.audit.totalEntries}</p>
       )}
 
-      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
                 {[t.audit.timestamp, t.audit.user, t.audit.module, t.audit.action, t.audit.entity, t.audit.ipAddress].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6] whitespace-nowrap">{h}</th>
+                  <th key={h} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 bg-[var(--surface2)] border-b border-[var(--border)] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -127,39 +127,39 @@ export default function AuditPage() {
                 <tr><td colSpan={6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-                    <p className="text-sm text-[#74777f]">{t.audit.loading}</p>
+                    <p className="text-sm text-[var(--txt2)]">{t.audit.loading}</p>
                   </div>
                 </td></tr>
               ) : logs.length === 0 ? (
                 <tr><td colSpan={6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <span className="material-symbols-outlined text-[#c4c6cf] text-4xl">policy</span>
-                    <p className="text-sm font-semibold text-[#1a1c1e]">{t.audit.noLogs}</p>
-                    <p className="text-xs text-[#74777f]">{t.audit.noLogsDesc}</p>
+                    <p className="text-sm font-semibold text-[var(--txt1)]">{t.audit.noLogs}</p>
+                    <p className="text-xs text-[var(--txt2)]">{t.audit.noLogsDesc}</p>
                   </div>
                 </td></tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-[#f4f3f7] transition-colors">
-                    <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
-                      <p className="text-xs font-mono text-[#43474e] whitespace-nowrap">{formatDateTime(log.timestamp)}</p>
+                  <tr key={log.id} className="hover:bg-[var(--surface2)] transition-colors">
+                    <td className="px-5 py-3.5 border-b border-[var(--border)]">
+                      <p className="text-xs font-mono text-[var(--txt2)] whitespace-nowrap">{formatDateTime(log.timestamp)}</p>
                     </td>
-                    <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
-                      <p className="text-sm font-semibold text-[#1a1c1e]">{log.userName}</p>
+                    <td className="px-5 py-3.5 border-b border-[var(--border)]">
+                      <p className="text-sm font-semibold text-[var(--txt1)]">{log.userName}</p>
                     </td>
-                    <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${MODULE_COLORS[log.module] ?? "bg-[#e9e7eb] text-[#43474e]"}`}>
+                    <td className="px-5 py-3.5 border-b border-[var(--border)]">
+                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${MODULE_COLORS[log.module] ?? "bg-[#e9e7eb] text-[var(--txt2)]"}`}>
                         {log.module}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
-                      <p className="text-sm text-[#1a1c1e]">{log.action}</p>
+                    <td className="px-5 py-3.5 border-b border-[var(--border)]">
+                      <p className="text-sm text-[var(--txt1)]">{log.action}</p>
                     </td>
-                    <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
-                      <p className="text-xs text-[#74777f]">{log.entityType ? `${log.entityType} #${log.entityId?.slice(0, 8)}` : "—"}</p>
+                    <td className="px-5 py-3.5 border-b border-[var(--border)]">
+                      <p className="text-xs text-[var(--txt2)]">{log.entityType ? `${log.entityType} #${log.entityId?.slice(0, 8)}` : "—"}</p>
                     </td>
-                    <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
-                      <p className="text-xs font-mono text-[#74777f]">{log.ipAddress ?? "—"}</p>
+                    <td className="px-5 py-3.5 border-b border-[var(--border)]">
+                      <p className="text-xs font-mono text-[var(--txt2)]">{log.ipAddress ?? "—"}</p>
                     </td>
                   </tr>
                 ))
@@ -168,11 +168,11 @@ export default function AuditPage() {
           </table>
         </div>
         {Math.ceil(total / pageSize) > 1 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
-            <p className="text-xs text-[#74777f]">{t.audit.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} {t.common.of} {total}</p>
+          <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+            <p className="text-xs text-[var(--txt2)]">{t.audit.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} {t.common.of} {total}</p>
             <div className="flex items-center gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
-              <button onClick={() => setPage((p) => Math.min(Math.ceil(total / pageSize), p + 1))} disabled={page === Math.ceil(total / pageSize)} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
+              <button onClick={() => setPage((p) => Math.min(Math.ceil(total / pageSize), p + 1))} disabled={page === Math.ceil(total / pageSize)} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
             </div>
           </div>
         )}

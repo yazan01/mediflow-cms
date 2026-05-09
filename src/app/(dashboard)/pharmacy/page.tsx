@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -21,9 +21,9 @@ export default function PharmacyPage() {
   const { t } = useLanguage();
 
   const STOCK_STYLES: Record<StockStatus, { label: string; bg: string; text: string; rowBg: string }> = {
-    IN_STOCK:     { label: t.pharmacy.inStock,         bg: "bg-[#ccfbf1]",  text: "text-[#0d9488]", rowBg: "" },
+    IN_STOCK:     { label: t.pharmacy.inStock,         bg: "bg-[var(--ok-bg)]",  text: "text-[var(--ok)]", rowBg: "" },
     LOW_STOCK:    { label: t.pharmacy.lowStockStatus,  bg: "bg-[#ffddba]",  text: "text-[#633f0f]", rowBg: "bg-[#fffbeb]" },
-    CRITICAL:     { label: t.pharmacy.criticalStock,   bg: "bg-[#ffdad6]",  text: "text-[#ba1a1a]", rowBg: "bg-[#fff8f7]" },
+    CRITICAL:     { label: t.pharmacy.criticalStock,   bg: "bg-[var(--err-bg)]",  text: "text-[var(--err)]", rowBg: "bg-[#fff8f7]" },
     OUT_OF_STOCK: { label: t.pharmacy.outOfStockStatus, bg: "bg-[#3b1218]", text: "text-[#ffdad6]", rowBg: "bg-[#fff0f0]" },
   };
 
@@ -141,20 +141,20 @@ export default function PharmacyPage() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.pharmacy.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{total} {t.pharmacy.medications}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.pharmacy.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{total} {t.pharmacy.medications}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/pharmacy/purchase"
-            className="flex items-center gap-2 border border-[#c4c6cf] bg-white text-[#1a1c1e] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
+            className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] text-[var(--txt1)] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">local_shipping</span>
             {t.pharmacy.recordPurchase}
           </Link>
           <Link
             href="/pharmacy/new"
-            className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+            className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             {t.pharmacy.addMedication}
@@ -165,7 +165,7 @@ export default function PharmacyPage() {
       {/* ── Expiry alert banner ── */}
       {expiryAlert.length > 0 && (
         <div className="flex items-start gap-3 p-4 bg-[#ffddba] border border-[#d97706]/30 rounded-xl">
-          <span className="material-symbols-outlined text-[#d97706] text-[22px] flex-shrink-0 mt-0.5">warning</span>
+          <span className="material-symbols-outlined text-[var(--warn)] text-[22px] flex-shrink-0 mt-0.5">warning</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-[#633f0f]">{t.pharmacy.expiryAlert}</p>
             <p className="text-xs text-[#7c4a00] mt-0.5">
@@ -189,23 +189,23 @@ export default function PharmacyPage() {
           label={t.pharmacy.totalSKUs}
           value={loadingStats ? null : (stats?.totalSKUs ?? 0).toString()}
           icon="inventory_2"
-          iconBg="bg-[#eff6ff]"
-          iconColor="text-[#1960a3]"
+          iconBg="bg-[var(--blue-bg)]"
+          iconColor="text-[var(--blue)]"
         />
         <PharmStatCard
           label={t.pharmacy.lowStock}
           value={loadingStats ? null : (stats?.lowStockItems ?? 0).toString()}
           icon="trending_down"
           iconBg="bg-[#ffddba]"
-          iconColor="text-[#d97706]"
+          iconColor="text-[var(--warn)]"
           onClick={() => setStatusFilter("LOW_STOCK")}
         />
         <PharmStatCard
           label={t.pharmacy.outOfStock}
           value={loadingStats ? null : (stats?.outOfStock ?? 0).toString()}
           icon="remove_shopping_cart"
-          iconBg="bg-[#ffdad6]"
-          iconColor="text-[#ba1a1a]"
+          iconBg="bg-[var(--err-bg)]"
+          iconColor="text-[var(--err)]"
           onClick={() => setStatusFilter("OUT_OF_STOCK")}
         />
         <PharmStatCard
@@ -218,13 +218,13 @@ export default function PharmacyPage() {
       </div>
 
       {/* ── Filter bar ── */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4">
+      <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
+            <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[var(--txt2)] text-[18px]">search</span>
             <input
-              className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+              className="w-full bg-[var(--surface2)] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm text-[var(--txt1)] placeholder:text-[var(--txt2)] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
               placeholder={t.pharmacy.searchPlaceholder}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -235,7 +235,7 @@ export default function PharmacyPage() {
           <select
             value={categoryFilter}
             onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
-            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]"
+            className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c === t.pharmacy.antibiotics ? "Antibiotics"
@@ -258,7 +258,7 @@ export default function PharmacyPage() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value as StockFilter); setPage(1); }}
-            className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]"
+            className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3]"
           >
             <option value="ALL">{t.pharmacy.allStatuses}</option>
             {(Object.keys(STOCK_STYLES) as StockStatus[]).map((s) => (
@@ -269,14 +269,14 @@ export default function PharmacyPage() {
           {(search || categoryFilter !== "ALL" || statusFilter !== "ALL") && (
             <button
               onClick={() => { setSearch(""); setCategoryFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
-              className="flex items-center gap-1.5 border border-[#c4c6cf] bg-white px-3 py-2.5 rounded-lg text-sm text-[#74777f] hover:bg-[#f4f3f7] transition-colors"
+              className="flex items-center gap-1.5 border border-[var(--border2)] bg-[var(--surface)] px-3 py-2.5 rounded-lg text-sm text-[var(--txt2)] hover:bg-[var(--surface2)] transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">close</span>
               {t.pharmacy.clear}
             </button>
           )}
 
-          <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
+          <button className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-4 py-2.5 rounded-lg text-sm text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors">
             <span className="material-symbols-outlined text-[18px]">download</span>
             {t.pharmacy.export}
           </button>
@@ -284,7 +284,7 @@ export default function PharmacyPage() {
       </div>
 
       {/* ── Table ── */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -320,7 +320,7 @@ export default function PharmacyPage() {
                   <td colSpan={12} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-                      <p className="text-sm text-[#74777f]">{t.pharmacy.loading}</p>
+                      <p className="text-sm text-[var(--txt2)]">{t.pharmacy.loading}</p>
                     </div>
                   </td>
                 </tr>
@@ -328,17 +328,17 @@ export default function PharmacyPage() {
                 <tr>
                   <td colSpan={12} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[#74777f] text-3xl">medication</span>
+                      <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">medication</span>
                       </div>
-                      <p className="text-sm font-semibold text-[#1a1c1e]">{t.pharmacy.noMedications}</p>
-                      <p className="text-xs text-[#74777f]">
+                      <p className="text-sm font-semibold text-[var(--txt1)]">{t.pharmacy.noMedications}</p>
+                      <p className="text-xs text-[var(--txt2)]">
                         {search || categoryFilter !== "ALL" || statusFilter !== "ALL"
                           ? t.common.tryAgain
                           : t.pharmacy.addFirst}
                       </p>
                       {!search && categoryFilter === "ALL" && statusFilter === "ALL" && (
-                        <Link href="/pharmacy/new" className="mt-1 text-sm text-[#1960a3] font-semibold hover:underline">
+                        <Link href="/pharmacy/new" className="mt-1 text-sm text-[var(--blue)] font-semibold hover:underline">
                           {t.pharmacy.addFirstBtn}
                         </Link>
                       )}
@@ -360,7 +360,7 @@ export default function PharmacyPage() {
                     <tr
                       key={med.id}
                       className={`transition-colors group ${
-                        isOut ? st.rowBg + " opacity-80" : isLow ? st.rowBg : "hover:bg-[#f4f3f7]"
+                        isOut ? st.rowBg + " opacity-80" : isLow ? st.rowBg : "hover:bg-[var(--surface2)]"
                       }`}
                     >
                       {/* Name */}
@@ -368,47 +368,47 @@ export default function PharmacyPage() {
                         <div className="flex items-center gap-2">
                           {(med.isControlled) && (
                             <span
-                              className="text-[10px] font-bold text-[#ba1a1a] bg-[#ffdad6] px-1.5 py-0.5 rounded"
+                              className="text-[10px] font-bold text-[var(--err)] bg-[var(--err-bg)] px-1.5 py-0.5 rounded"
                               title={t.pharmacy.controlled}
                             >
                               Ctrl
                             </span>
                           )}
                           <div>
-                            <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors">
+                            <p className="text-sm font-semibold text-[var(--txt1)] group-hover:text-[var(--blue)] transition-colors">
                               {med.brandName ?? med.genericName}
                             </p>
                             {med.requiresPrescription && (
-                              <p className="text-[10px] text-[#74777f]">{t.pharmacy.rxRequired}</p>
+                              <p className="text-[10px] text-[var(--txt2)]">{t.pharmacy.rxRequired}</p>
                             )}
                           </div>
                         </div>
                       </td>
 
                       {/* Generic name */}
-                      <td className="table-cell text-[#43474e] max-w-[120px] truncate">{med.genericName || "—"}</td>
+                      <td className="table-cell text-[var(--txt2)] max-w-[120px] truncate">{med.genericName || "—"}</td>
 
                       {/* Category */}
                       <td className="table-cell">
-                        <span className="text-xs bg-[#f4f3f7] text-[#43474e] px-2 py-0.5 rounded-full border border-[#e3e2e6]">
+                        <span className="text-xs bg-[var(--surface2)] text-[var(--txt2)] px-2 py-0.5 rounded-full border border-[var(--border)]">
                           {med.category}
                         </span>
                       </td>
 
                       {/* Unit */}
-                      <td className="table-cell text-[#43474e] text-xs">{med.unit}</td>
+                      <td className="table-cell text-[var(--txt2)] text-xs">{med.unit}</td>
 
                       {/* Stock Qty */}
                       <td className="table-cell text-right">
                         <span className={`text-sm font-bold ${
-                          isOut ? "text-[#ba1a1a]" : isLow ? "text-[#d97706]" : "text-[#1a1c1e]"
+                          isOut ? "text-[var(--err)]" : isLow ? "text-[var(--warn)]" : "text-[var(--txt1)]"
                         }`}>
                           {med.stockQuantity.toLocaleString()}
                         </span>
                       </td>
 
                       {/* Min stock */}
-                      <td className="table-cell text-right text-[#43474e] text-sm">
+                      <td className="table-cell text-right text-[var(--txt2)] text-sm">
                         {med.minStockLevel.toLocaleString()}
                       </td>
 
@@ -418,26 +418,26 @@ export default function PharmacyPage() {
                           <div className="w-16 h-1.5 bg-[#e3e2e6] rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full ${
-                                isOut ? "bg-[#ba1a1a]" : isLow ? "bg-[#d97706]" : "bg-[#0d9488]"
+                                isOut ? "bg-[var(--err)]" : isLow ? "bg-[var(--warn)]" : "bg-[var(--ok)]"
                               }`}
                               style={{
                                 width: `${Math.min(100, (med.stockQuantity / Math.max(med.minStockLevel * 2, 1)) * 100)}%`,
                               }}
                             />
                           </div>
-                          <span className="text-xs text-[#74777f]">{med.minStockLevel}</span>
+                          <span className="text-xs text-[var(--txt2)]">{med.minStockLevel}</span>
                         </div>
                       </td>
 
                       {/* Unit price */}
-                      <td className="table-cell text-right text-[#43474e]">
+                      <td className="table-cell text-right text-[var(--txt2)]">
                         {formatCurrency(med.unitCost)}
                       </td>
 
                       {/* Expiry */}
                       <td className="table-cell whitespace-nowrap">
                         {med.expiryDate ? (
-                          <span className={`text-sm ${isExpiringSoon ? "text-[#d97706] font-semibold" : "text-[#43474e]"}`}>
+                          <span className={`text-sm ${isExpiringSoon ? "text-[var(--warn)] font-semibold" : "text-[var(--txt2)]"}`}>
                             {isExpiringSoon && (
                               <span className="material-symbols-outlined text-[13px] me-0.5 align-middle">warning</span>
                             )}
@@ -456,7 +456,7 @@ export default function PharmacyPage() {
                       {/* Barcode */}
                       <td className="table-cell">
                         {med.barcode ? (
-                          <span className="text-xs font-mono text-[#43474e] bg-[#f4f3f7] px-2 py-1 rounded border border-[#e3e2e6]">
+                          <span className="text-xs font-mono text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded border border-[var(--border)]">
                             {med.barcode}
                           </span>
                         ) : (
@@ -469,21 +469,21 @@ export default function PharmacyPage() {
                         <div className="flex items-center justify-end gap-1">
                           <Link
                             href={`/pharmacy/${med.id}/edit`}
-                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
+                            className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]"
                             title={t.common.edit}
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </Link>
                           <button
                             onClick={() => { setAdjustId(med.id); setAdjustQty(""); setAdjustNote(""); }}
-                            className="p-1.5 hover:bg-[#ccfbf1] rounded-lg transition-colors text-[#74777f] hover:text-[#0d9488]"
+                            className="p-1.5 hover:bg-[var(--ok-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--ok)]"
                             title={t.pharmacy.adjustStock}
                           >
                             <span className="material-symbols-outlined text-[18px]">tune</span>
                           </button>
                           <Link
                             href={`/pharmacy/${med.id}/history`}
-                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]"
+                            className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]"
                             title={t.common.view}
                           >
                             <span className="material-symbols-outlined text-[18px]">history</span>
@@ -500,15 +500,15 @@ export default function PharmacyPage() {
 
         {/* ── Pagination ── */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
-            <p className="text-xs text-[#74777f]">
+          <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+            <p className="text-xs text-[var(--txt2)]">
               {t.pharmacy.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} {t.common.of} {total} {t.pharmacy.medications}
             </p>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">chevron_left</span>
               </button>
@@ -520,7 +520,7 @@ export default function PharmacyPage() {
                     key={p}
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${
-                      page === p ? "bg-[#002045] text-white" : "hover:bg-[#f4f3f7] text-[#43474e]"
+                      page === p ? "bg-[var(--brand)] text-white" : "hover:bg-[var(--surface2)] text-[var(--txt2)]"
                     }`}
                   >
                     {p}
@@ -530,7 +530,7 @@ export default function PharmacyPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">chevron_right</span>
               </button>
@@ -543,32 +543,32 @@ export default function PharmacyPage() {
       {adjustId && adjustMed && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div
-            className="bg-white rounded-2xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] p-6 w-full max-w-sm mx-4"
+            className="bg-white rounded-2xl border border-[var(--border)] shadow-[var(--sh-xl)] p-6 w-full max-w-sm mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-[#1a1c1e]">{t.pharmacy.adjustStock}</h3>
+              <h3 className="text-lg font-bold text-[var(--txt1)]">{t.pharmacy.adjustStock}</h3>
               <button
                 onClick={() => setAdjustId(null)}
-                className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors"
+                className="p-1.5 hover:bg-[var(--surface2)] rounded-lg transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px] text-[#74777f]">close</span>
+                <span className="material-symbols-outlined text-[20px] text-[var(--txt2)]">close</span>
               </button>
             </div>
 
-            <div className="mb-5 p-3 bg-[#f4f3f7] rounded-xl">
-              <p className="text-sm font-bold text-[#1a1c1e]">{adjustMed.brandName ?? adjustMed.genericName}</p>
-              <p className="text-xs text-[#74777f]">
-                Current stock: <span className="font-semibold text-[#1a1c1e]">{adjustMed.stockQuantity} {adjustMed.unit}</span>
+            <div className="mb-5 p-3 bg-[var(--surface2)] rounded-xl">
+              <p className="text-sm font-bold text-[var(--txt1)]">{adjustMed.brandName ?? adjustMed.genericName}</p>
+              <p className="text-xs text-[var(--txt2)]">
+                Current stock: <span className="font-semibold text-[var(--txt1)]">{adjustMed.stockQuantity} {adjustMed.unit}</span>
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">
                   {t.pharmacy.adjQty}
                 </label>
-                <p className="text-[10px] text-[#74777f] mb-2">{t.pharmacy.adjHint}</p>
+                <p className="text-[10px] text-[var(--txt2)] mb-2">{t.pharmacy.adjHint}</p>
                 <input
                   type="number"
                   value={adjustQty}
@@ -578,7 +578,7 @@ export default function PharmacyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">
                   {t.pharmacy.adjReason}
                 </label>
                 <textarea
@@ -594,14 +594,14 @@ export default function PharmacyPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setAdjustId(null)}
-                className="flex-1 border border-[#c4c6cf] bg-white text-[#1a1c1e] py-2.5 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
+                className="flex-1 border border-[var(--border2)] bg-[var(--surface)] text-[var(--txt1)] py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors"
               >
                 {t.pharmacy.cancel}
               </button>
               <button
                 onClick={handleAdjustStock}
                 disabled={!adjustQty || adjusting}
-                className="flex-1 bg-[#002045] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+                className="flex-1 bg-[var(--brand)] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {adjusting ? (
                   <>
@@ -641,7 +641,7 @@ function PharmStatCard({
 }) {
   return (
     <div
-      className={`bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5 ${
+      className={`bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5 ${
         onClick ? "cursor-pointer hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow" : ""
       }`}
       onClick={onClick}
@@ -651,15 +651,15 @@ function PharmStatCard({
           <span className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
         </div>
         {onClick && (
-          <span className="material-symbols-outlined text-[16px] text-[#74777f]">arrow_forward</span>
+          <span className="material-symbols-outlined text-[16px] text-[var(--txt2)]">arrow_forward</span>
         )}
       </div>
       {value === null ? (
-        <div className="h-7 w-16 bg-[#f4f3f7] rounded animate-pulse mb-1"></div>
+        <div className="h-7 w-16 bg-[var(--surface2)] rounded animate-pulse mb-1"></div>
       ) : (
-        <p className="text-2xl font-bold text-[#1a1c1e] tabular-nums">{value}</p>
+        <p className="text-2xl font-bold text-[var(--txt1)] tabular-nums">{value}</p>
       )}
-      <p className="text-xs text-[#74777f] mt-1 font-medium">{label}</p>
+      <p className="text-xs text-[var(--txt2)] mt-1 font-medium">{label}</p>
     </div>
   );
 }

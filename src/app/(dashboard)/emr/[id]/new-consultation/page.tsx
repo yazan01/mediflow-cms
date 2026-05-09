@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -29,12 +29,12 @@ const EMPTY_LAB: LabOrderRow = { tests: "", priority: "ROUTINE" };
 const EMPTY_RAD: RadiologyRow = { modality: "", study: "", bodyPart: "", priority: "ROUTINE" };
 
 /* ─── Style tokens ─── */
-const INPUT = "w-full bg-white border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3] transition-colors";
-const TEXTAREA = "w-full bg-white border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3] transition-colors resize-none";
-const CARD = "bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6";
-const SEC = "text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-3 flex items-center gap-1.5";
-const LABEL = "block text-xs font-medium text-[#43474e] mb-1";
-const CHIP_BTN = "flex items-center gap-1.5 text-xs font-semibold text-[#1960a3] hover:text-[#002045] transition-colors px-3 py-1.5 border border-[#1960a3]/30 rounded-lg hover:bg-[#eff6ff]";
+const INPUT = "w-full bg-[var(--surface)] border border-[var(--border2)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3] transition-colors";
+const TEXTAREA = "w-full bg-[var(--surface)] border border-[var(--border2)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3] transition-colors resize-none";
+const CARD = "bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6";
+const SEC = "text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-3 flex items-center gap-1.5";
+const LABEL = "block text-xs font-medium text-[var(--txt2)] mb-1";
+const CHIP_BTN = "flex items-center gap-1.5 text-xs font-semibold text-[var(--blue)] hover:text-[#002045] transition-colors px-3 py-1.5 border border-[#1960a3]/30 rounded-lg hover:bg-[var(--blue-bg)]";
 
 /* ─── Page ─── */
 export default function NewConsultationPage() {
@@ -280,7 +280,7 @@ export default function NewConsultationPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <div className="w-10 h-10 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
-        <p className="text-sm text-[#74777f]">Loading...</p>
+        <p className="text-sm text-[var(--txt2)]">Loading...</p>
       </div>
     );
   }
@@ -291,28 +291,28 @@ export default function NewConsultationPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
-          <Link href={`/emr/${patientId}`} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors text-[#74777f] hover:text-[#1a1c1e]" aria-label={t.emr.backToEMR}>
+          <Link href={`/emr/${patientId}`} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--txt1)]" aria-label={t.emr.backToEMR}>
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-[#1a1c1e]">
+            <h1 className="text-2xl font-bold text-[var(--txt1)]">
               {isEditMode ? t.emr.consultationCard : "New Consultation"}
             </h1>
-            {patientName && <p className="text-sm text-[#74777f] mt-0.5">{patientName}</p>}
+            {patientName && <p className="text-sm text-[var(--txt2)] mt-0.5">{patientName}</p>}
           </div>
         </div>
         {isLocked ? (
-          <div className="flex items-center gap-2 px-4 py-2 bg-[#f4f3f7] text-[#43474e] rounded-lg text-sm font-semibold">
+          <div className="flex items-center gap-2 px-4 py-2 bg-[var(--surface2)] text-[var(--txt2)] rounded-lg text-sm font-semibold">
             <span className="material-symbols-outlined text-[18px]">lock</span>
             Locked
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={submitting || locking} className="flex items-center gap-2 bg-[#1960a3] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
+            <button type="submit" disabled={submitting || locking} className="flex items-center gap-2 bg-[var(--blue)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
               {submitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">save</span>}
               {t.emr.saveDraft}
             </button>
-            <button type="button" onClick={handleLockAndInvoice} disabled={submitting || locking} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
+            <button type="button" onClick={handleLockAndInvoice} disabled={submitting || locking} className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
               {locking ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">receipt_long</span>}
               {t.emr.lockAndInvoice}
             </button>
@@ -322,13 +322,13 @@ export default function NewConsultationPage() {
 
       {/* ── Alerts ── */}
       {error && (
-        <div className="flex items-center gap-3 bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#ba1a1a] rounded-xl px-4 py-3 text-sm font-semibold">
+        <div className="flex items-center gap-3 bg-[var(--err-bg)] border border-[#ba1a1a]/30 text-[var(--err)] rounded-xl px-4 py-3 text-sm font-semibold">
           <span className="material-symbols-outlined text-[18px]">error</span>
           {error}
         </div>
       )}
       {successMsg && (
-        <div className="flex items-center gap-3 bg-[#ccfbf1] border border-[#0d9488]/30 text-[#0d9488] rounded-xl px-4 py-3 text-sm font-semibold">
+        <div className="flex items-center gap-3 bg-[var(--ok-bg)] border border-[#0d9488]/30 text-[var(--ok)] rounded-xl px-4 py-3 text-sm font-semibold">
           <span className="material-symbols-outlined text-[18px]">check_circle</span>
           {successMsg}
         </div>
@@ -340,12 +340,12 @@ export default function NewConsultationPage() {
       <div className={CARD}>
         <p className={SEC}><span className="material-symbols-outlined text-[14px]">event_available</span>Appointment</p>
         {appointments.length === 0 ? (
-          <p className="text-sm text-[#74777f] p-4 bg-[#fff8f7] border border-[#ffdad6] rounded-xl">
+          <p className="text-sm text-[var(--txt2)] p-4 bg-[#fff8f7] border border-[#ffdad6] rounded-xl">
             No appointments found for this patient.
           </p>
         ) : (
           <div className="max-w-xl">
-            <label className={LABEL}>Select Appointment <span className="text-[#ba1a1a]">*</span></label>
+            <label className={LABEL}>Select Appointment <span className="text-[var(--err)]">*</span></label>
             <select value={selectedAppointmentId} onChange={(e) => setSelectedAppointmentId(e.target.value)} required disabled={isLocked} className={INPUT}>
               <option value="">— Choose an appointment —</option>
               {appointments.map((a) => (
@@ -363,8 +363,8 @@ export default function NewConsultationPage() {
       ══════════════════════════════════════════ */}
       <div className={CARD}>
         <button type="button" onClick={() => setVitalsOpen((o) => !o)} className="w-full flex items-center justify-between group">
-          <p className={`${SEC} mb-0`}><span className="material-symbols-outlined text-[14px]">monitor_heart</span>Vitals <span className="text-[#74777f] font-normal normal-case tracking-normal ms-1">(optional)</span></p>
-          <span className={`material-symbols-outlined text-[20px] text-[#74777f] transition-transform ${vitalsOpen ? "rotate-180" : ""}`}>expand_more</span>
+          <p className={`${SEC} mb-0`}><span className="material-symbols-outlined text-[14px]">monitor_heart</span>Vitals <span className="text-[var(--txt2)] font-normal normal-case tracking-normal ms-1">(optional)</span></p>
+          <span className={`material-symbols-outlined text-[20px] text-[var(--txt2)] transition-transform ${vitalsOpen ? "rotate-180" : ""}`}>expand_more</span>
         </button>
         {vitalsOpen && (
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -382,7 +382,7 @@ export default function NewConsultationPage() {
             <div><label className={LABEL}>Temperature (°C)</label><input type="number" step="0.1" min={30} max={45} placeholder="36.6" value={vitals.temperature} onChange={(e) => setVitals((v) => ({ ...v, temperature: e.target.value }))} className={INPUT} disabled={isLocked} /></div>
             <div><label className={LABEL}>Weight (kg)</label><input type="number" step="0.1" min={1} max={500} placeholder="70" value={vitals.weight} onChange={(e) => setVitals((v) => ({ ...v, weight: e.target.value }))} className={INPUT} disabled={isLocked} /></div>
             <div><label className={LABEL}>Height (cm)</label><input type="number" step="0.1" min={30} max={250} placeholder="170" value={vitals.height} onChange={(e) => setVitals((v) => ({ ...v, height: e.target.value }))} className={INPUT} disabled={isLocked} /></div>
-            <div><label className={LABEL}>BMI</label><input type="number" step="0.1" placeholder="Auto" value={vitals.bmi} onChange={(e) => setVitals((v) => ({ ...v, bmi: e.target.value }))} className={`${INPUT} bg-[#f4f3f7]`} readOnly={!!(vitals.weight && vitals.height)} disabled={isLocked} /></div>
+            <div><label className={LABEL}>BMI</label><input type="number" step="0.1" placeholder="Auto" value={vitals.bmi} onChange={(e) => setVitals((v) => ({ ...v, bmi: e.target.value }))} className={`${INPUT} bg-[var(--surface2)]`} readOnly={!!(vitals.weight && vitals.height)} disabled={isLocked} /></div>
             <div><label className={LABEL}>SpO₂ (%)</label><input type="number" min={50} max={100} placeholder="98" value={vitals.spo2} onChange={(e) => setVitals((v) => ({ ...v, spo2: e.target.value }))} className={INPUT} disabled={isLocked} /></div>
             <div><label className={LABEL}>Blood Glucose (mg/dL)</label><input type="number" min={20} max={800} placeholder="90" value={vitals.bloodGlucose} onChange={(e) => setVitals((v) => ({ ...v, bloodGlucose: e.target.value }))} className={INPUT} disabled={isLocked} /></div>
             <div><label className={LABEL}>Resp. Rate (/min)</label><input type="number" min={4} max={60} placeholder="16" value={vitals.respiratoryRate} onChange={(e) => setVitals((v) => ({ ...v, respiratoryRate: e.target.value }))} className={INPUT} disabled={isLocked} /></div>
@@ -397,7 +397,7 @@ export default function NewConsultationPage() {
         <p className={SEC}><span className="material-symbols-outlined text-[14px]">clinical_notes</span>Clinical Notes</p>
         <div className="space-y-5">
           <div>
-            <label className={LABEL}>Chief Complaint <span className="text-[#ba1a1a]">*</span></label>
+            <label className={LABEL}>Chief Complaint <span className="text-[var(--err)]">*</span></label>
             <textarea rows={2} placeholder="Patient's primary reason for visit..." value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} required className={TEXTAREA} disabled={isLocked} />
           </div>
           <div>
@@ -442,15 +442,15 @@ export default function NewConsultationPage() {
           )}
         </div>
         {diagnoses.length === 0 ? (
-          <p className="text-sm text-[#74777f] text-center py-6 border border-dashed border-[#c4c6cf] rounded-xl">No diagnoses added yet.</p>
+          <p className="text-sm text-[var(--txt2)] text-center py-6 border border-dashed border-[var(--border2)] rounded-xl">No diagnoses added yet.</p>
         ) : (
           <div className="space-y-3">
             {diagnoses.map((d, i) => (
-              <div key={i} className="grid grid-cols-[1fr_180px_40px] gap-3 items-start p-3 bg-[#f4f3f7] rounded-xl">
+              <div key={i} className="grid grid-cols-[1fr_180px_40px] gap-3 items-start p-3 bg-[var(--surface2)] rounded-xl">
                 <div>
                   {i === 0 && <label className={LABEL}>ICD-10 Code / Description</label>}
                   <ICD10Search value={d.icdCode} onChange={(code, desc) => { updateDiagnosis(i, "icdCode", code); if (desc) updateDiagnosis(i, "description", desc); }} inputClassName={INPUT} />
-                  {d.description && <p className="mt-1 text-xs text-[#1960a3] font-semibold ps-1">{d.description}</p>}
+                  {d.description && <p className="mt-1 text-xs text-[var(--blue)] font-semibold ps-1">{d.description}</p>}
                 </div>
                 <div>
                   {i === 0 && <label className={LABEL}>Type</label>}
@@ -462,7 +462,7 @@ export default function NewConsultationPage() {
                 </div>
                 {!isLocked && (
                   <div className={i === 0 ? "mt-5" : ""}>
-                    <button type="button" onClick={() => removeDiagnosis(i)} className="p-2 text-[#74777f] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors" aria-label="Remove">
+                    <button type="button" onClick={() => removeDiagnosis(i)} className="p-2 text-[var(--txt2)] hover:text-[var(--err)] hover:bg-[var(--err-bg)] rounded-lg transition-colors" aria-label="Remove">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>
@@ -486,15 +486,15 @@ export default function NewConsultationPage() {
           )}
         </div>
         {prescriptions.length === 0 ? (
-          <p className="text-sm text-[#74777f] text-center py-6 border border-dashed border-[#c4c6cf] rounded-xl">No prescriptions added yet.</p>
+          <p className="text-sm text-[var(--txt2)] text-center py-6 border border-dashed border-[var(--border2)] rounded-xl">No prescriptions added yet.</p>
         ) : (
           <div className="space-y-4">
             {prescriptions.map((rx, i) => (
-              <div key={i} className="p-4 bg-[#f4f3f7] rounded-xl space-y-3">
+              <div key={i} className="p-4 bg-[var(--surface2)] rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider">Rx #{i + 1}</p>
+                  <p className="text-xs font-bold text-[var(--txt2)] uppercase tracking-wider">Rx #{i + 1}</p>
                   {!isLocked && (
-                    <button type="button" onClick={() => removePrescription(i)} className="p-1.5 text-[#74777f] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors" aria-label="Remove">
+                    <button type="button" onClick={() => removePrescription(i)} className="p-1.5 text-[var(--txt2)] hover:text-[var(--err)] hover:bg-[var(--err-bg)] rounded-lg transition-colors" aria-label="Remove">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   )}
@@ -526,11 +526,11 @@ export default function NewConsultationPage() {
           )}
         </div>
         {labOrders.length === 0 ? (
-          <p className="text-sm text-[#74777f] text-center py-6 border border-dashed border-[#c4c6cf] rounded-xl">No lab orders added yet.</p>
+          <p className="text-sm text-[var(--txt2)] text-center py-6 border border-dashed border-[var(--border2)] rounded-xl">No lab orders added yet.</p>
         ) : (
           <div className="space-y-3">
             {labOrders.map((lo, i) => (
-              <div key={i} className="grid grid-cols-[1fr_160px_40px] gap-3 items-start p-3 bg-[#f4f3f7] rounded-xl">
+              <div key={i} className="grid grid-cols-[1fr_160px_40px] gap-3 items-start p-3 bg-[var(--surface2)] rounded-xl">
                 <div>
                   {i === 0 && <label className={LABEL}>Tests (comma-separated)</label>}
                   <input type="text" placeholder="E.g. CBC, BMP, Lipid Panel" value={lo.tests} onChange={(e) => updateLabOrder(i, "tests", e.target.value)} className={INPUT} disabled={isLocked} />
@@ -545,7 +545,7 @@ export default function NewConsultationPage() {
                 </div>
                 {!isLocked && (
                   <div className={i === 0 ? "mt-5" : ""}>
-                    <button type="button" onClick={() => removeLabOrder(i)} className="p-2 text-[#74777f] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors" aria-label="Remove">
+                    <button type="button" onClick={() => removeLabOrder(i)} className="p-2 text-[var(--txt2)] hover:text-[var(--err)] hover:bg-[var(--err-bg)] rounded-lg transition-colors" aria-label="Remove">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>
@@ -569,15 +569,15 @@ export default function NewConsultationPage() {
           )}
         </div>
         {radiologyOrders.length === 0 ? (
-          <p className="text-sm text-[#74777f] text-center py-6 border border-dashed border-[#c4c6cf] rounded-xl">No radiology orders added yet.</p>
+          <p className="text-sm text-[var(--txt2)] text-center py-6 border border-dashed border-[var(--border2)] rounded-xl">No radiology orders added yet.</p>
         ) : (
           <div className="space-y-4">
             {radiologyOrders.map((ro, i) => (
-              <div key={i} className="p-4 bg-[#f4f3f7] rounded-xl space-y-3">
+              <div key={i} className="p-4 bg-[var(--surface2)] rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-[#43474e] uppercase tracking-wider">Radiology #{i + 1}</p>
+                  <p className="text-xs font-bold text-[var(--txt2)] uppercase tracking-wider">Radiology #{i + 1}</p>
                   {!isLocked && (
-                    <button type="button" onClick={() => removeRadiology(i)} className="p-1.5 text-[#74777f] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-lg transition-colors" aria-label="Remove">
+                    <button type="button" onClick={() => removeRadiology(i)} className="p-1.5 text-[var(--txt2)] hover:text-[var(--err)] hover:bg-[var(--err-bg)] rounded-lg transition-colors" aria-label="Remove">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   )}
@@ -625,14 +625,14 @@ export default function NewConsultationPage() {
       {/* ── Bottom actions ── */}
       {!isLocked && (
         <div className="flex items-center justify-end gap-3 pb-8">
-          <Link href={`/emr/${patientId}`} className="px-5 py-2.5 border border-[#c4c6cf] bg-white text-[#1a1c1e] rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+          <Link href={`/emr/${patientId}`} className="px-5 py-2.5 border border-[var(--border2)] bg-[var(--surface)] text-[var(--txt1)] rounded-lg text-sm font-semibold hover:bg-[var(--surface2)] transition-colors">
             Cancel
           </Link>
-          <button type="submit" disabled={submitting || locking} className="flex items-center gap-2 bg-[#1960a3] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
+          <button type="submit" disabled={submitting || locking} className="flex items-center gap-2 bg-[var(--blue)] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
             {submitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">save</span>}
             {t.emr.saveDraft}
           </button>
-          <button type="button" onClick={handleLockAndInvoice} disabled={submitting || locking} className="flex items-center gap-2 bg-[#002045] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
+          <button type="button" onClick={handleLockAndInvoice} disabled={submitting || locking} className="flex items-center gap-2 bg-[var(--brand)] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
             {locking ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">receipt_long</span>}
             {t.emr.lockAndInvoice}
           </button>

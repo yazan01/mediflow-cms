@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
@@ -7,6 +7,7 @@ import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { Employee, LeaveRequest } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { apiFetch } from "@/lib/hooks/useDataFetch";
+import { motion, AnimatePresence } from "framer-motion";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { PayslipModal } from "@/components/PayslipModal";
 
@@ -82,11 +83,11 @@ interface AnalyticsData {
 // ─── Status configs ───────────────────────────────────────────────────────────
 
 const ATT_MARKER: Record<string, { sym: string; cls: string }> = {
-  PRESENT: { sym: "check_circle", cls: "text-[#0d9488]" },
-  ABSENT:  { sym: "cancel",       cls: "text-[#ba1a1a]" },
-  LATE:    { sym: "schedule",     cls: "text-[#d97706]" },
-  LEAVE:   { sym: "event_busy",   cls: "text-[#1960a3]" },
-  HOLIDAY: { sym: "celebration",  cls: "text-[#74777f]" },
+  PRESENT: { sym: "check_circle", cls: "text-[var(--ok)]" },
+  ABSENT:  { sym: "cancel",       cls: "text-[var(--err)]" },
+  LATE:    { sym: "schedule",     cls: "text-[var(--warn)]" },
+  LEAVE:   { sym: "event_busy",   cls: "text-[var(--blue)]" },
+  HOLIDAY: { sym: "celebration",  cls: "text-[var(--txt2)]" },
 };
 
 const ATT_STATUSES = ["PRESENT", "ABSENT", "LATE", "LEAVE", "HOLIDAY"] as const;
@@ -98,19 +99,19 @@ interface OrgNode { id: string; name: string; jobTitle: string; department: stri
 
 function OrgCard({ node }: { node: OrgNode }) {
   const STATUS_CLS: Record<string, string> = {
-    ACTIVE: "bg-[#ccfbf1] text-[#0d9488]",
-    ON_LEAVE: "bg-[#fff7ed] text-[#d97706]",
-    INACTIVE: "bg-[#f4f3f7] text-[#74777f]",
+    ACTIVE: "bg-[var(--ok-bg)] text-[var(--ok)]",
+    ON_LEAVE: "bg-[var(--warn-bg)] text-[var(--warn)]",
+    INACTIVE: "bg-[var(--surface2)] text-[var(--txt2)]",
   };
   return (
-    <div className="bg-white border border-[#e3e2e6] rounded-xl px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] min-w-[180px] max-w-[220px] text-center">
-      <div className="w-9 h-9 rounded-full bg-[#002045] text-white flex items-center justify-center text-sm font-bold mx-auto mb-2">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3 shadow-[var(--sh-sm)] min-w-[180px] max-w-[220px] text-center">
+      <div className="w-9 h-9 rounded-full bg-[var(--brand)] text-white flex items-center justify-center text-sm font-bold mx-auto mb-2">
         {node.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()}
       </div>
-      <p className="text-sm font-semibold text-[#1a1c1e] truncate">{node.name}</p>
-      <p className="text-xs text-[#74777f] truncate">{node.jobTitle}</p>
-      <p className="text-[10px] text-[#74777f] mt-0.5 truncate">{node.department}</p>
-      <span className={`mt-1.5 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_CLS[node.status] ?? "bg-[#f4f3f7] text-[#74777f]"}`}>{node.status}</span>
+      <p className="text-sm font-semibold text-[var(--txt1)] truncate">{node.name}</p>
+      <p className="text-xs text-[var(--txt2)] truncate">{node.jobTitle}</p>
+      <p className="text-[10px] text-[var(--txt2)] mt-0.5 truncate">{node.department}</p>
+      <span className={`mt-1.5 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_CLS[node.status] ?? "bg-[var(--surface2)] text-[var(--txt2)]"}`}>{node.status}</span>
     </div>
   );
 }
@@ -154,7 +155,7 @@ function OrgTree({ nodes, search, noResultsText }: { nodes: OrgNode[]; search: s
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filtered.map(n => <OrgCard key={n.id} node={n} />)}
         {filtered.length === 0 && (
-          <div className="col-span-4 text-center py-10 text-sm text-[#74777f]">{noResultsText}</div>
+          <div className="col-span-4 text-center py-10 text-sm text-[var(--txt2)]">{noResultsText}</div>
         )}
       </div>
     );
@@ -177,8 +178,8 @@ function OrgTree({ nodes, search, noResultsText }: { nodes: OrgNode[]; search: s
 function Spinner({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-20">
-      <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
-      <p className="text-sm text-[#74777f]">{label}</p>
+      <span className="spinner" />
+      <p className="text-sm text-[var(--txt2)]">{label}</p>
     </div>
   );
 }
@@ -188,11 +189,11 @@ function EmptyRow({ cols, icon, label, sub }: { cols: number; icon: string; labe
     <tr>
       <td colSpan={cols} className="py-20 text-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-[#74777f] text-3xl">{icon}</span>
+          <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+            <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">{icon}</span>
           </div>
-          <p className="text-sm font-semibold text-[#1a1c1e]">{label}</p>
-          {sub && <p className="text-xs text-[#74777f]">{sub}</p>}
+          <p className="text-sm font-semibold text-[var(--txt1)]">{label}</p>
+          {sub && <p className="text-xs text-[var(--txt2)]">{sub}</p>}
         </div>
       </td>
     </tr>
@@ -213,13 +214,13 @@ function StatCard({ icon, iconBg, iconColor, label, value }: {
   icon: string; iconBg: string; iconColor: string; label: string; value: string | number;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5 flex items-center gap-4">
+    <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5 flex items-center gap-4">
       <div className={`p-3 ${iconBg} rounded-2xl flex-shrink-0`}>
         <span className={`material-symbols-outlined ${iconColor} text-[22px]`}>{icon}</span>
       </div>
       <div>
-        <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-bold text-[#1a1c1e]">{value}</p>
+        <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider">{label}</p>
+        <p className="text-2xl font-bold text-[var(--txt1)]">{value}</p>
       </div>
     </div>
   );
@@ -233,23 +234,23 @@ export default function HRPage() {
   const highlightedEmployeeRef = useRef<HTMLTableRowElement | null>(null);
 
   const EMP_STATUS: Record<string, { label: string; cls: string }> = {
-    ACTIVE:      { label: t.hr.activeStatus,   cls: "bg-[#ccfbf1] text-[#0d9488]" },
-    ON_LEAVE:    { label: t.hr.onLeaveStatus,  cls: "bg-[#fff7ed] text-[#d97706]" },
-    INACTIVE:    { label: t.hr.inactiveStatus, cls: "bg-[#e3e2e6] text-[#74777f]" },
-    TERMINATED:  { label: t.hr.terminated,     cls: "bg-[#ffdad6] text-[#ba1a1a]" },
+    ACTIVE:      { label: t.hr.activeStatus,   cls: "bg-[var(--ok-bg)] text-[var(--ok)]" },
+    ON_LEAVE:    { label: t.hr.onLeaveStatus,  cls: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+    INACTIVE:    { label: t.hr.inactiveStatus, cls: "bg-[#e3e2e6] text-[var(--txt2)]" },
+    TERMINATED:  { label: t.hr.terminated,     cls: "bg-[var(--err-bg)] text-[var(--err)]" },
   };
 
   const EMP_TYPE: Record<string, { label: string; cls: string }> = {
-    FULL_TIME: { label: t.hr.fullTime, cls: "bg-[#d3e4ff] text-[#1960a3]" },
-    PART_TIME: { label: t.hr.partTime, cls: "bg-[#e9e7eb] text-[#43474e]" },
+    FULL_TIME: { label: t.hr.fullTime, cls: "bg-[#d3e4ff] text-[var(--blue)]" },
+    PART_TIME: { label: t.hr.partTime, cls: "bg-[#e9e7eb] text-[var(--txt2)]" },
     CONTRACT:  { label: t.hr.contract, cls: "bg-[#ffddba] text-[#633f0f]" },
   };
 
   const LEAVE_STATUS: Record<string, { label: string; cls: string }> = {
-    PENDING:  { label: t.common.pending,   cls: "bg-[#fff7ed] text-[#d97706]" },
-    APPROVED: { label: t.common.approved,  cls: "bg-[#ccfbf1] text-[#0d9488]" },
-    REJECTED: { label: t.common.rejected,  cls: "bg-[#ffdad6] text-[#ba1a1a]" },
-    CANCELLED:{ label: t.common.cancel,    cls: "bg-[#e3e2e6] text-[#74777f]" },
+    PENDING:  { label: t.common.pending,   cls: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+    APPROVED: { label: t.common.approved,  cls: "bg-[var(--ok-bg)] text-[var(--ok)]" },
+    REJECTED: { label: t.common.rejected,  cls: "bg-[var(--err-bg)] text-[var(--err)]" },
+    CANCELLED:{ label: t.common.cancel,    cls: "bg-[#e3e2e6] text-[var(--txt2)]" },
   };
 
   const ATT_LABEL: Record<string, string> = {
@@ -374,7 +375,7 @@ export default function HRPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [shiftModal, setShiftModal] = useState<"add" | "edit" | null>(null);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
-  const [shiftForm, setShiftForm] = useState({ name: "", startTime: "08:00", endTime: "17:00", daysOfWeek: [0, 1, 2, 3, 4] as number[], branchId: "", color: "#1960a3" });
+  const [shiftForm, setShiftForm] = useState({ name: "", startTime: "08:00", endTime: "17:00", daysOfWeek: [0, 1, 2, 3, 4] as number[], branchId: "", color: "var(--blue)" });
   const [shiftSaving, setShiftSaving] = useState(false);
   const [shiftError, setShiftError] = useState("");
   const [assignModal, setAssignModal] = useState<Shift | null>(null);
@@ -727,7 +728,7 @@ export default function HRPage() {
   }
 
   function openAddShift() {
-    setShiftForm({ name: "", startTime: "08:00", endTime: "17:00", daysOfWeek: [0, 1, 2, 3, 4], branchId: "", color: "#1960a3" });
+    setShiftForm({ name: "", startTime: "08:00", endTime: "17:00", daysOfWeek: [0, 1, 2, 3, 4], branchId: "", color: "var(--blue)" });
     setEditingShift(null);
     setShiftError("");
     setShiftModal("add");
@@ -809,12 +810,12 @@ export default function HRPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.hr.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{t.hr.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.hr.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{t.hr.subtitle}</p>
         </div>
         <Link
           href="/hr/new"
-          className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+          className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">person_add</span>
           {t.hr.addEmployee}
@@ -823,30 +824,30 @@ export default function HRPage() {
 
       {/* Stats bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon="groups" iconBg="bg-[#d3e4ff]" iconColor="text-[#1960a3]" label={t.hr.totalEmployees} value={stats?.totalEmployees ?? "—"} />
-        <StatCard icon="check_circle" iconBg="bg-[#ccfbf1]" iconColor="text-[#0d9488]" label={t.hr.active} value={stats?.activeEmployees ?? "—"} />
-        <StatCard icon="event_busy" iconBg="bg-[#fff7ed]" iconColor="text-[#d97706]" label={t.hr.onLeave} value={stats?.onLeave ?? "—"} />
+        <StatCard icon="groups" iconBg="bg-[#d3e4ff]" iconColor="text-[var(--blue)]" label={t.hr.totalEmployees} value={stats?.totalEmployees ?? "—"} />
+        <StatCard icon="check_circle" iconBg="bg-[var(--ok-bg)]" iconColor="text-[var(--ok)]" label={t.hr.active} value={stats?.activeEmployees ?? "—"} />
+        <StatCard icon="event_busy" iconBg="bg-[var(--warn-bg)]" iconColor="text-[var(--warn)]" label={t.hr.onLeave} value={stats?.onLeave ?? "—"} />
         <StatCard icon="pending_actions" iconBg="bg-[#ffddba]" iconColor="text-[#633f0f]" label={t.hr.pendingLeave} value={stats?.pendingLeaveRequests ?? "—"} />
       </div>
 
       {/* Global success toast */}
       {leaveSuccess && (
-        <div className="flex items-center gap-3 bg-[#ccfbf1] text-[#0d9488] px-4 py-3 rounded-xl text-sm font-semibold">
+        <div className="flex items-center gap-3 bg-[var(--ok-bg)] text-[var(--ok)] px-4 py-3 rounded-xl text-sm font-semibold">
           <span className="material-symbols-outlined text-[18px]">check_circle</span>
           {leaveSuccess}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#e3e2e6]">
+      <div className="flex gap-1 border-b border-[var(--border)]">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
             className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
               activeTab === key
-                ? "border-[#002045] text-[#002045]"
-                : "border-transparent text-[#74777f] hover:text-[#1a1c1e]"
+                ? "border-[var(--brand)] text-[var(--brand)]"
+                : "border-transparent text-[var(--txt2)] hover:text-[var(--txt1)]"
             }`}
           >
             {label}
@@ -859,19 +860,19 @@ export default function HRPage() {
         <div className="space-y-4">
           {empFetchError && <ErrorBanner error={empFetchError} onRetry={fetchEmployees} />}
           {/* Filters */}
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
+                <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[var(--txt2)] text-[18px]">search</span>
                 <input
-                  className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                  className="w-full bg-[var(--surface2)] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm text-[var(--txt1)] placeholder:text-[var(--txt2)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                   placeholder={t.hr.searchPlaceholder}
                   value={empSearch}
                   onChange={(e) => { setEmpSearch(e.target.value); setEmpPage(1); }}
                 />
               </div>
               <select
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                 value={empStatusFilter}
                 onChange={(e) => { setEmpStatusFilter(e.target.value); setEmpPage(1); }}
               >
@@ -882,7 +883,7 @@ export default function HRPage() {
                 <option value="TERMINATED">{t.hr.terminated}</option>
               </select>
               <select
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                 value={empDeptFilter}
                 onChange={(e) => { setEmpDeptFilter(e.target.value); setEmpPage(1); }}
               >
@@ -893,7 +894,7 @@ export default function HRPage() {
               </select>
               {branches.length > 0 && (
                 <select
-                  className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                  className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                   value={empBranchFilter}
                   onChange={(e) => { setEmpBranchFilter(e.target.value); setEmpPage(1); }}
                 >
@@ -905,7 +906,7 @@ export default function HRPage() {
               )}
               <button
                 onClick={handleExportCsv}
-                className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2.5 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors"
+                className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-4 py-2.5 rounded-lg text-sm text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">download</span>
                 {t.hr.exportCsv}
@@ -913,7 +914,7 @@ export default function HRPage() {
               {selectedEmpIds.size > 0 && (
                 <button
                   onClick={handleExportSelectedCsv}
-                  className="flex items-center gap-2 bg-[#1960a3] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+                  className="flex items-center gap-2 bg-[var(--blue)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <span className="material-symbols-outlined text-[18px]">download</span>
                   {t.hr.exportSelected} ({selectedEmpIds.size} {t.hr.nSelected})
@@ -923,15 +924,15 @@ export default function HRPage() {
           </div>
 
           {/* Employees table */}
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
+                  <tr className="bg-[var(--surface2)] border-b border-[var(--border)]">
                     <th className="px-5 py-3.5 w-10">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 rounded accent-[#1960a3]"
+                        className="w-4 h-4 rounded accent-[var(--blue)]"
                         checked={employees.length > 0 && employees.every(e => selectedEmpIds.has(e.id as string))}
                         onChange={(ev) => {
                           if (ev.target.checked) setSelectedEmpIds(new Set(employees.map(e => e.id as string)));
@@ -941,7 +942,7 @@ export default function HRPage() {
                       />
                     </th>
                     {[t.hr.employee, t.hr.code, t.hr.deptTitle, t.hr.type, t.hr.status, t.hr.salary, t.hr.hireDate, t.hr.leaveBal, t.common.actions].map((h) => (
-                      <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -959,12 +960,12 @@ export default function HRPage() {
                       <tr
                         key={emp.id}
                         ref={isHighlighted ? highlightedEmployeeRef : null}
-                        className={`hover:bg-[#f4f3f7] transition-colors group ${isSelected ? "bg-[#eef4ff]" : ""} ${isHighlighted ? "ring-2 ring-inset ring-[#1960a3] bg-[#d3e4ff]/30" : ""}`}
+                        className={`hover:bg-[var(--surface2)] transition-colors group ${isSelected ? "bg-[#eef4ff]" : ""} ${isHighlighted ? "ring-2 ring-inset ring-[var(--blue)] bg-[#d3e4ff]/30" : ""}`}
                       >
-                        <td className="px-5 py-4 border-b border-[#e3e2e6] w-10">
+                        <td className="px-5 py-4 border-b border-[var(--border)] w-10">
                           <input
                             type="checkbox"
-                            className="w-4 h-4 rounded accent-[#1960a3]"
+                            className="w-4 h-4 rounded accent-[var(--blue)]"
                             checked={isSelected}
                             onChange={() => setSelectedEmpIds(prev => {
                               const next = new Set(prev);
@@ -975,7 +976,7 @@ export default function HRPage() {
                             aria-label={`Select ${emp.user.name}`}
                           />
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                        <td className="px-5 py-4 border-b border-[var(--border)]">
                           <div className="flex items-center gap-3">
                             {/* Avatar: real photo or colored initials */}
                             {emp.user.photo ? (
@@ -983,23 +984,23 @@ export default function HRPage() {
                                 className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[#e3e2e6]" />
                             ) : (
                               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                                emp.user.isActive ? "bg-[#002045] text-white" : "bg-[#94a3b8] text-white"
+                                emp.user.isActive ? "bg-[var(--brand)] text-white" : "bg-[#94a3b8] text-white"
                               }`}>
                                 {getInitials(emp.user.name)}
                               </div>
                             )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors whitespace-nowrap">{emp.user.name}</p>
+                                <p className="text-sm font-semibold text-[var(--txt1)] group-hover:text-[var(--blue)] transition-colors whitespace-nowrap">{emp.user.name}</p>
                                 {!emp.user.isActive && (
                                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#fee2e2] text-[#991b1b] whitespace-nowrap">INACTIVE</span>
                                 )}
                               </div>
-                              <p className="text-xs text-[#74777f] truncate">{emp.user.email}</p>
+                              <p className="text-xs text-[var(--txt2)] truncate">{emp.user.email}</p>
                               {/* Role badges */}
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {(emp.user.roles as string[] ?? []).map((role: string) => (
-                                  <span key={role} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#eff6ff] text-[#1d4ed8] whitespace-nowrap">
+                                  <span key={role} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--blue-bg)] text-[var(--blue)] whitespace-nowrap">
                                     {role.replace("_", " ")}
                                   </span>
                                 ))}
@@ -1007,46 +1008,46 @@ export default function HRPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                          <span className="text-xs font-mono font-semibold text-[#43474e] bg-[#f4f3f7] px-2 py-1 rounded">{emp.empCode}</span>
+                        <td className="px-5 py-4 border-b border-[var(--border)]">
+                          <span className="text-xs font-mono font-semibold text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded">{emp.empCode}</span>
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                          <p className="text-sm text-[#1a1c1e]">{emp.department.name}</p>
-                          <p className="text-xs text-[#74777f]">{emp.jobTitle}</p>
+                        <td className="px-5 py-4 border-b border-[var(--border)]">
+                          <p className="text-sm text-[var(--txt1)]">{emp.department.name}</p>
+                          <p className="text-xs text-[var(--txt2)]">{emp.jobTitle}</p>
                           {emp.branchName && (
-                            <p className="text-[10px] text-[#1960a3] mt-0.5 flex items-center gap-0.5">
+                            <p className="text-[10px] text-[var(--blue)] mt-0.5 flex items-center gap-0.5">
                               <span className="material-symbols-outlined text-[12px]">location_on</span>
                               {emp.branchName}
                             </p>
                           )}
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                        <td className="px-5 py-4 border-b border-[var(--border)]">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${typeCfg.cls}`}>{typeCfg.label}</span>
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                        <td className="px-5 py-4 border-b border-[var(--border)]">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusCfg.cls}`}>{statusCfg.label}</span>
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6] text-sm text-[#1a1c1e]">
+                        <td className="px-5 py-4 border-b border-[var(--border)] text-sm text-[var(--txt1)]">
                           {formatCurrency(emp.basicSalary)}
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6] text-sm text-[#43474e] whitespace-nowrap">
+                        <td className="px-5 py-4 border-b border-[var(--border)] text-sm text-[var(--txt2)] whitespace-nowrap">
                           {formatDate(emp.hireDate)}
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6] text-sm text-[#43474e]">
+                        <td className="px-5 py-4 border-b border-[var(--border)] text-sm text-[var(--txt2)]">
                           {emp.annualLeaveBalance != null ? `${emp.annualLeaveBalance} ${t.hr.daysUnit}` : "—"}
                         </td>
-                        <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                        <td className="px-5 py-4 border-b border-[var(--border)]">
                           <div className="flex items-center gap-1">
-                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label={t.common.view}>
+                            <Link href={`/hr/${emp.id}`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]" aria-label={t.common.view}>
                               <span className="material-symbols-outlined text-[18px]">visibility</span>
                             </Link>
-                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[#74777f] hover:text-[#1960a3]" aria-label={t.common.edit}>
+                            <Link href={`/hr/${emp.id}/edit`} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]" aria-label={t.common.edit}>
                               <span className="material-symbols-outlined text-[18px]">edit</span>
                             </Link>
                             {/* Link to user account */}
                             <Link
                               href={`/users?search=${encodeURIComponent(emp.user.email)}`}
-                              className="p-1.5 hover:bg-[#ede9fe] rounded-lg transition-colors text-[#74777f] hover:text-[#7c3aed]"
+                              className="p-1.5 hover:bg-[#ede9fe] rounded-lg transition-colors text-[var(--txt2)] hover:text-[#7c3aed]"
                               aria-label="View system account"
                               title="View system account"
                             >
@@ -1070,12 +1071,12 @@ export default function HRPage() {
               </table>
             </div>
             {empTotalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
-                <p className="text-xs text-[#74777f]">
+              <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+                <p className="text-xs text-[var(--txt2)]">
                   {t.hr.showing} {((empPage - 1) * PAGE_SIZE) + 1}–{Math.min(empPage * PAGE_SIZE, empTotal)} of {empTotal} {t.hr.employeesLabel}
                 </p>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setEmpPage((p) => Math.max(1, p - 1))} disabled={empPage === 1} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <button onClick={() => setEmpPage((p) => Math.max(1, p - 1))} disabled={empPage === 1} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                   </button>
                   {(() => {
@@ -1083,10 +1084,10 @@ export default function HRPage() {
                     const start = Math.max(1, Math.min(empPage - delta, empTotalPages - delta * 2));
                     const end = Math.min(empTotalPages, start + delta * 2);
                     return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
-                      <button key={p} onClick={() => setEmpPage(p)} className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${empPage === p ? "bg-[#002045] text-white" : "hover:bg-[#f4f3f7] text-[#43474e]"}`}>{p}</button>
+                      <button key={p} onClick={() => setEmpPage(p)} className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${empPage === p ? "bg-[var(--brand)] text-white" : "hover:bg-[var(--surface2)] text-[var(--txt2)]"}`}>{p}</button>
                     ));
                   })()}
-                  <button onClick={() => setEmpPage((p) => Math.min(empTotalPages, p + 1))} disabled={empPage === empTotalPages} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <button onClick={() => setEmpPage((p) => Math.min(empTotalPages, p + 1))} disabled={empPage === empTotalPages} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                   </button>
                 </div>
@@ -1099,11 +1100,11 @@ export default function HRPage() {
       {/* ── Tab: Attendance ── */}
       {activeTab === "attendance" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-col sm:flex-row gap-3 flex-wrap">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-4 flex flex-col sm:flex-row gap-3 flex-wrap">
             <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
+              <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[var(--txt2)] text-[18px]">search</span>
               <input
-                className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="w-full bg-[var(--surface2)] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm text-[var(--txt1)] placeholder:text-[var(--txt2)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                 placeholder={t.hr.searchPlaceholder}
                 value={attSearch}
                 onChange={(e) => setAttSearch(e.target.value)}
@@ -1111,11 +1112,11 @@ export default function HRPage() {
             </div>
             <input
               type="month"
-              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+              className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
               value={attMonth}
               onChange={(e) => setAttMonth(e.target.value)}
             />
-            <div className="flex items-center gap-4 text-xs text-[#43474e] flex-wrap">
+            <div className="flex items-center gap-4 text-xs text-[var(--txt2)] flex-wrap">
               {Object.entries(ATT_MARKER).map(([k, v]) => (
                 <span key={k} className="flex items-center gap-1">
                   <span className={`material-symbols-outlined text-[14px] ${v.cls}`}>{v.sym}</span>
@@ -1123,17 +1124,17 @@ export default function HRPage() {
                 </span>
               ))}
             </div>
-            <p className="text-xs text-[#74777f] self-center">{t.hr.markAttendance}</p>
+            <p className="text-xs text-[var(--txt2)] self-center">{t.hr.markAttendance}</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
-                    <th className="sticky start-0 bg-[#f4f3f7] text-left font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3 whitespace-nowrap z-10">{t.hr.employee}</th>
+                  <tr className="bg-[var(--surface2)] border-b border-[var(--border)]">
+                    <th className="sticky start-0 bg-[var(--surface2)] text-left font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3 whitespace-nowrap z-10">{t.hr.employee}</th>
                     {attDaysInMonth.map((d) => (
-                      <th key={d} className="text-center font-semibold text-[#43474e] px-2 py-3 w-8">{d}</th>
+                      <th key={d} className="text-center font-semibold text-[var(--txt2)] px-2 py-3 w-8">{d}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1143,13 +1144,13 @@ export default function HRPage() {
                   ) : attendance.length === 0 ? (
                     <tr><td colSpan={attDaysInMonth.length + 1} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <span className="material-symbols-outlined text-[#74777f] text-3xl">calendar_month</span>
-                        <p className="text-sm font-semibold text-[#1a1c1e]">{t.hr.noAttendance}</p>
+                        <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">calendar_month</span>
+                        <p className="text-sm font-semibold text-[var(--txt1)]">{t.hr.noAttendance}</p>
                       </div>
                     </td></tr>
                   ) : attendance.map((rec) => (
-                    <tr key={rec.employeeId} className="hover:bg-[#f4f3f7] transition-colors border-b border-[#e3e2e6]">
-                      <td className="sticky start-0 bg-white hover:bg-[#f4f3f7] px-5 py-3 font-semibold text-[#1a1c1e] whitespace-nowrap z-10">{rec.employeeName}</td>
+                    <tr key={rec.employeeId} className="hover:bg-[var(--surface2)] transition-colors border-b border-[var(--border)]">
+                      <td className="sticky start-0 bg-[var(--surface)] hover:bg-[var(--surface2)] px-5 py-3 font-semibold text-[var(--txt1)] whitespace-nowrap z-10">{rec.employeeName}</td>
                       {attDaysInMonth.map((d) => {
                         const key = `${attMonth}-${String(d).padStart(2, "0")}`;
                         const marker = rec.days[key];
@@ -1188,9 +1189,9 @@ export default function HRPage() {
       {/* ── Tab: Leave Requests ── */}
       {activeTab === "leaveRequests" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex gap-3 flex-wrap items-center">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-4 flex gap-3 flex-wrap items-center">
             <select
-              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+              className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
               value={leaveStatusFilter}
               onChange={(e) => setLeaveStatusFilter(e.target.value)}
             >
@@ -1202,20 +1203,20 @@ export default function HRPage() {
             <div className="flex-1" />
             <button
               onClick={() => { setLeaveModal(true); setLeaveError(""); setLeaveForm({ employeeId: "", type: "ANNUAL", startDate: "", endDate: "", days: "", reason: "", medicalCert: false }); }}
-              className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
+              className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               {t.hr.newLeaveRequest}
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
+                  <tr className="bg-[var(--surface2)] border-b border-[var(--border)]">
                     {[t.hr.employee, t.hr.leaveType, t.hr.startDate, t.hr.endDate, t.hr.days, t.common.status, t.hr.approver, t.common.actions].map((h) => (
-                      <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1227,51 +1228,51 @@ export default function HRPage() {
                   ) : leaves.map((lr) => {
                     const sc = LEAVE_STATUS[lr.status] ?? LEAVE_STATUS.PENDING;
                     return (
-                      <tr key={lr.id} className="hover:bg-[#f4f3f7] transition-colors border-b border-[#e3e2e6]">
+                      <tr key={lr.id} className="hover:bg-[var(--surface2)] transition-colors border-b border-[var(--border)]">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#002045] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-[var(--brand)] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                               {getInitials(lr.employeeName ?? lr.employee?.user?.name ?? "?")}
                             </div>
-                            <p className="text-sm font-semibold text-[#1a1c1e] whitespace-nowrap">{lr.employeeName ?? lr.employee?.user?.name ?? "—"}</p>
+                            <p className="text-sm font-semibold text-[var(--txt1)] whitespace-nowrap">{lr.employeeName ?? lr.employee?.user?.name ?? "—"}</p>
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <p className="text-sm text-[#43474e]">{leaveTypeLabel(lr.type)}</p>
+                          <p className="text-sm text-[var(--txt2)]">{leaveTypeLabel(lr.type)}</p>
                           {lr.type?.toUpperCase().includes("ANNUAL") && lr.annualLeaveBalance != null && (
-                            <p className="text-xs text-[#74777f] mt-0.5">{t.hr.leaveBal}: {lr.annualLeaveBalance} {t.hr.daysUnit}</p>
+                            <p className="text-xs text-[var(--txt2)] mt-0.5">{t.hr.leaveBal}: {lr.annualLeaveBalance} {t.hr.daysUnit}</p>
                           )}
                           {lr.type?.toUpperCase().includes("SICK") && lr.sickLeaveBalance != null && (
-                            <p className="text-xs text-[#74777f] mt-0.5">{t.hr.leaveBal}: {lr.sickLeaveBalance} {t.hr.daysUnit}</p>
+                            <p className="text-xs text-[var(--txt2)] mt-0.5">{t.hr.leaveBal}: {lr.sickLeaveBalance} {t.hr.daysUnit}</p>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-sm text-[#43474e] whitespace-nowrap">{formatDate(lr.startDate)}</td>
-                        <td className="px-5 py-4 text-sm text-[#43474e] whitespace-nowrap">{formatDate(lr.endDate)}</td>
-                        <td className="px-5 py-4 text-sm text-[#43474e]">{lr.days}</td>
+                        <td className="px-5 py-4 text-sm text-[var(--txt2)] whitespace-nowrap">{formatDate(lr.startDate)}</td>
+                        <td className="px-5 py-4 text-sm text-[var(--txt2)] whitespace-nowrap">{formatDate(lr.endDate)}</td>
+                        <td className="px-5 py-4 text-sm text-[var(--txt2)]">{lr.days}</td>
                         <td className="px-5 py-4">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${sc.cls}`}>{sc.label}</span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-[#43474e]">{lr.approverName || "—"}</td>
+                        <td className="px-5 py-4 text-sm text-[var(--txt2)]">{lr.approverName || "—"}</td>
                         <td className="px-5 py-4">
                           {lr.status === "PENDING" ? (
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleLeaveAction(lr.id, "APPROVED")}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-[#ccfbf1] text-[#0d9488] text-xs font-semibold rounded-lg hover:bg-[#0d9488] hover:text-white transition-colors"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-[var(--ok-bg)] text-[var(--ok)] text-xs font-semibold rounded-lg hover:bg-[var(--ok)] hover:text-white transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[14px]">check</span>
                                 {t.hr.approve}
                               </button>
                               <button
                                 onClick={() => { setRejectReason(""); setRejectModal({ leaveId: lr.id, employeeName: lr.employeeName ?? lr.employee?.user?.name ?? "" }); }}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-[#ffdad6] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ba1a1a] hover:text-white transition-colors"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-[var(--err-bg)] text-[var(--err)] text-xs font-semibold rounded-lg hover:bg-[var(--err)] hover:text-white transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[14px]">close</span>
                                 {t.hr.reject}
                               </button>
                             </div>
                           ) : (
-                            <span className="text-xs text-[#74777f]">—</span>
+                            <span className="text-xs text-[var(--txt2)]">—</span>
                           )}
                         </td>
                       </tr>
@@ -1287,11 +1288,11 @@ export default function HRPage() {
       {/* ── Tab: Payroll ── */}
       {activeTab === "payroll" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-wrap items-center gap-4">
-            <label className="text-sm font-semibold text-[#43474e]">{t.hr.payrollMonth}</label>
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-4 flex flex-wrap items-center gap-4">
+            <label className="text-sm font-semibold text-[var(--txt2)]">{t.hr.payrollMonth}</label>
             <input
               type="month"
-              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+              className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
               value={payrollMonth}
               min="2020-01"
               max={new Date().toISOString().slice(0, 7)}
@@ -1299,7 +1300,7 @@ export default function HRPage() {
             />
             {branches.length > 0 && (
               <select
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                 value={payrollBranchFilter}
                 onChange={(e) => setPayrollBranchFilter(e.target.value)}
               >
@@ -1314,7 +1315,7 @@ export default function HRPage() {
               <button
                 onClick={handleProcessAllPayroll}
                 disabled={processAllLoading}
-                className="flex items-center gap-2 bg-[#0d9488] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-60"
+                className="flex items-center gap-2 bg-[var(--ok)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-60"
               >
                 {processAllLoading ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1324,19 +1325,19 @@ export default function HRPage() {
                 {t.hr.processAll} ({pendingPayrollCount})
               </button>
             )}
-            <button className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
+            <button className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors">
               <span className="material-symbols-outlined text-[18px]">download</span>
               {t.hr.exportPayroll}
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
+                  <tr className="bg-[var(--surface2)] border-b border-[var(--border)]">
                     {[t.hr.employee, t.hr.department, t.hr.baseSalary, t.hr.allowances, t.hr.deductions, t.hr.netPay, t.common.status, t.hr.process].map((h) => (
-                      <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1346,22 +1347,22 @@ export default function HRPage() {
                   ) : payroll.length === 0 ? (
                     <EmptyRow cols={8} icon="payments" label={t.hr.noPayroll} sub={t.hr.noPayrollDesc} />
                   ) : payroll.map((pr) => (
-                    <tr key={pr.employeeId} className="hover:bg-[#f4f3f7] transition-colors border-b border-[#e3e2e6]">
+                    <tr key={pr.employeeId} className="hover:bg-[var(--surface2)] transition-colors border-b border-[var(--border)]">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#002045] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-[var(--brand)] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                             {getInitials(pr.employeeName)}
                           </div>
-                          <p className="text-sm font-semibold text-[#1a1c1e] whitespace-nowrap">{pr.employeeName}</p>
+                          <p className="text-sm font-semibold text-[var(--txt1)] whitespace-nowrap">{pr.employeeName}</p>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm text-[#43474e]">{pr.department}</td>
-                      <td className="px-5 py-4 text-sm text-[#43474e]">{formatCurrency(pr.basicSalary ?? pr.baseSalary)}</td>
-                      <td className="px-5 py-4 text-sm text-[#0d9488]">+{formatCurrency(pr.allowances)}</td>
-                      <td className="px-5 py-4 text-sm text-[#ba1a1a]">-{formatCurrency(pr.deductions)}</td>
-                      <td className="px-5 py-4 text-sm font-semibold text-[#1a1c1e]">{formatCurrency(pr.netSalary ?? pr.netPay)}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--txt2)]">{pr.department}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--txt2)]">{formatCurrency(pr.basicSalary ?? pr.baseSalary)}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--ok)]">+{formatCurrency(pr.allowances)}</td>
+                      <td className="px-5 py-4 text-sm text-[var(--err)]">-{formatCurrency(pr.deductions)}</td>
+                      <td className="px-5 py-4 text-sm font-semibold text-[var(--txt1)]">{formatCurrency(pr.netSalary ?? pr.netPay)}</td>
                       <td className="px-5 py-4">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${pr.status === "PROCESSED" ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#fff7ed] text-[#d97706]"}`}>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${pr.status === "PROCESSED" ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--warn-bg)] text-[var(--warn)]"}`}>
                           {pr.status === "PROCESSED" ? t.hr.processed : t.hr.pendingStatus}
                         </span>
                       </td>
@@ -1370,7 +1371,7 @@ export default function HRPage() {
                           {pr.status === "PENDING" ? (
                             <button
                               onClick={() => handleProcessPayroll(pr.employeeId)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-[#002045] text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                              className="flex items-center gap-1 px-3 py-1.5 bg-[var(--brand)] text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
                             >
                               <span className="material-symbols-outlined text-[14px]">payments</span>
                               {t.hr.process}
@@ -1379,7 +1380,7 @@ export default function HRPage() {
                             <>
                               <button
                                 onClick={() => setPayslipPayrollId(pr.id)}
-                                className="flex items-center gap-1 px-3 py-1.5 border border-[#c4c6cf] text-[#43474e] text-xs font-semibold rounded-lg hover:bg-[#f4f3f7] transition-colors"
+                                className="flex items-center gap-1 px-3 py-1.5 border border-[var(--border2)] text-[var(--txt2)] text-xs font-semibold rounded-lg hover:bg-[var(--surface2)] transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[14px]">receipt_long</span>
                                 {t.hr.payslip}
@@ -1389,7 +1390,7 @@ export default function HRPage() {
                                   if (!confirm(t.hr.reverseConfirm)) return;
                                   try { await apiFetch(`/api/hr/payroll/${pr.id}/reverse`, { method: "PATCH" }); fetchPayroll(); } catch { /* ignore */ }
                                 }}
-                                className="flex items-center gap-1 px-3 py-1.5 border border-[#ffdad6] text-[#ba1a1a] text-xs font-semibold rounded-lg hover:bg-[#ffdad6]/30 transition-colors"
+                                className="flex items-center gap-1 px-3 py-1.5 border border-[#ffdad6] text-[var(--err)] text-xs font-semibold rounded-lg hover:bg-[var(--err-bg)]/30 transition-colors"
                                 title={t.hr.reversePayroll}
                               >
                                 <span className="material-symbols-outlined text-[14px]">undo</span>
@@ -1404,12 +1405,12 @@ export default function HRPage() {
                 </tbody>
                 {payroll.length > 0 && !payrollLoading && (
                   <tfoot>
-                    <tr className="bg-[#f4f3f7] border-t-2 border-[#e3e2e6]">
-                      <td className="px-5 py-3.5 text-sm font-bold text-[#1a1c1e]" colSpan={2}>{t.hr.payrollTotals}</td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-[#43474e]">{formatCurrency(payroll.reduce((s, p) => s + (p.basicSalary ?? p.baseSalary), 0))}</td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-[#0d9488]">+{formatCurrency(payroll.reduce((s, p) => s + p.allowances, 0))}</td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-[#ba1a1a]">-{formatCurrency(payroll.reduce((s, p) => s + p.deductions, 0))}</td>
-                      <td className="px-5 py-3.5 text-sm font-bold text-[#1a1c1e]">{formatCurrency(payroll.reduce((s, p) => s + (p.netSalary ?? p.netPay), 0))}</td>
+                    <tr className="bg-[var(--surface2)] border-t-2 border-[var(--border)]">
+                      <td className="px-5 py-3.5 text-sm font-bold text-[var(--txt1)]" colSpan={2}>{t.hr.payrollTotals}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[var(--txt2)]">{formatCurrency(payroll.reduce((s, p) => s + (p.basicSalary ?? p.baseSalary), 0))}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[var(--ok)]">+{formatCurrency(payroll.reduce((s, p) => s + p.allowances, 0))}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[var(--err)]">-{formatCurrency(payroll.reduce((s, p) => s + p.deductions, 0))}</td>
+                      <td className="px-5 py-3.5 text-sm font-bold text-[var(--txt1)]">{formatCurrency(payroll.reduce((s, p) => s + (p.netSalary ?? p.netPay), 0))}</td>
                       <td colSpan={2} />
                     </tr>
                   </tfoot>
@@ -1424,9 +1425,9 @@ export default function HRPage() {
       {activeTab === "shifts" && (
         <div className="space-y-4">
           {/* Toolbar */}
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-4 flex flex-wrap items-center gap-3">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-4 flex flex-wrap items-center gap-3">
             <select
-              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+              className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
             >
@@ -1436,7 +1437,7 @@ export default function HRPage() {
             <div className="flex-1" />
             <button
               onClick={openAddShift}
-              className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
+              className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               {t.hr.addShift}
@@ -1447,53 +1448,53 @@ export default function HRPage() {
           {shiftsLoading ? (
             <Spinner label={t.hr.loading} />
           ) : shifts.length === 0 ? (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-16 flex flex-col items-center gap-3">
+            <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-16 flex flex-col items-center gap-3">
               <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">schedule</span>
-              <p className="text-sm font-semibold text-[#43474e]">{t.hr.noShifts}</p>
-              <p className="text-xs text-[#74777f]">{t.hr.noShiftsDesc}</p>
+              <p className="text-sm font-semibold text-[var(--txt2)]">{t.hr.noShifts}</p>
+              <p className="text-xs text-[var(--txt2)]">{t.hr.noShiftsDesc}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {shifts.map((s) => (
-                <div key={s.id} className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                <div key={s.id} className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
                       <div>
-                        <p className="text-sm font-semibold text-[#1a1c1e]">{s.name}</p>
-                        {s.branchName && <p className="text-xs text-[#74777f]">{s.branchName}</p>}
+                        <p className="text-sm font-semibold text-[var(--txt1)]">{s.name}</p>
+                        {s.branchName && <p className="text-xs text-[var(--txt2)]">{s.branchName}</p>}
                       </div>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#e3e2e6] text-[#74777f]"}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[#e3e2e6] text-[var(--txt2)]"}`}>
                       {s.isActive ? t.hr.shiftActive : t.hr.shiftInactive}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mb-3 text-sm text-[#43474e]">
-                    <span className="material-symbols-outlined text-[#74777f] text-[16px]">schedule</span>
+                  <div className="flex items-center gap-2 mb-3 text-sm text-[var(--txt2)]">
+                    <span className="material-symbols-outlined text-[var(--txt2)] text-[16px]">schedule</span>
                     {s.startTime} – {s.endTime}
-                    <span className="text-xs text-[#74777f] bg-[#f4f3f7] px-2 py-0.5 rounded-full ms-1">
+                    <span className="text-xs text-[var(--txt2)] bg-[var(--surface2)] px-2 py-0.5 rounded-full ms-1">
                       {calcDuration(s.startTime, s.endTime)}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4">
                     {t.hr.daysShort.map((day, i) => (
-                      <span key={day} className={`text-xs px-2 py-0.5 rounded font-medium ${s.daysOfWeek.includes(i) ? "bg-[#d3e4ff] text-[#1960a3]" : "bg-[#f4f3f7] text-[#c4c6cf]"}`}>{day}</span>
+                      <span key={day} className={`text-xs px-2 py-0.5 rounded font-medium ${s.daysOfWeek.includes(i) ? "bg-[#d3e4ff] text-[var(--blue)]" : "bg-[var(--surface2)] text-[#c4c6cf]"}`}>{day}</span>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between border-t border-[#e3e2e6] pt-3">
+                  <div className="flex items-center justify-between border-t border-[var(--border)] pt-3">
                     <button
                       onClick={() => openAssignModal(s)}
-                      className="flex items-center gap-1 text-xs font-semibold text-[#1960a3] hover:underline"
+                      className="flex items-center gap-1 text-xs font-semibold text-[var(--blue)] hover:underline"
                     >
                       <span className="material-symbols-outlined text-[14px]">groups</span>
                       {s.assignmentCount} {t.hr.assignments}
                     </button>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEditShift(s)} aria-label="Edit" className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                        <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
+                      <button onClick={() => openEditShift(s)} aria-label="Edit" className="p-1.5 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-[var(--txt2)] text-[16px]">edit</span>
                       </button>
-                      <button onClick={() => setConfirmDeleteShiftId(s.id)} aria-label="Delete" className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
-                        <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">delete</span>
+                      <button onClick={() => setConfirmDeleteShiftId(s.id)} aria-label="Delete" className="p-1.5 hover:bg-[var(--err-bg)] rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-[var(--err)] text-[16px]">delete</span>
                       </button>
                     </div>
                   </div>
@@ -1510,7 +1511,7 @@ export default function HRPage() {
           <div className="flex items-center gap-3 flex-wrap justify-end">
             {branches.length > 0 && (
               <select
-                className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+                className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20"
                 value={analyticsBranchFilter}
                 onChange={(e) => setAnalyticsBranchFilter(e.target.value)}
               >
@@ -1528,7 +1529,7 @@ export default function HRPage() {
                   alert(t.hr.carryForwardDone); fetchStats();
                 } catch { alert(t.hr.carryForwardFailed); }
               }}
-              className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors"
+              className="flex items-center gap-2 border border-[var(--border2)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">event_repeat</span>
               {t.hr.carryForward}
@@ -1540,93 +1541,93 @@ export default function HRPage() {
           ) : analytics ? (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon="groups" iconBg="bg-[#d3e4ff]" iconColor="text-[#1960a3]" label={t.hr.totalEmployees} value={analytics.headcount.total} />
-                <StatCard icon="check_circle" iconBg="bg-[#ccfbf1]" iconColor="text-[#0d9488]" label={t.hr.active} value={analytics.headcount.active} />
-                <StatCard icon="event_busy" iconBg="bg-[#fff7ed]" iconColor="text-[#d97706]" label={t.hr.onLeave} value={analytics.headcount.onLeave} />
-                <StatCard icon="trending_down" iconBg="bg-[#ffdad6]" iconColor="text-[#ba1a1a]" label={t.hr.attritionThisYear} value={analytics.attritionThisYear} />
+                <StatCard icon="groups" iconBg="bg-[#d3e4ff]" iconColor="text-[var(--blue)]" label={t.hr.totalEmployees} value={analytics.headcount.total} />
+                <StatCard icon="check_circle" iconBg="bg-[var(--ok-bg)]" iconColor="text-[var(--ok)]" label={t.hr.active} value={analytics.headcount.active} />
+                <StatCard icon="event_busy" iconBg="bg-[var(--warn-bg)]" iconColor="text-[var(--warn)]" label={t.hr.onLeave} value={analytics.headcount.onLeave} />
+                <StatCard icon="trending_down" iconBg="bg-[var(--err-bg)]" iconColor="text-[var(--err)]" label={t.hr.attritionThisYear} value={analytics.attritionThisYear} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-4">{t.hr.headcountByDept}</h3>
+                <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-4">{t.hr.headcountByDept}</h3>
                   {analytics.byDepartment.length === 0 ? (
-                    <p className="text-sm text-[#74777f] py-4 text-center">{t.common.noData}</p>
+                    <p className="text-sm text-[var(--txt2)] py-4 text-center">{t.common.noData}</p>
                   ) : (
                     <div className="space-y-3">
                       {analytics.byDepartment.map((d) => (
                         <div key={d.name} className="flex items-center gap-3">
-                          <span className="text-sm text-[#43474e] flex-1 truncate">{d.name}</span>
+                          <span className="text-sm text-[var(--txt2)] flex-1 truncate">{d.name}</span>
                           <div className="w-24 bg-[#e3e2e6] rounded-full h-2 flex-shrink-0">
                             <div
-                              className="bg-[#1960a3] h-2 rounded-full"
+                              className="bg-[var(--blue)] h-2 rounded-full"
                               style={{ width: `${Math.min(100, (d.count / (analytics.headcount.total || 1)) * 100)}%` }}
                             />
                           </div>
-                          <span className="text-sm font-semibold text-[#1a1c1e] w-6 text-end">{d.count}</span>
+                          <span className="text-sm font-semibold text-[var(--txt1)] w-6 text-end">{d.count}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-4">{t.hr.leaveTypeBreakdown}</h3>
+                <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-4">{t.hr.leaveTypeBreakdown}</h3>
                   <div className="space-y-1 mb-4">
                     {Object.entries(analytics.leaveStats.byType).map(([type, count]) => (
                       <div key={type} className="flex justify-between items-center py-1.5 border-b border-[#f4f3f7]">
-                        <span className="text-sm text-[#43474e]">{LEAVE_TYPE_LABEL[type] ?? type.replace(/_/g, " ")}</span>
-                        <span className="text-sm font-semibold text-[#1a1c1e]">{count}</span>
+                        <span className="text-sm text-[var(--txt2)]">{LEAVE_TYPE_LABEL[type] ?? type.replace(/_/g, " ")}</span>
+                        <span className="text-sm font-semibold text-[var(--txt1)]">{count}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between pt-2 text-xs text-[#74777f]">
-                    <span>{t.common.pending}: <strong className="text-[#d97706]">{analytics.leaveStats.pendingCount}</strong></span>
-                    <span>{t.common.approved}: <strong className="text-[#0d9488]">{analytics.leaveStats.approvedThisMonth}</strong></span>
+                  <div className="flex justify-between pt-2 text-xs text-[var(--txt2)]">
+                    <span>{t.common.pending}: <strong className="text-[var(--warn)]">{analytics.leaveStats.pendingCount}</strong></span>
+                    <span>{t.common.approved}: <strong className="text-[var(--ok)]">{analytics.leaveStats.approvedThisMonth}</strong></span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-                <h3 className="text-sm font-bold text-[#1a1c1e] mb-4">{t.hr.payrollOverview}</h3>
+              <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
+                <h3 className="text-sm font-bold text-[var(--txt1)] mb-4">{t.hr.payrollOverview}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-[#f4f3f7] rounded-xl p-4">
-                    <p className="text-xs text-[#74777f] mb-1">{t.hr.totalNetPayroll}</p>
-                    <p className="text-xl font-bold text-[#1a1c1e]">{formatCurrency(analytics.payrollSummary.totalNetSalary)}</p>
+                  <div className="bg-[var(--surface2)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--txt2)] mb-1">{t.hr.totalNetPayroll}</p>
+                    <p className="text-xl font-bold text-[var(--txt1)]">{formatCurrency(analytics.payrollSummary.totalNetSalary)}</p>
                   </div>
-                  <div className="bg-[#f4f3f7] rounded-xl p-4">
-                    <p className="text-xs text-[#74777f] mb-1">{t.hr.grossSalary}</p>
-                    <p className="text-xl font-bold text-[#1a1c1e]">{formatCurrency(analytics.payrollSummary.totalGrossSalary)}</p>
+                  <div className="bg-[var(--surface2)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--txt2)] mb-1">{t.hr.grossSalary}</p>
+                    <p className="text-xl font-bold text-[var(--txt1)]">{formatCurrency(analytics.payrollSummary.totalGrossSalary)}</p>
                   </div>
-                  <div className="bg-[#f4f3f7] rounded-xl p-4">
-                    <p className="text-xs text-[#74777f] mb-1">{t.hr.processed}</p>
-                    <p className="text-xl font-bold text-[#1a1c1e]">{analytics.payrollSummary.processedCount}</p>
+                  <div className="bg-[var(--surface2)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--txt2)] mb-1">{t.hr.processed}</p>
+                    <p className="text-xl font-bold text-[var(--txt1)]">{analytics.payrollSummary.processedCount}</p>
                   </div>
                 </div>
               </div>
 
               {analytics.contractsExpiring.length > 0 && (
-                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-                  <h3 className="text-sm font-bold text-[#1a1c1e] mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#d97706] text-[18px]">warning</span>
+                <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
+                  <h3 className="text-sm font-bold text-[var(--txt1)] mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[var(--warn)] text-[18px]">warning</span>
                     {t.hr.contractsExpiring}
                   </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-[#e3e2e6]">
+                        <tr className="border-b border-[var(--border)]">
                           {[t.hr.employee, t.hr.contractType, t.common.date, ""].map((h, i) => (
-                            <th key={i} className="text-left text-xs font-semibold text-[#74777f] uppercase tracking-wider pb-2 pe-4 whitespace-nowrap">{h}</th>
+                            <th key={i} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider pb-2 pe-4 whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {analytics.contractsExpiring.map((c, i) => (
                           <tr key={i} className="border-b border-[#f4f3f7]">
-                            <td className="py-2.5 pe-4 font-semibold text-[#1a1c1e]">{c.employeeName}</td>
-                            <td className="py-2.5 pe-4 text-[#43474e]">{c.contractType.replace(/_/g, " ")}</td>
-                            <td className="py-2.5 pe-4 text-[#43474e] whitespace-nowrap">{c.endDate?.slice(0, 10) ?? "—"}</td>
+                            <td className="py-2.5 pe-4 font-semibold text-[var(--txt1)]">{c.employeeName}</td>
+                            <td className="py-2.5 pe-4 text-[var(--txt2)]">{c.contractType.replace(/_/g, " ")}</td>
+                            <td className="py-2.5 pe-4 text-[var(--txt2)] whitespace-nowrap">{c.endDate?.slice(0, 10) ?? "—"}</td>
                             <td className="py-2.5">
-                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.daysUntilExpiry <= 0 ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#fff7ed] text-[#d97706]"}`}>
+                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.daysUntilExpiry <= 0 ? "bg-[var(--err-bg)] text-[var(--err)]" : "bg-[var(--warn-bg)] text-[var(--warn)]"}`}>
                                 {c.daysUntilExpiry <= 0 ? t.hr.expired : `${c.daysUntilExpiry}d`}
                               </span>
                             </td>
@@ -1639,9 +1640,9 @@ export default function HRPage() {
               )}
             </>
           ) : (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-16 flex flex-col items-center gap-3">
+            <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-16 flex flex-col items-center gap-3">
               <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">analytics</span>
-              <p className="text-sm text-[#74777f]">{t.common.noData}</p>
+              <p className="text-sm text-[var(--txt2)]">{t.common.noData}</p>
             </div>
           )}
         </div>
@@ -1652,37 +1653,37 @@ export default function HRPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.leavePolicies}</h2>
-              <p className="text-sm text-[#74777f] mt-0.5">{t.hr.leavePoliciesDesc}</p>
+              <h2 className="text-lg font-bold text-[var(--txt1)]">{t.hr.leavePolicies}</h2>
+              <p className="text-sm text-[var(--txt2)] mt-0.5">{t.hr.leavePoliciesDesc}</p>
             </div>
           </div>
           {policiesLoading ? (
             <Spinner label={t.hr.loading} />
           ) : leavePolicies.length === 0 ? (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 text-center">
+            <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-12 text-center">
               <span className="material-symbols-outlined text-4xl text-[#c4c6cf] block mb-2">policy</span>
-              <p className="text-sm text-[#74777f]">{t.hr.noPolicies}</p>
+              <p className="text-sm text-[var(--txt2)]">{t.hr.noPolicies}</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#f4f3f7] border-b border-[#e3e2e6]">
+                  <tr className="bg-[var(--surface2)] border-b border-[var(--border)]">
                     {[t.hr.leaveType, t.hr.maxDays, t.hr.carryForwardMax, t.hr.medicalCertLabel, t.hr.probationAllowed, t.hr.minService, ""].map((h, i) => (
-                      <th key={i} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
+                      <th key={i} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e3e2e6]">
                   {leavePolicies.map(p => (
-                    <tr key={p.id} className="hover:bg-[#f4f3f7] transition-colors">
+                    <tr key={p.id} className="hover:bg-[var(--surface2)] transition-colors">
                       {policyEditing === p.id ? (
                         <>
-                          <td className="px-5 py-3 font-semibold text-[#1a1c1e]">{leaveTypeLabel(p.leaveType)}</td>
+                          <td className="px-5 py-3 font-semibold text-[var(--txt1)]">{leaveTypeLabel(p.leaveType)}</td>
                           <td className="px-5 py-3"><input type="number" className="input-field w-20 text-sm" min={0} value={policyForm.maxDaysPerYear ?? p.maxDaysPerYear} onChange={e => setPolicyForm(f => ({ ...f, maxDaysPerYear: Number(e.target.value) }))} /></td>
                           <td className="px-5 py-3"><input type="number" className="input-field w-20 text-sm" min={0} value={policyForm.carryForwardMax ?? p.carryForwardMax} onChange={e => setPolicyForm(f => ({ ...f, carryForwardMax: Number(e.target.value) }))} /></td>
-                          <td className="px-5 py-3"><input type="checkbox" checked={policyForm.requiresMedicalCert ?? p.requiresMedicalCert} onChange={e => setPolicyForm(f => ({ ...f, requiresMedicalCert: e.target.checked }))} className="w-4 h-4 accent-[#1960a3]" /></td>
-                          <td className="px-5 py-3"><input type="checkbox" checked={policyForm.probationAllowed ?? p.probationAllowed} onChange={e => setPolicyForm(f => ({ ...f, probationAllowed: e.target.checked }))} className="w-4 h-4 accent-[#1960a3]" /></td>
+                          <td className="px-5 py-3"><input type="checkbox" checked={policyForm.requiresMedicalCert ?? p.requiresMedicalCert} onChange={e => setPolicyForm(f => ({ ...f, requiresMedicalCert: e.target.checked }))} className="w-4 h-4 accent-[var(--blue)]" /></td>
+                          <td className="px-5 py-3"><input type="checkbox" checked={policyForm.probationAllowed ?? p.probationAllowed} onChange={e => setPolicyForm(f => ({ ...f, probationAllowed: e.target.checked }))} className="w-4 h-4 accent-[var(--blue)]" /></td>
                           <td className="px-5 py-3"><input type="number" className="input-field w-20 text-sm" min={0} value={policyForm.minServiceDays ?? p.minServiceDays} onChange={e => setPolicyForm(f => ({ ...f, minServiceDays: Number(e.target.value) }))} /></td>
                           <td className="px-5 py-3">
                             <div className="flex gap-2">
@@ -1693,14 +1694,14 @@ export default function HRPage() {
                         </>
                       ) : (
                         <>
-                          <td className="px-5 py-3.5 font-semibold text-[#1a1c1e]">{leaveTypeLabel(p.leaveType)}</td>
-                          <td className="px-5 py-3.5 text-[#43474e]">{p.maxDaysPerYear} {t.hr.daysUnit}</td>
-                          <td className="px-5 py-3.5 text-[#43474e]">{p.carryForwardMax} {t.hr.daysUnit}</td>
-                          <td className="px-5 py-3.5"><span className={`badge ${p.requiresMedicalCert ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{p.requiresMedicalCert ? t.common.yes : t.common.no}</span></td>
-                          <td className="px-5 py-3.5"><span className={`badge ${p.probationAllowed ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{p.probationAllowed ? t.common.yes : t.common.no}</span></td>
-                          <td className="px-5 py-3.5 text-[#43474e]">{p.minServiceDays} {t.hr.daysUnit}</td>
+                          <td className="px-5 py-3.5 font-semibold text-[var(--txt1)]">{leaveTypeLabel(p.leaveType)}</td>
+                          <td className="px-5 py-3.5 text-[var(--txt2)]">{p.maxDaysPerYear} {t.hr.daysUnit}</td>
+                          <td className="px-5 py-3.5 text-[var(--txt2)]">{p.carryForwardMax} {t.hr.daysUnit}</td>
+                          <td className="px-5 py-3.5"><span className={`badge ${p.requiresMedicalCert ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>{p.requiresMedicalCert ? t.common.yes : t.common.no}</span></td>
+                          <td className="px-5 py-3.5"><span className={`badge ${p.probationAllowed ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>{p.probationAllowed ? t.common.yes : t.common.no}</span></td>
+                          <td className="px-5 py-3.5 text-[var(--txt2)]">{p.minServiceDays} {t.hr.daysUnit}</td>
                           <td className="px-5 py-3.5">
-                            <button onClick={() => { setPolicyEditing(p.id); setPolicyForm({}); }} className="text-xs text-[#1960a3] hover:underline font-semibold">
+                            <button onClick={() => { setPolicyEditing(p.id); setPolicyForm({}); }} className="text-xs text-[var(--blue)] hover:underline font-semibold">
                               {t.common.edit}
                             </button>
                           </td>
@@ -1720,11 +1721,11 @@ export default function HRPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.orgChart}</h2>
-              <p className="text-sm text-[#74777f] mt-0.5">{t.hr.orgChartDesc}</p>
+              <h2 className="text-lg font-bold text-[var(--txt1)]">{t.hr.orgChart}</h2>
+              <p className="text-sm text-[var(--txt2)] mt-0.5">{t.hr.orgChartDesc}</p>
             </div>
             <input
-              className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 w-56"
+              className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2 text-sm text-[var(--txt1)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20 w-56"
               placeholder={t.hr.searchPlaceholder}
               value={orgSearch}
               onChange={e => setOrgSearch(e.target.value)}
@@ -1733,9 +1734,9 @@ export default function HRPage() {
           {orgLoading ? (
             <Spinner label={t.hr.loading} />
           ) : orgNodes.length === 0 ? (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 text-center">
+            <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-12 text-center">
               <span className="material-symbols-outlined text-4xl text-[#c4c6cf] block mb-2">account_tree</span>
-              <p className="text-sm text-[#74777f]">{t.hr.noOrgData}</p>
+              <p className="text-sm text-[var(--txt2)]">{t.hr.noOrgData}</p>
             </div>
           ) : (
             <OrgTree nodes={orgNodes} search={orgSearch} noResultsText={t.hr.noEmployees} />
@@ -1751,18 +1752,18 @@ export default function HRPage() {
       {/* ── Rejection Reason Modal ── */}
       {rejectModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="reject-leave-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setRejectModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+          <div className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
               <div>
-                <h2 id="reject-leave-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.rejectLeave}</h2>
-                <p className="text-xs text-[#74777f] mt-0.5">{rejectModal.employeeName}</p>
+                <h2 id="reject-leave-title" className="text-base font-bold text-[var(--txt1)]">{t.hr.rejectLeave}</h2>
+                <p className="text-xs text-[var(--txt2)] mt-0.5">{rejectModal.employeeName}</p>
               </div>
-              <button onClick={() => setRejectModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              <button onClick={() => setRejectModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6">
-              <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.rejectionReason}</label>
+              <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.rejectionReason}</label>
               <textarea
                 rows={3}
                 className="input-field resize-none w-full"
@@ -1771,11 +1772,11 @@ export default function HRPage() {
                 onChange={(e) => setRejectReason(e.target.value)}
               />
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setRejectModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button
                 onClick={handleRejectWithReason}
-                className="flex items-center gap-2 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90"
+                className="flex items-center gap-2 bg-[var(--err)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90"
               >
                 <span className="material-symbols-outlined text-[16px]">close</span>
                 {t.hr.reject}
@@ -1788,24 +1789,24 @@ export default function HRPage() {
       {/* ── Leave Creation Modal ── */}
       {leaveModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="leave-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setLeaveModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 id="leave-modal-title" className="text-lg font-bold text-[#1a1c1e]">{t.hr.newLeaveRequest}</h2>
-              <button onClick={() => setLeaveModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+          <div className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="leave-modal-title" className="text-lg font-bold text-[var(--txt1)]">{t.hr.newLeaveRequest}</h2>
+              <button onClick={() => setLeaveModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {leaveError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{leaveError}</div>}
+              {leaveError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-sm px-4 py-2.5 rounded-lg">{leaveError}</div>}
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.employee} *</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.employee} *</label>
                 <select className="input-field" value={leaveForm.employeeId} onChange={(e) => setLeaveForm(f => ({ ...f, employeeId: e.target.value }))}>
                   <option value="">{t.hr.searchPlaceholder}</option>
                   {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.user.name} ({emp.empCode})</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveType} *</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.leaveType} *</label>
                 <select className="input-field" value={leaveForm.type} onChange={(e) => setLeaveForm(f => ({ ...f, type: e.target.value }))}>
                   <option value="ANNUAL">{t.hr.leaveTypeAnnual}</option>
                   <option value="SICK">{t.hr.leaveTypeSick}</option>
@@ -1817,30 +1818,30 @@ export default function HRPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.startDate} *</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.startDate} *</label>
                   <input type="date" className="input-field" value={leaveForm.startDate} onChange={(e) => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.endDate} *</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.endDate} *</label>
                   <input type="date" className="input-field" value={leaveForm.endDate} onChange={(e) => setLeaveForm(f => ({ ...f, endDate: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveDaysLabel} *</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.leaveDaysLabel} *</label>
                 <input type="number" min="1" className="input-field" value={leaveForm.days} onChange={(e) => setLeaveForm(f => ({ ...f, days: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.leaveReason}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.leaveReason}</label>
                 <textarea rows={3} className="input-field resize-none" placeholder={t.hr.leaveReasonPlaceholder} value={leaveForm.reason} onChange={(e) => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
               </div>
               {leaveForm.type === "SICK" && (
                 <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" className="w-4 h-4 rounded accent-[#1960a3]" checked={leaveForm.medicalCert} onChange={(e) => setLeaveForm(f => ({ ...f, medicalCert: e.target.checked }))} />
-                  <span className="text-sm text-[#1a1c1e]">{t.hr.medicalCertLabel}</span>
+                  <input type="checkbox" className="w-4 h-4 rounded accent-[var(--blue)]" checked={leaveForm.medicalCert} onChange={(e) => setLeaveForm(f => ({ ...f, medicalCert: e.target.checked }))} />
+                  <span className="text-sm text-[var(--txt1)]">{t.hr.medicalCertLabel}</span>
                 </label>
               )}
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setLeaveModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={handleCreateLeave} disabled={leaveSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
                 {leaveSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
@@ -1853,14 +1854,14 @@ export default function HRPage() {
       {/* ── Attendance Mark Modal ── */}
       {attMarkModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="att-mark-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setAttMarkModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+          <div className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
               <div>
-                <h2 id="att-mark-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.markAttendance}</h2>
-                <p className="text-xs text-[#74777f] mt-0.5">{attMarkModal.employeeName} · {attMarkModal.date}</p>
+                <h2 id="att-mark-title" className="text-base font-bold text-[var(--txt1)]">{t.hr.markAttendance}</h2>
+                <p className="text-xs text-[var(--txt2)] mt-0.5">{attMarkModal.employeeName} · {attMarkModal.date}</p>
               </div>
-              <button onClick={() => setAttMarkModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              <button onClick={() => setAttMarkModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4">
@@ -1871,7 +1872,7 @@ export default function HRPage() {
                     <button
                       key={s}
                       onClick={() => setAttMarkStatus(s)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-colors ${attMarkStatus === s ? "border-[#002045] bg-[#f0f4ff]" : "border-[#e3e2e6] hover:bg-[#f4f3f7]"}`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-colors ${attMarkStatus === s ? "border-[var(--brand)] bg-[#f0f4ff]" : "border-[var(--border)] hover:bg-[var(--surface2)]"}`}
                     >
                       <span className={`material-symbols-outlined text-[18px] ${cfg.cls}`}>{cfg.sym}</span>
                       {ATT_LABEL[s] ?? s}
@@ -1883,21 +1884,21 @@ export default function HRPage() {
             {attMarkStatus === "PRESENT" && (
               <div className="px-6 pb-4 grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1">{t.hr.checkIn}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1">{t.hr.checkIn}</label>
                   <input type="time" className="input-field text-sm" value={attMarkCheckIn} onChange={(e) => setAttMarkCheckIn(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1">{t.hr.checkOut}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1">{t.hr.checkOut}</label>
                   <input type="time" className="input-field text-sm" value={attMarkCheckOut} onChange={(e) => setAttMarkCheckOut(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1">{t.hr.overtimeHrs}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1">{t.hr.overtimeHrs}</label>
                   <input type="number" className="input-field text-sm" value={attMarkOvertimeHrs} min="0" step="0.5" onChange={(e) => setAttMarkOvertimeHrs(e.target.value)} />
                 </div>
               </div>
             )}
-            {attMarkError && <p className="px-6 pb-3 text-xs text-[#ba1a1a]">{attMarkError}</p>}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            {attMarkError && <p className="px-6 pb-3 text-xs text-[var(--err)]">{attMarkError}</p>}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setAttMarkModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={handleMarkAttendance} disabled={attMarkSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
                 {attMarkSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
@@ -1910,60 +1911,60 @@ export default function HRPage() {
       {/* ── Shift Add/Edit Modal ── */}
       {shiftModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShiftModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 className="text-lg font-bold text-[#1a1c1e]">{shiftModal === "add" ? t.hr.addShift : t.hr.editShift}</h2>
-              <button onClick={() => setShiftModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+          <div className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 className="text-lg font-bold text-[var(--txt1)]">{shiftModal === "add" ? t.hr.addShift : t.hr.editShift}</h2>
+              <button onClick={() => setShiftModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {shiftError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{shiftError}</div>}
+              {shiftError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-sm px-4 py-2.5 rounded-lg">{shiftError}</div>}
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.shiftName} *</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.shiftName} *</label>
                 <input className="input-field" placeholder={t.hr.shiftNamePlaceholder} value={shiftForm.name} onChange={(e) => setShiftForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.startTime}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.startTime}</label>
                   <input type="time" className="input-field" value={shiftForm.startTime} onChange={(e) => setShiftForm(f => ({ ...f, startTime: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.endTime}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.endTime}</label>
                   <input type="time" className="input-field" value={shiftForm.endTime} onChange={(e) => setShiftForm(f => ({ ...f, endTime: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.daysOfWeek}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.daysOfWeek}</label>
                 <div className="flex gap-2 flex-wrap">
                   {t.hr.daysShort.map((day, i) => (
                     <button
                       key={day}
                       type="button"
                       onClick={() => setShiftForm(f => ({ ...f, daysOfWeek: f.daysOfWeek.includes(i) ? f.daysOfWeek.filter(d => d !== i) : [...f.daysOfWeek, i].sort() }))}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-semibold border transition-colors ${shiftForm.daysOfWeek.includes(i) ? "bg-[#002045] text-white border-[#002045]" : "bg-white text-[#43474e] border-[#c4c6cf] hover:bg-[#f4f3f7]"}`}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-semibold border transition-colors ${shiftForm.daysOfWeek.includes(i) ? "bg-[var(--brand)] text-white border-[var(--brand)]" : "bg-[var(--surface)] text-[var(--txt2)] border-[var(--border2)] hover:bg-[var(--surface2)]"}`}
                     >{day}</button>
                   ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.branch}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.branch}</label>
                   <select className="input-field" value={shiftForm.branchId} onChange={(e) => setShiftForm(f => ({ ...f, branchId: e.target.value }))}>
                     <option value="">{t.hr.allBranches}</option>
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.hr.color}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.hr.color}</label>
                   <div className="flex items-center gap-2">
-                    <input type="color" className="w-10 h-9 rounded-lg border border-[#c4c6cf] cursor-pointer" value={shiftForm.color} onChange={(e) => setShiftForm(f => ({ ...f, color: e.target.value }))} />
-                    <span className="text-xs text-[#74777f] font-mono">{shiftForm.color}</span>
+                    <input type="color" className="w-10 h-9 rounded-lg border border-[var(--border2)] cursor-pointer" value={shiftForm.color} onChange={(e) => setShiftForm(f => ({ ...f, color: e.target.value }))} />
+                    <span className="text-xs text-[var(--txt2)] font-mono">{shiftForm.color}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setShiftModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={saveShift} disabled={shiftSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
                 {shiftSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.common.save}
@@ -1976,32 +1977,32 @@ export default function HRPage() {
       {/* ── Assignments Modal ── */}
       {assignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setAssignModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+          <div className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
               <div>
-                <h2 className="text-lg font-bold text-[#1a1c1e]">{t.hr.assignments}</h2>
-                <p className="text-xs text-[#74777f]">{assignModal.name} · {assignModal.startTime}–{assignModal.endTime}</p>
+                <h2 className="text-lg font-bold text-[var(--txt1)]">{t.hr.assignments}</h2>
+                <p className="text-xs text-[var(--txt2)]">{assignModal.name} · {assignModal.startTime}–{assignModal.endTime}</p>
               </div>
-              <button onClick={() => setAssignModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              <button onClick={() => setAssignModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               {/* Add assignment form */}
               <div className="bg-[#f8f7fb] rounded-xl p-4 space-y-3">
-                <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider">{t.hr.assignEmployee}</p>
-                {assignError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-xs px-3 py-2 rounded-lg">{assignError}</div>}
+                <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider">{t.hr.assignEmployee}</p>
+                {assignError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-xs px-3 py-2 rounded-lg">{assignError}</div>}
                 <select className="input-field text-sm" value={assignForm.employeeId} onChange={(e) => setAssignForm(f => ({ ...f, employeeId: e.target.value }))}>
                   <option value="">{t.hr.searchPlaceholder}</option>
                   {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.user.name}</option>)}
                 </select>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-[#74777f] mb-1 block">{t.hr.startDate}</label>
+                    <label className="text-xs text-[var(--txt2)] mb-1 block">{t.hr.startDate}</label>
                     <input type="date" className="input-field text-sm" value={assignForm.startDate} onChange={(e) => setAssignForm(f => ({ ...f, startDate: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="text-xs text-[#74777f] mb-1 block">{t.hr.endDate}</label>
+                    <label className="text-xs text-[var(--txt2)] mb-1 block">{t.hr.endDate}</label>
                     <input type="date" className="input-field text-sm" value={assignForm.endDate} onChange={(e) => setAssignForm(f => ({ ...f, endDate: e.target.value }))} />
                   </div>
                 </div>
@@ -2012,19 +2013,19 @@ export default function HRPage() {
 
               {/* Current assignments list */}
               <div>
-                <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{t.hr.assignments} ({assignments.length})</p>
+                <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{t.hr.assignments} ({assignments.length})</p>
                 {assignments.length === 0 ? (
-                  <p className="text-sm text-[#74777f] text-center py-4">{t.hr.noShifts}</p>
+                  <p className="text-sm text-[var(--txt2)] text-center py-4">{t.hr.noShifts}</p>
                 ) : (
                   <div className="space-y-2">
                     {assignments.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between bg-white border border-[#e3e2e6] rounded-xl px-4 py-3">
+                      <div key={a.id} className="flex items-center justify-between bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-3">
                         <div>
-                          <p className="text-sm font-semibold text-[#1a1c1e]">{a.employeeName}</p>
-                          <p className="text-xs text-[#74777f]">{a.jobTitle} · {t.hr.assignedFrom} {a.startDate?.slice(0, 10)}</p>
+                          <p className="text-sm font-semibold text-[var(--txt1)]">{a.employeeName}</p>
+                          <p className="text-xs text-[var(--txt2)]">{a.jobTitle} · {t.hr.assignedFrom} {a.startDate?.slice(0, 10)}</p>
                         </div>
-                        <button onClick={() => removeAssignment(a.id)} aria-label="Remove" className="p-1.5 hover:bg-[#ffdad6] rounded-lg transition-colors">
-                          <span className="material-symbols-outlined text-[#ba1a1a] text-[16px]">remove_circle</span>
+                        <button onClick={() => removeAssignment(a.id)} aria-label="Remove" className="p-1.5 hover:bg-[var(--err-bg)] rounded-lg transition-colors">
+                          <span className="material-symbols-outlined text-[var(--err)] text-[16px]">remove_circle</span>
                         </button>
                       </div>
                     ))}
@@ -2039,15 +2040,15 @@ export default function HRPage() {
       {/* ── Delete Shift Confirmation ── */}
       {confirmDeleteShiftId && (
         <div role="dialog" aria-modal="true" aria-labelledby="del-shift-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-[#ffdad6] flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-[28px] text-[#ba1a1a]">delete</span>
+          <div className="bg-[var(--surface)] rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-[var(--err-bg)] flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[28px] text-[var(--err)]">delete</span>
             </div>
-            <h2 id="del-shift-title" className="text-base font-bold text-[#1a1c1e] mb-2">{t.common.delete}</h2>
-            <p className="text-sm text-[#74777f] mb-6">{t.common.confirmDelete}</p>
+            <h2 id="del-shift-title" className="text-base font-bold text-[var(--txt1)] mb-2">{t.common.delete}</h2>
+            <p className="text-sm text-[var(--txt2)] mb-6">{t.common.confirmDelete}</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmDeleteShiftId(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
-              <button onClick={confirmDeleteShift} className="flex-1 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.common.delete}</button>
+              <button onClick={confirmDeleteShift} className="flex-1 bg-[var(--err)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.common.delete}</button>
             </div>
           </div>
         </div>

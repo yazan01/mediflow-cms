@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -86,27 +86,27 @@ export default function NewAppointmentPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <button onClick={() => router.back()} aria-label={t.common.back} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-          <span className="material-symbols-outlined text-[#74777f]">arrow_back</span>
+        <button onClick={() => router.back()} aria-label={t.common.back} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+          <span className="material-symbols-outlined text-[var(--txt2)]">arrow_back</span>
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.appointments.newAppointment}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{t.appointments.scheduleTitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.appointments.newAppointment}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{t.appointments.scheduleTitle}</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-6 space-y-6">
 
         {error && (
-          <div className="bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl p-4 flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#ba1a1a] text-[20px]">error</span>
-            <p className="text-sm text-[#ba1a1a] font-medium">{error}</p>
+          <div className="bg-[var(--err-bg)] border border-[var(--err)]/20 rounded-xl p-4 flex items-center gap-3">
+            <span className="material-symbols-outlined text-[var(--err)] text-[20px]">error</span>
+            <p className="text-sm text-[var(--err)] font-medium">{error}</p>
           </div>
         )}
 
         {/* Patient selection */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.patientLabel}</label>
+          <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.patientLabel}</label>
           <input
             className="input-field mb-2"
             placeholder={t.appointments.patientSearch}
@@ -114,19 +114,19 @@ export default function NewAppointmentPage() {
             onChange={(e) => setPatientSearch(e.target.value)}
           />
           {patientSearch && (
-            <div className="border border-[#e3e2e6] rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+            <div className="border border-[var(--border)] rounded-xl overflow-hidden max-h-48 overflow-y-auto">
               {filteredPatients.length === 0 ? (
-                <p className="text-sm text-[#74777f] p-3">{t.appointments.noPatients}</p>
+                <p className="text-sm text-[var(--txt2)] p-3">{t.appointments.noPatients}</p>
               ) : (
                 filteredPatients.slice(0, 8).map((p) => (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => { setForm((f) => ({ ...f, patientId: p.id })); setPatientSearch(`${p.firstName} ${p.lastName} (${p.mrn})`); }}
-                    className={`w-full text-left px-4 py-3 text-sm hover:bg-[#f4f3f7] border-b border-[#e3e2e6] last:border-b-0 transition-colors ${form.patientId === p.id ? "bg-[#d3e4ff]/30 font-semibold text-[#1960a3]" : ""}`}
+                    className={`w-full text-left px-4 py-3 text-sm hover:bg-[var(--surface2)] border-b border-[var(--border)] last:border-b-0 transition-colors ${form.patientId === p.id ? "bg-[var(--blue-bg)]/30 font-semibold text-[var(--blue)]" : ""}`}
                   >
                     <span className="font-semibold">{p.firstName} {p.lastName}</span>
-                    <span className="text-[#74777f] ms-2 text-xs">{p.mrn}</span>
+                    <span className="text-[var(--txt2)] ms-2 text-xs">{p.mrn}</span>
                   </button>
                 ))
               )}
@@ -136,7 +136,7 @@ export default function NewAppointmentPage() {
 
         {/* Doctor */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.doctorLabel}</label>
+          <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.doctorLabel}</label>
           <select
             className="input-field"
             value={form.doctorId}
@@ -153,7 +153,7 @@ export default function NewAppointmentPage() {
         {/* Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.startTime}</label>
+            <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.startTime}</label>
             <input
               type="datetime-local"
               className="input-field"
@@ -163,7 +163,7 @@ export default function NewAppointmentPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.endTime}</label>
+            <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.endTime}</label>
             <input
               type="datetime-local"
               className="input-field"
@@ -175,7 +175,7 @@ export default function NewAppointmentPage() {
 
         {/* Type */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.apptType}</label>
+          <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.apptType}</label>
           <select
             className="input-field"
             value={form.type}
@@ -194,7 +194,7 @@ export default function NewAppointmentPage() {
 
         {/* Reason */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.chiefComplaint}</label>
+          <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.chiefComplaint}</label>
           <input
             className="input-field"
             placeholder={t.appointments.reasonPlaceholder}
@@ -205,7 +205,7 @@ export default function NewAppointmentPage() {
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{t.appointments.additionalNotes}</label>
+          <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.appointments.additionalNotes}</label>
           <textarea
             className="input-field resize-none"
             rows={3}
@@ -224,18 +224,18 @@ export default function NewAppointmentPage() {
             onChange={(e) => setForm((f) => ({ ...f, isUrgent: e.target.checked }))}
             className="w-4 h-4 accent-[#002045]"
           />
-          <label htmlFor="urgent" className="text-sm font-semibold text-[#1a1c1e] cursor-pointer">
+          <label htmlFor="urgent" className="text-sm font-semibold text-[var(--txt1)] cursor-pointer">
             {t.appointments.markUrgent}
           </label>
-          <p className="text-xs text-[#74777f]">{t.appointments.urgentNote}</p>
+          <p className="text-xs text-[var(--txt2)]">{t.appointments.urgentNote}</p>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2 border-t border-[#e3e2e6]">
-          <button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-[#c4c6cf] text-sm font-semibold text-[#43474e] hover:bg-[#f4f3f7] transition-colors">
+        <div className="flex justify-end gap-3 pt-2 border-t border-[var(--border)]">
+          <button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-[var(--border2)] text-sm font-semibold text-[var(--txt2)] hover:bg-[var(--surface2)] transition-colors">
             {t.common.cancel}
           </button>
-          <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[#002045] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm">
+          <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--brand)] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm">
             {saving ? (
               <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{t.appointments.saving}</>
             ) : (

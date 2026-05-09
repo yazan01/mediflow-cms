@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -750,12 +750,12 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{s.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{s.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{s.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{s.subtitle}</p>
         </div>
         {showGlobalSave && (
           <button onClick={handleSave} disabled={saving || loading}
-            className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-60">
+            className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-60">
             {saving
               ? <><Spinner />{s.saving}</>
               : saveStatus === "saved"
@@ -766,17 +766,17 @@ export default function SettingsPage() {
           </button>
         )}
         {activeSection === "branches" && (
-          <button onClick={openAddBranch} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
+          <button onClick={openAddBranch} className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
             <span className="material-symbols-outlined text-[18px]">add</span>{s.addBranch}
           </button>
         )}
         {activeSection === "clinics" && (
-          <button onClick={openAddClinic} disabled={!clinicBranchId} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-40">
+          <button onClick={openAddClinic} disabled={!clinicBranchId} className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm disabled:opacity-40">
             <span className="material-symbols-outlined text-[18px]">add</span>{s.addClinic}
           </button>
         )}
         {activeSection === "apikeys" && (
-          <button onClick={() => setApiKeyModal(true)} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
+          <button onClick={() => setApiKeyModal(true)} className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
             <span className="material-symbols-outlined text-[18px]">add</span>{s.addApiKey}
           </button>
         )}
@@ -785,11 +785,11 @@ export default function SettingsPage() {
       <div className="flex gap-6">
         {/* Sidebar nav — accordion groups */}
         <div className="w-56 flex-shrink-0">
-          <nav className="bg-white rounded-xl border border-[#e3e2e6] overflow-hidden">
+          <nav className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
             {navGroups.map((group, gi) => {
               const collapsed = collapsedGroups.has(group.key);
               return (
-                <div key={group.key} className={gi > 0 ? "border-t border-[#e3e2e6]" : ""}>
+                <div key={group.key} className={gi > 0 ? "border-t border-[var(--border)]" : ""}>
                   <button
                     onClick={() => setCollapsedGroups(prev => {
                       const next = new Set(prev);
@@ -797,17 +797,17 @@ export default function SettingsPage() {
                       return next;
                     })}
                     className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#f8f7fb] transition-colors">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#74777f]">{group.label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--txt2)]">{group.label}</span>
                     <span className={`material-symbols-outlined text-[16px] text-[#c4c6cf] transition-transform ${collapsed ? "" : "rotate-180"}`}>expand_less</span>
                   </button>
                   {!collapsed && group.items.map((sec) => (
                     <button key={sec.key} onClick={() => setActiveSection(sec.key as Section)}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
                         activeSection === sec.key
-                          ? "bg-[#d3e4ff]/30 text-[#1960a3] font-semibold border-s-4 border-s-[#1960a3]"
-                          : "text-[#43474e] hover:bg-[#f4f3f7]"
+                          ? "bg-[var(--blue-bg)]/30 text-[var(--blue)] font-semibold border-s-4 border-s-[#1960a3]"
+                          : "text-[var(--txt2)] hover:bg-[var(--surface2)]"
                       }`}>
-                      <span className={`material-symbols-outlined text-[18px] ${activeSection === sec.key ? "text-[#1960a3]" : "text-[#74777f]"}`}>{sec.icon}</span>
+                      <span className={`material-symbols-outlined text-[18px] ${activeSection === sec.key ? "text-[var(--blue)]" : "text-[var(--txt2)]"}`}>{sec.icon}</span>
                       {sec.label}
                     </button>
                   ))}
@@ -820,7 +820,7 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-6">
           {loading && showGlobalSave ? (
-            <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex items-center justify-center">
+            <div className="bg-white rounded-xl border border-[var(--border)] p-12 flex items-center justify-center">
               <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
             </div>
           ) : (
@@ -878,7 +878,7 @@ export default function SettingsPage() {
                 <SettingsCard title={s.notificationsTitle} desc={s.notificationsDesc}>
                   <div className="space-y-5">
                     <div className="pt-2 space-y-4">
-                      <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">{s.notifTriggers}</h3>
+                      <h3 className="text-sm font-semibold text-[var(--txt2)] uppercase tracking-wider">{s.notifTriggers}</h3>
                       <Toggle label={s.apptReminders} desc={s.apptRemindersDesc} checked={form.notifApptReminders} onChange={(v) => set("notifApptReminders", v)} />
                       <Toggle label={s.labCritical} desc={s.labCriticalDesc} checked={form.notifLabCritical} onChange={(v) => set("notifLabCritical", v)} />
                       <Toggle label={s.lowStockAlert} desc={s.lowStockAlertDesc} checked={form.notifLowStock} onChange={(v) => set("notifLowStock", v)} />
@@ -898,7 +898,7 @@ export default function SettingsPage() {
                     <Field label={s.paymentTerms}><input type="number" className="input-field" value={form.paymentTerms} onChange={(e) => set("paymentTerms", Number(e.target.value))} /></Field>
                   </div>
                   <div className="pt-4 space-y-4">
-                    <h3 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider">{s.paymentMethods}</h3>
+                    <h3 className="text-sm font-semibold text-[var(--txt2)] uppercase tracking-wider">{s.paymentMethods}</h3>
                     <Toggle label={s.cash} defaultChecked />
                     <Toggle label={s.card} defaultChecked />
                     <Toggle label={s.insurance} defaultChecked />
@@ -911,18 +911,18 @@ export default function SettingsPage() {
               {/* ── Branches ── */}
               {activeSection === "branches" && (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <div className="p-5 border-b border-[#e3e2e6]">
-                      <h2 className="text-base font-semibold text-[#1a1c1e]">{s.branchesTitle}</h2>
-                      <p className="text-xs text-[#74777f] mt-0.5">{s.branchesDesc}</p>
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)]">
+                      <h2 className="text-base font-semibold text-[var(--txt1)]">{s.branchesTitle}</h2>
+                      <p className="text-xs text-[var(--txt2)] mt-0.5">{s.branchesDesc}</p>
                     </div>
                     {branchesLoading ? (
                       <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                     ) : branches.length === 0 ? (
                       <div className="p-12 flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">account_tree</span>
-                        <p className="text-sm font-semibold text-[#43474e]">{s.noBranches}</p>
-                        <p className="text-xs text-[#74777f]">{s.noBranchesDesc}</p>
+                        <p className="text-sm font-semibold text-[var(--txt2)]">{s.noBranches}</p>
+                        <p className="text-xs text-[var(--txt2)]">{s.noBranchesDesc}</p>
                         <button onClick={openAddBranch} className="mt-2 btn-primary text-sm px-4 py-2">
                           <span className="material-symbols-outlined text-[16px]">add</span>{s.addBranch}
                         </button>
@@ -945,36 +945,36 @@ export default function SettingsPage() {
                               <tr key={b.id} className="table-row">
                                 <td className="table-cell">
                                   <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-[#d3e4ff] flex items-center justify-center">
-                                      <span className="material-symbols-outlined text-[#1960a3] text-[16px]">account_tree</span>
+                                    <div className="w-8 h-8 rounded-lg bg-[var(--blue-bg)] flex items-center justify-center">
+                                      <span className="material-symbols-outlined text-[var(--blue)] text-[16px]">account_tree</span>
                                     </div>
                                     <div>
-                                      <p className="font-medium text-[#1a1c1e]">{b.name}</p>
-                                      {b.description && <p className="text-xs text-[#74777f] truncate max-w-[200px]">{b.description}</p>}
+                                      <p className="font-medium text-[var(--txt1)]">{b.name}</p>
+                                      {b.description && <p className="text-xs text-[var(--txt2)] truncate max-w-[200px]">{b.description}</p>}
                                     </div>
                                   </div>
                                 </td>
-                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{b.code}</span></td>
-                                <td className="table-cell text-[#74777f]">{b.phone || "—"}</td>
-                                <td className="table-cell text-[#74777f] text-xs">{[b.city, b.country].filter(Boolean).join(", ") || "—"}</td>
+                                <td className="table-cell"><span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{b.code}</span></td>
+                                <td className="table-cell text-[var(--txt2)]">{b.phone || "—"}</td>
+                                <td className="table-cell text-[var(--txt2)] text-xs">{[b.city, b.country].filter(Boolean).join(", ") || "—"}</td>
                                 <td className="table-cell">
-                                  <span className={`badge ${b.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                                  <span className={`badge ${b.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>
                                     {b.isActive ? s.branchActive : s.branchInactive}
                                   </span>
                                 </td>
                                 <td className="table-cell">
                                   <div className="flex items-center gap-1">
-                                    <button onClick={() => router.push(`/settings/branches/${b.id}`)} className="p-1.5 hover:bg-[#d3e4ff] rounded-lg" aria-label={s.openBranchDetail} title={s.openBranchDetail}>
-                                      <span className="material-symbols-outlined text-[#1960a3] text-[16px]">open_in_new</span>
+                                    <button onClick={() => router.push(`/settings/branches/${b.id}`)} className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg" aria-label={s.openBranchDetail} title={s.openBranchDetail}>
+                                      <span className="material-symbols-outlined text-[var(--blue)] text-[16px]">open_in_new</span>
                                     </button>
-                                    <button onClick={() => openEditBranch(b)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg" aria-label={s.editBranch} title={s.editBranch}>
-                                      <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
+                                    <button onClick={() => openEditBranch(b)} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg" aria-label={s.editBranch} title={s.editBranch}>
+                                      <span className="material-symbols-outlined text-[var(--txt2)] text-[16px]">edit</span>
                                     </button>
-                                    <button onClick={() => openBranchSettings(branchSettingsId === b.id ? null! : b.id)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg" aria-label={s.branchSettings} title={s.branchSettings}>
-                                      <span className={`material-symbols-outlined text-[16px] ${branchSettingsId === b.id ? "text-[#1960a3]" : "text-[#74777f]"}`}>tune</span>
+                                    <button onClick={() => openBranchSettings(branchSettingsId === b.id ? null! : b.id)} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg" aria-label={s.branchSettings} title={s.branchSettings}>
+                                      <span className={`material-symbols-outlined text-[16px] ${branchSettingsId === b.id ? "text-[var(--blue)]" : "text-[var(--txt2)]"}`}>tune</span>
                                     </button>
-                                    <button onClick={() => toggleBranchActive(b)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg" aria-label={b.isActive ? s.deactivateBranch : s.activateBranch} title={b.isActive ? s.deactivateBranch : s.activateBranch}>
-                                      <span className={`material-symbols-outlined text-[16px] ${b.isActive ? "text-[#d97706]" : "text-[#0d9488]"}`}>{b.isActive ? "toggle_off" : "toggle_on"}</span>
+                                    <button onClick={() => toggleBranchActive(b)} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg" aria-label={b.isActive ? s.deactivateBranch : s.activateBranch} title={b.isActive ? s.deactivateBranch : s.activateBranch}>
+                                      <span className={`material-symbols-outlined text-[16px] ${b.isActive ? "text-[var(--warn)]" : "text-[var(--ok)]"}`}>{b.isActive ? "toggle_off" : "toggle_on"}</span>
                                     </button>
                                   </div>
                                 </td>
@@ -989,21 +989,21 @@ export default function SettingsPage() {
                   {/* Branch settings inline panel */}
                   {branchSettingsId && (
                     <div className="bg-white rounded-xl border border-[#1960a3]/30 shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-6">
-                      <div className="flex items-center justify-between mb-5 pb-4 border-b border-[#e3e2e6]">
+                      <div className="flex items-center justify-between mb-5 pb-4 border-b border-[var(--border)]">
                         <div>
-                          <h3 className="text-base font-semibold text-[#1a1c1e]">{s.branchSettings}</h3>
-                          <p className="text-xs text-[#74777f] mt-0.5">{s.branchSettingsDesc}</p>
+                          <h3 className="text-base font-semibold text-[var(--txt1)]">{s.branchSettings}</h3>
+                          <p className="text-xs text-[var(--txt2)] mt-0.5">{s.branchSettingsDesc}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          {branchSettingStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.branchSettingsSaved}</span>}
-                          {branchSettingStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.branchSettingsFailed}</span>}
+                          {branchSettingStatus === "saved" && <span className="text-xs text-[var(--ok)] font-semibold">{s.branchSettingsSaved}</span>}
+                          {branchSettingStatus === "error" && <span className="text-xs text-[var(--err)] font-semibold">{s.branchSettingsFailed}</span>}
                           <button onClick={saveBranchSetting} disabled={branchSettingSaving}
                             className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
                             {branchSettingSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}
                             {t.common.save}
                           </button>
-                          <button onClick={() => setBranchSettingsId(null)} className="p-2 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.close}>
-                            <span className="material-symbols-outlined text-[#74777f]">close</span>
+                          <button onClick={() => setBranchSettingsId(null)} className="p-2 hover:bg-[var(--surface2)] rounded-lg" aria-label={t.common.close}>
+                            <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
                           </button>
                         </div>
                       </div>
@@ -1046,7 +1046,7 @@ export default function SettingsPage() {
                               onChange={e => setBranchSetting(f => ({ ...f, emergencyContact: e.target.value }))} />
                           </Field>
                           <div className="md:col-span-3">
-                            <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.branchWorkingDays}</label>
+                            <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{s.branchWorkingDays}</label>
                             <div className="flex gap-2 flex-wrap">
                               {DAY_KEYS.map((day, i) => {
                                 const active = branchSetting.workingDays.includes(i);
@@ -1055,7 +1055,7 @@ export default function SettingsPage() {
                                     ...f,
                                     workingDays: active ? f.workingDays.filter(d => d !== i) : [...f.workingDays, i].sort(),
                                   }))}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${active ? "bg-[#002045] text-white" : "bg-[#f4f3f7] text-[#74777f] hover:bg-[#e3e2e6]"}`}>
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${active ? "bg-[var(--brand)] text-white" : "bg-[var(--surface2)] text-[var(--txt2)] hover:bg-[#e3e2e6]"}`}>
                                     {day}
                                   </button>
                                 );
@@ -1075,27 +1075,27 @@ export default function SettingsPage() {
                   {/* Branch selector */}
                   {branches.length > 1 && (
                     <div className="flex items-center gap-3">
-                      <label className="text-sm font-semibold text-[#43474e]">{s.clinicBranch}:</label>
+                      <label className="text-sm font-semibold text-[var(--txt2)]">{s.clinicBranch}:</label>
                       <select className="select-field w-56" value={clinicBranchId} onChange={e => { setClinicBranchId(e.target.value); loadClinics(e.target.value); }}>
                         {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
                   )}
 
-                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <div className="p-5 border-b border-[#e3e2e6]">
-                      <h2 className="text-base font-semibold text-[#1a1c1e]">{s.clinicsTitle}</h2>
-                      <p className="text-xs text-[#74777f] mt-0.5">{s.clinicsDesc}</p>
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)]">
+                      <h2 className="text-base font-semibold text-[var(--txt1)]">{s.clinicsTitle}</h2>
+                      <p className="text-xs text-[var(--txt2)] mt-0.5">{s.clinicsDesc}</p>
                     </div>
                     {clinicsLoading ? (
                       <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                     ) : !clinicBranchId ? (
-                      <div className="p-12 text-center text-sm text-[#74777f]">{s.noBranches}</div>
+                      <div className="p-12 text-center text-sm text-[var(--txt2)]">{s.noBranches}</div>
                     ) : clinics.length === 0 ? (
                       <div className="p-12 flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">medical_services</span>
-                        <p className="text-sm font-semibold text-[#43474e]">{s.noClinics}</p>
-                        <p className="text-xs text-[#74777f]">{s.noClinicsDesc}</p>
+                        <p className="text-sm font-semibold text-[var(--txt2)]">{s.noClinics}</p>
+                        <p className="text-xs text-[var(--txt2)]">{s.noClinicsDesc}</p>
                         <button onClick={openAddClinic} className="mt-2 btn-primary text-sm px-4 py-2">
                           <span className="material-symbols-outlined text-[16px]">add</span>{s.addClinic}
                         </button>
@@ -1103,29 +1103,29 @@ export default function SettingsPage() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
                         {clinics.map((c) => (
-                          <div key={c.id} className="border border-[#e3e2e6] rounded-xl p-4 relative group hover:border-[#1960a3]/40 transition-colors">
+                          <div key={c.id} className="border border-[var(--border)] rounded-xl p-4 relative group hover:border-[#1960a3]/40 transition-colors">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <div className="w-3 h-8 rounded-full" style={{ backgroundColor: c.colorTheme }} />
                                 <div>
-                                  <p className="text-sm font-semibold text-[#1a1c1e]">{c.name}</p>
-                                  <p className="text-xs text-[#74777f]">{c.code} · {c.clinicType}</p>
+                                  <p className="text-sm font-semibold text-[var(--txt1)]">{c.name}</p>
+                                  <p className="text-xs text-[var(--txt2)]">{c.code} · {c.clinicType}</p>
                                 </div>
                               </div>
-                              <span className={`badge text-[10px] ${c.status === "active" ? "bg-[#ccfbf1] text-[#0d9488]" : c.status === "maintenance" ? "bg-[#fff7ed] text-[#d97706]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                              <span className={`badge text-[10px] ${c.status === "active" ? "bg-[var(--ok-bg)] text-[var(--ok)]" : c.status === "maintenance" ? "bg-[var(--warn-bg)] text-[var(--warn)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>
                                 {c.status === "active" ? s.clinicActive : c.status === "maintenance" ? s.clinicMaintenance : s.clinicInactive}
                               </span>
                             </div>
-                            {c.description && <p className="text-xs text-[#74777f] mt-2 line-clamp-2">{c.description}</p>}
-                            <div className="mt-3 grid grid-cols-2 gap-1 text-[11px] text-[#74777f]">
+                            {c.description && <p className="text-xs text-[var(--txt2)] mt-2 line-clamp-2">{c.description}</p>}
+                            <div className="mt-3 grid grid-cols-2 gap-1 text-[11px] text-[var(--txt2)]">
                               <span><span className="material-symbols-outlined text-[12px] align-middle">group</span> {c.capacity} / day</span>
                               <span><span className="material-symbols-outlined text-[12px] align-middle">schedule</span> {c.apptDurationMin} min</span>
-                              {c.queueEnabled && <span><span className="material-symbols-outlined text-[12px] align-middle text-[#0d9488]">queue</span> Queue on</span>}
-                              {c.onlineBooking && <span><span className="material-symbols-outlined text-[12px] align-middle text-[#1960a3]">language</span> Online</span>}
+                              {c.queueEnabled && <span><span className="material-symbols-outlined text-[12px] align-middle text-[var(--ok)]">queue</span> Queue on</span>}
+                              {c.onlineBooking && <span><span className="material-symbols-outlined text-[12px] align-middle text-[var(--blue)]">language</span> Online</span>}
                             </div>
                             <div className="mt-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => openEditClinic(c)} className="flex-1 btn-secondary text-xs py-1.5">{t.common.edit}</button>
-                              <button onClick={() => toggleClinicStatus(c)} className={`flex-1 text-xs py-1.5 rounded-lg font-semibold border transition-colors ${c.status === "active" ? "border-[#d97706] text-[#d97706] hover:bg-[#fff7ed]" : "border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1]"}`}>
+                              <button onClick={() => toggleClinicStatus(c)} className={`flex-1 text-xs py-1.5 rounded-lg font-semibold border transition-colors ${c.status === "active" ? "border-[#d97706] text-[var(--warn)] hover:bg-[var(--warn-bg)]" : "border-[#0d9488] text-[var(--ok)] hover:bg-[var(--ok-bg)]"}`}>
                                 {c.status === "active" ? s.deactivateBranch : s.activateBranch}
                               </button>
                             </div>
@@ -1168,10 +1168,10 @@ export default function SettingsPage() {
                       <Toggle label={s.smtpUseTLS} checked={smtp.useTLS} onChange={v => setSmtp(f => ({ ...f, useTLS: v }))} />
 
                       {/* Status & Save */}
-                      <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
                         <div className="flex items-center gap-2">
-                          {smtpStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.smtpSaved}</span>}
-                          {smtpStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.smtpSaveFailed}</span>}
+                          {smtpStatus === "saved" && <span className="text-xs text-[var(--ok)] font-semibold">{s.smtpSaved}</span>}
+                          {smtpStatus === "error" && <span className="text-xs text-[var(--err)] font-semibold">{s.smtpSaveFailed}</span>}
                         </div>
                         <button onClick={handleSmtpSave} disabled={smtpSaving}
                           className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
@@ -1182,7 +1182,7 @@ export default function SettingsPage() {
 
                       {/* Test send */}
                       <div className="bg-[#f8f7fb] rounded-xl p-4">
-                        <p className="text-sm font-semibold text-[#43474e] mb-3">{s.smtpTest}</p>
+                        <p className="text-sm font-semibold text-[var(--txt2)] mb-3">{s.smtpTest}</p>
                         <div className="flex gap-3">
                           <input type="email" className="input-field flex-1" value={smtpTestEmail} placeholder={s.smtpTestTo} onChange={e => setSmtpTestEmail(e.target.value)} />
                           <button onClick={handleSmtpTest} disabled={smtpTesting || !smtpTestEmail.trim()}
@@ -1192,7 +1192,7 @@ export default function SettingsPage() {
                           </button>
                         </div>
                         {smtpTestMsg && (
-                          <p className={`text-xs mt-2 font-semibold ${smtpTestMsg === s.smtpTestSuccess ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{smtpTestMsg}</p>
+                          <p className={`text-xs mt-2 font-semibold ${smtpTestMsg === s.smtpTestSuccess ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{smtpTestMsg}</p>
                         )}
                       </div>
                     </div>
@@ -1206,7 +1206,7 @@ export default function SettingsPage() {
                   {/* Branch selector */}
                   {branches.length > 0 && (
                     <div className="flex items-center gap-3">
-                      <label className="text-sm font-semibold text-[#43474e]">{s.waSelectBranch}:</label>
+                      <label className="text-sm font-semibold text-[var(--txt2)]">{s.waSelectBranch}:</label>
                       <select className="select-field w-56" value={waBranchId} onChange={e => { setWaBranchId(e.target.value); loadWa(e.target.value); }}>
                         <option value="">—</option>
                         {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -1214,12 +1214,12 @@ export default function SettingsPage() {
                     </div>
                   )}
                   {!waBranchId ? (
-                    <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex flex-col items-center gap-3">
+                    <div className="bg-white rounded-xl border border-[var(--border)] p-12 flex flex-col items-center gap-3">
                       <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">chat</span>
-                      <p className="text-sm text-[#74777f]">{s.waSelectBranch}</p>
+                      <p className="text-sm text-[var(--txt2)]">{s.waSelectBranch}</p>
                     </div>
                   ) : waLoading ? (
-                    <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    <div className="bg-white rounded-xl border border-[var(--border)] p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                   ) : (
                     <>
                       <SettingsCard title={s.whatsappTitle} desc={s.whatsappDesc}>
@@ -1227,8 +1227,8 @@ export default function SettingsPage() {
                           <div className="flex items-center gap-3">
                             <Toggle label={s.waActive} checked={wa.isActive} onChange={v => setWa(f => ({ ...f, isActive: v }))} />
                             {wa.isVerified
-                              ? <span className="badge bg-[#ccfbf1] text-[#0d9488]">{s.waVerified}</span>
-                              : <span className="badge bg-[#fff7ed] text-[#d97706]">{s.waNotVerified}</span>}
+                              ? <span className="badge bg-[var(--ok-bg)] text-[var(--ok)]">{s.waVerified}</span>
+                              : <span className="badge bg-[var(--warn-bg)] text-[var(--warn)]">{s.waNotVerified}</span>}
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <Field label={s.waPhoneNumberId}><input className="input-field font-mono text-xs" value={wa.phoneNumberId} onChange={e => setWa(f => ({ ...f, phoneNumberId: e.target.value }))} /></Field>
@@ -1239,15 +1239,15 @@ export default function SettingsPage() {
                             <Field label={s.waAppSecret}><input className="input-field font-mono text-xs" value={wa.appSecret} type="password" onChange={e => setWa(f => ({ ...f, appSecret: e.target.value }))} /></Field>
                             <Field label={s.waWebhookToken}><input className="input-field font-mono text-xs" value={wa.webhookVerifyToken} onChange={e => setWa(f => ({ ...f, webhookVerifyToken: e.target.value }))} /></Field>
                           </div>
-                          <div className="space-y-3 pt-2 border-t border-[#e3e2e6]">
+                          <div className="space-y-3 pt-2 border-t border-[var(--border)]">
                             <Toggle label={s.waAutoReply} checked={wa.autoReplyEnabled} onChange={v => setWa(f => ({ ...f, autoReplyEnabled: v }))} />
                             <Toggle label={s.waBusinessHours} checked={wa.businessHoursOnly} onChange={v => setWa(f => ({ ...f, businessHoursOnly: v }))} />
                             <Toggle label={s.waAiReply} checked={wa.aiReplyEnabled} onChange={v => setWa(f => ({ ...f, aiReplyEnabled: v }))} />
                           </div>
-                          <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                          <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
                             <div>
-                              {waStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.waSaved}</span>}
-                              {waStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.waSaveFailed}</span>}
+                              {waStatus === "saved" && <span className="text-xs text-[var(--ok)] font-semibold">{s.waSaved}</span>}
+                              {waStatus === "error" && <span className="text-xs text-[var(--err)] font-semibold">{s.waSaveFailed}</span>}
                             </div>
                             <button onClick={handleWaSave} disabled={waSaving} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
                               {waSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}{t.common.save}
@@ -1255,26 +1255,26 @@ export default function SettingsPage() {
                           </div>
                           {/* Test send */}
                           <div className="bg-[#f8f7fb] rounded-xl p-4">
-                            <p className="text-sm font-semibold text-[#43474e] mb-3">{s.waTestSend}</p>
+                            <p className="text-sm font-semibold text-[var(--txt2)] mb-3">{s.waTestSend}</p>
                             <div className="flex gap-3">
                               <input className="input-field flex-1" value={waTestNumber} placeholder={s.waTestNumber} onChange={e => setWaTestNumber(e.target.value)} />
                               <button onClick={handleWaTest} disabled={waTesting || !waTestNumber.trim()} className="btn-secondary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2 whitespace-nowrap">
                                 {waTesting ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">send</span>}{s.waTestSend}
                               </button>
                             </div>
-                            {waTestMsg && <p className={`text-xs mt-2 font-semibold ${waTestMsg === s.waTestSuccess ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{waTestMsg}</p>}
+                            {waTestMsg && <p className={`text-xs mt-2 font-semibold ${waTestMsg === s.waTestSuccess ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{waTestMsg}</p>}
                           </div>
                         </div>
                       </SettingsCard>
                       {/* Templates */}
-                      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                        <div className="p-5 border-b border-[#e3e2e6]">
-                          <h2 className="text-base font-semibold text-[#1a1c1e]">{s.waTemplates}</h2>
+                      <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                        <div className="p-5 border-b border-[var(--border)]">
+                          <h2 className="text-base font-semibold text-[var(--txt1)]">{s.waTemplates}</h2>
                         </div>
                         {waTemplates.length === 0 ? (
                           <div className="p-8 flex flex-col items-center gap-2">
                             <span className="material-symbols-outlined text-[36px] text-[#c4c6cf]">chat_bubble</span>
-                            <p className="text-sm text-[#74777f]">{s.waNoTemplates}</p>
+                            <p className="text-sm text-[var(--txt2)]">{s.waNoTemplates}</p>
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
@@ -1289,9 +1289,9 @@ export default function SettingsPage() {
                                 {waTemplates.map(tpl => (
                                   <tr key={tpl.id} className="table-row">
                                     <td className="table-cell font-medium">{tpl.name}</td>
-                                    <td className="table-cell text-[#74777f] text-xs">{tpl.category}</td>
-                                    <td className="table-cell text-[#74777f] text-xs">{tpl.language}</td>
-                                    <td className="table-cell"><span className={`badge ${tpl.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>{tpl.isActive ? t.common.active : t.common.inactive}</span></td>
+                                    <td className="table-cell text-[var(--txt2)] text-xs">{tpl.category}</td>
+                                    <td className="table-cell text-[var(--txt2)] text-xs">{tpl.language}</td>
+                                    <td className="table-cell"><span className={`badge ${tpl.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>{tpl.isActive ? t.common.active : t.common.inactive}</span></td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -1331,10 +1331,10 @@ export default function SettingsPage() {
                           <input className="input-field" value={sms.fromNumber} placeholder="+12015551234" onChange={e => setSms(f => ({ ...f, fromNumber: e.target.value }))} />
                         </Field>
                       </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
                         <div>
-                          {smsStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.smsSaved}</span>}
-                          {smsStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.smsSaveFailed}</span>}
+                          {smsStatus === "saved" && <span className="text-xs text-[var(--ok)] font-semibold">{s.smsSaved}</span>}
+                          {smsStatus === "error" && <span className="text-xs text-[var(--err)] font-semibold">{s.smsSaveFailed}</span>}
                         </div>
                         <button onClick={handleSmsSave} disabled={smsSaving} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
                           {smsSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}{t.common.save}
@@ -1377,10 +1377,10 @@ export default function SettingsPage() {
                           <input type="password" className="input-field" value={paymentWebhookSecret} placeholder={payment.webhookSecretMasked || "••••"} onChange={e => setPaymentWebhookSecret(e.target.value)} />
                         </Field>
                       </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-[#e3e2e6]">
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
                         <div>
-                          {paymentStatus === "saved" && <span className="text-xs text-[#0d9488] font-semibold">{s.paymentSaved}</span>}
-                          {paymentStatus === "error" && <span className="text-xs text-[#ba1a1a] font-semibold">{s.paymentSaveFailed}</span>}
+                          {paymentStatus === "saved" && <span className="text-xs text-[var(--ok)] font-semibold">{s.paymentSaved}</span>}
+                          {paymentStatus === "error" && <span className="text-xs text-[var(--err)] font-semibold">{s.paymentSaveFailed}</span>}
                         </div>
                         <button onClick={handlePaymentSave} disabled={paymentSaving} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
                           {paymentSaving ? <Spinner /> : <span className="material-symbols-outlined text-[16px]">save</span>}{t.common.save}
@@ -1395,19 +1395,19 @@ export default function SettingsPage() {
               {activeSection === "features" && (
                 <div>
                   <div className="mb-4">
-                    <h2 className="text-base font-semibold text-[#1a1c1e]">{s.featureFlagsTitle}</h2>
-                    <p className="text-xs text-[#74777f] mt-0.5">{s.featureFlagsDesc}</p>
+                    <h2 className="text-base font-semibold text-[var(--txt1)]">{s.featureFlagsTitle}</h2>
+                    <p className="text-xs text-[var(--txt2)] mt-0.5">{s.featureFlagsDesc}</p>
                   </div>
                   {flagsLoading ? (
-                    <div className="bg-white rounded-xl border border-[#e3e2e6] p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    <div className="bg-white rounded-xl border border-[var(--border)] p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {flags.map(flag => (
-                        <div key={flag.id} className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex items-start justify-between gap-3 shadow-[0_1px_6px_rgba(0,0,0,0.04)]">
+                        <div key={flag.id} className="bg-white rounded-xl border border-[var(--border)] p-4 flex items-start justify-between gap-3 shadow-[0_1px_6px_rgba(0,0,0,0.04)]">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-[#1a1c1e] font-mono">{flag.key}</p>
-                            <p className="text-xs text-[#74777f] mt-0.5 leading-relaxed">{flag.description}</p>
-                            <span className={`mt-2 inline-block badge text-[10px] ${flag.isEnabled ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                            <p className="text-sm font-semibold text-[var(--txt1)] font-mono">{flag.key}</p>
+                            <p className="text-xs text-[var(--txt2)] mt-0.5 leading-relaxed">{flag.description}</p>
+                            <span className={`mt-2 inline-block badge text-[10px] ${flag.isEnabled ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>
                               {flag.isEnabled ? s.featureEnabled : s.featureDisabled}
                             </span>
                           </div>
@@ -1418,8 +1418,8 @@ export default function SettingsPage() {
                             dir="ltr"
                             onClick={() => toggleFlag(flag)}
                             disabled={flagToggling === flag.id}
-                            className={`relative w-11 h-6 rounded-full flex-shrink-0 mt-1 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 disabled:opacity-50 ${flag.isEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${flag.isEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                            className={`relative w-11 h-6 rounded-full flex-shrink-0 mt-1 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 disabled:opacity-50 ${flag.isEnabled ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}>
+                            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${flag.isEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                           </button>
                         </div>
                       ))}
@@ -1431,17 +1431,17 @@ export default function SettingsPage() {
               {/* ── API Keys ── */}
               {activeSection === "apikeys" && (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <div className="p-5 border-b border-[#e3e2e6]">
-                      <h2 className="text-base font-semibold text-[#1a1c1e]">{s.apiKeysTitle}</h2>
-                      <p className="text-xs text-[#74777f] mt-0.5">{s.apiKeysDesc}</p>
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)]">
+                      <h2 className="text-base font-semibold text-[var(--txt1)]">{s.apiKeysTitle}</h2>
+                      <p className="text-xs text-[var(--txt2)] mt-0.5">{s.apiKeysDesc}</p>
                     </div>
                     {apiKeysLoading ? (
                       <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                     ) : apiKeys.length === 0 ? (
                       <div className="p-12 flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">key</span>
-                        <p className="text-sm text-[#74777f]">{s.noApiKeys}</p>
+                        <p className="text-sm text-[var(--txt2)]">{s.noApiKeys}</p>
                         <button onClick={() => setApiKeyModal(true)} className="mt-2 btn-primary text-sm px-4 py-2">
                           <span className="material-symbols-outlined text-[16px]">add</span>{s.addApiKey}
                         </button>
@@ -1461,12 +1461,12 @@ export default function SettingsPage() {
                             {apiKeys.map(k => (
                               <tr key={k.id} className="table-row">
                                 <td className="table-cell font-medium">{k.name}</td>
-                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{k.keyPrefix}…</span></td>
-                                <td className="table-cell"><div className="flex flex-wrap gap-1">{(k.scopes || []).map(sc => <span key={sc} className="badge bg-[#d3e4ff] text-[#1960a3] text-[10px]">{sc}</span>)}</div></td>
-                                <td className="table-cell text-[#74777f] text-xs whitespace-nowrap">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : t.common.na}</td>
-                                <td className="table-cell text-[#74777f] text-xs whitespace-nowrap">{k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : t.common.na}</td>
+                                <td className="table-cell"><span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{k.keyPrefix}…</span></td>
+                                <td className="table-cell"><div className="flex flex-wrap gap-1">{(k.scopes || []).map(sc => <span key={sc} className="badge bg-[var(--blue-bg)] text-[var(--blue)] text-[10px]">{sc}</span>)}</div></td>
+                                <td className="table-cell text-[var(--txt2)] text-xs whitespace-nowrap">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : t.common.na}</td>
+                                <td className="table-cell text-[var(--txt2)] text-xs whitespace-nowrap">{k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : t.common.na}</td>
                                 <td className="table-cell">
-                                  <button onClick={() => revokeApiKey(k.id)} className="text-xs text-[#ba1a1a] hover:underline font-semibold">{s.apiKeyRevoke}</button>
+                                  <button onClick={() => revokeApiKey(k.id)} className="text-xs text-[var(--err)] hover:underline font-semibold">{s.apiKeyRevoke}</button>
                                 </td>
                               </tr>
                             ))}
@@ -1481,13 +1481,13 @@ export default function SettingsPage() {
               {/* ── Notification Templates ── */}
               {activeSection === "templates" && (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <div className="p-5 border-b border-[#e3e2e6]">
-                      <h2 className="text-base font-semibold text-[#1a1c1e]">{s.notifTemplatesTitle}</h2>
-                      <p className="text-xs text-[#74777f] mt-0.5">{s.notifTemplatesDesc}</p>
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)]">
+                      <h2 className="text-base font-semibold text-[var(--txt1)]">{s.notifTemplatesTitle}</h2>
+                      <p className="text-xs text-[var(--txt2)] mt-0.5">{s.notifTemplatesDesc}</p>
                     </div>
                     {/* Filters */}
-                    <div className="px-5 py-3 border-b border-[#e3e2e6] flex items-center gap-4 flex-wrap">
+                    <div className="px-5 py-3 border-b border-[var(--border)] flex items-center gap-4 flex-wrap">
                       <select className="select-field w-48" value={tplFilter.eventType}
                         onChange={e => { const v = e.target.value; setTplFilter(f => ({ ...f, eventType: v })); loadTemplates({ eventType: v }); }}>
                         <option value="">{s.tplAllEvents}</option>
@@ -1508,7 +1508,7 @@ export default function SettingsPage() {
                     ) : templates.length === 0 ? (
                       <div className="p-12 flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">mail_outline</span>
-                        <p className="text-sm text-[#74777f]">{s.noNotifTemplates}</p>
+                        <p className="text-sm text-[var(--txt2)]">{s.noNotifTemplates}</p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -1524,23 +1524,23 @@ export default function SettingsPage() {
                           <tbody>
                             {templates.map(tpl => (
                               <tr key={tpl.id} className="table-row">
-                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{tpl.eventType}</span></td>
+                                <td className="table-cell"><span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{tpl.eventType}</span></td>
                                 <td className="table-cell">
-                                  <span className={`badge text-[10px] ${tpl.channel === "email" ? "bg-[#d3e4ff] text-[#1960a3]" : tpl.channel === "sms" ? "bg-[#fff7ed] text-[#d97706]" : "bg-[#ccfbf1] text-[#0d9488]"}`}>
+                                  <span className={`badge text-[10px] ${tpl.channel === "email" ? "bg-[var(--blue-bg)] text-[var(--blue)]" : tpl.channel === "sms" ? "bg-[var(--warn-bg)] text-[var(--warn)]" : "bg-[var(--ok-bg)] text-[var(--ok)]"}`}>
                                     {tpl.channel}
                                   </span>
                                 </td>
-                                <td className="table-cell text-[#74777f] text-xs">{tpl.language}</td>
-                                <td className="table-cell text-[#74777f] text-xs max-w-[200px] truncate">{tpl.subject || t.common.na}</td>
+                                <td className="table-cell text-[var(--txt2)] text-xs">{tpl.language}</td>
+                                <td className="table-cell text-[var(--txt2)] text-xs max-w-[200px] truncate">{tpl.subject || t.common.na}</td>
                                 <td className="table-cell">
-                                  <span className={`badge text-[10px] ${tpl.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                                  <span className={`badge text-[10px] ${tpl.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>
                                     {tpl.isActive ? t.common.active : t.common.inactive}
                                   </span>
-                                  {tpl.isDefault && <span className="ms-1 badge text-[10px] bg-[#d3e4ff] text-[#1960a3]">{s.tplDefault}</span>}
+                                  {tpl.isDefault && <span className="ms-1 badge text-[10px] bg-[var(--blue-bg)] text-[var(--blue)]">{s.tplDefault}</span>}
                                 </td>
                                 <td className="table-cell">
-                                  <button onClick={() => setTplEditing({ ...tpl })} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.edit}>
-                                    <span className="material-symbols-outlined text-[#74777f] text-[16px]">edit</span>
+                                  <button onClick={() => setTplEditing({ ...tpl })} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg" aria-label={t.common.edit}>
+                                    <span className="material-symbols-outlined text-[var(--txt2)] text-[16px]">edit</span>
                                   </button>
                                 </td>
                               </tr>
@@ -1556,14 +1556,14 @@ export default function SettingsPage() {
               {/* ── Branch Health ── */}
               {activeSection === "health" && (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <div className="p-5 border-b border-[#e3e2e6] flex items-center justify-between">
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
                       <div>
-                        <h2 className="text-base font-semibold text-[#1a1c1e]">{s.branchHealth}</h2>
-                        <p className="text-xs text-[#74777f] mt-0.5">{s.branchHealthDesc}</p>
+                        <h2 className="text-base font-semibold text-[var(--txt1)]">{s.branchHealth}</h2>
+                        <p className="text-xs text-[var(--txt2)] mt-0.5">{s.branchHealthDesc}</p>
                       </div>
-                      <button onClick={loadHealth} className="p-2 hover:bg-[#f4f3f7] rounded-lg" aria-label={t.common.retry}>
-                        <span className="material-symbols-outlined text-[#74777f] text-[18px]">refresh</span>
+                      <button onClick={loadHealth} className="p-2 hover:bg-[var(--surface2)] rounded-lg" aria-label={t.common.retry}>
+                        <span className="material-symbols-outlined text-[var(--txt2)] text-[18px]">refresh</span>
                       </button>
                     </div>
                     {healthLoading ? (
@@ -1571,7 +1571,7 @@ export default function SettingsPage() {
                     ) : healthData.length === 0 ? (
                       <div className="p-12 flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">monitor_heart</span>
-                        <p className="text-sm text-[#74777f]">{s.noBranchHealthData}</p>
+                        <p className="text-sm text-[var(--txt2)]">{s.noBranchHealthData}</p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -1590,32 +1590,32 @@ export default function SettingsPage() {
                             {healthData.map(row => (
                               <tr key={row.branchId} className="table-row">
                                 <td className="table-cell">
-                                  <p className="font-semibold text-[#1a1c1e]">{row.branchName}</p>
-                                  <p className="text-[10px] font-mono text-[#74777f]">{row.branchCode}</p>
+                                  <p className="font-semibold text-[var(--txt1)]">{row.branchName}</p>
+                                  <p className="text-[10px] font-mono text-[var(--txt2)]">{row.branchCode}</p>
                                 </td>
-                                <td className="table-cell text-center text-[#74777f]">{row.staffCount}</td>
-                                <td className="table-cell text-center text-[#74777f]">{row.appointmentsLast30d}</td>
+                                <td className="table-cell text-center text-[var(--txt2)]">{row.staffCount}</td>
+                                <td className="table-cell text-center text-[var(--txt2)]">{row.appointmentsLast30d}</td>
                                 <td className="table-cell text-center">
-                                  <span className={row.openInvoices > 0 ? "text-[#d97706] font-semibold" : "text-[#74777f]"}>{row.openInvoices}</span>
-                                </td>
-                                <td className="table-cell text-center">
-                                  <span className={`material-symbols-outlined text-[18px] ${row.whatsappActive ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{row.whatsappActive ? "check_circle" : "cancel"}</span>
+                                  <span className={row.openInvoices > 0 ? "text-[var(--warn)] font-semibold" : "text-[var(--txt2)]"}>{row.openInvoices}</span>
                                 </td>
                                 <td className="table-cell text-center">
-                                  <span className={`material-symbols-outlined text-[18px] ${row.smsActive ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{row.smsActive ? "check_circle" : "cancel"}</span>
+                                  <span className={`material-symbols-outlined text-[18px] ${row.whatsappActive ? "text-[var(--ok)]" : "text-[#c4c6cf]"}`}>{row.whatsappActive ? "check_circle" : "cancel"}</span>
                                 </td>
                                 <td className="table-cell text-center">
-                                  <span className={`material-symbols-outlined text-[18px] ${row.paymentActive ? "text-[#0d9488]" : "text-[#c4c6cf]"}`}>{row.paymentActive ? "check_circle" : "cancel"}</span>
+                                  <span className={`material-symbols-outlined text-[18px] ${row.smsActive ? "text-[var(--ok)]" : "text-[#c4c6cf]"}`}>{row.smsActive ? "check_circle" : "cancel"}</span>
+                                </td>
+                                <td className="table-cell text-center">
+                                  <span className={`material-symbols-outlined text-[18px] ${row.paymentActive ? "text-[var(--ok)]" : "text-[#c4c6cf]"}`}>{row.paymentActive ? "check_circle" : "cancel"}</span>
                                 </td>
                                 <td className="table-cell">
                                   <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-[#f4f3f7] rounded-full h-2">
+                                    <div className="flex-1 bg-[var(--surface2)] rounded-full h-2">
                                       <div className="h-2 rounded-full transition-all" style={{
                                         width: `${row.healthScore}%`,
                                         backgroundColor: row.healthScore >= 70 ? "#0d9488" : row.healthScore >= 40 ? "#d97706" : "#ba1a1a",
                                       }} />
                                     </div>
-                                    <span className="text-xs font-bold text-[#1a1c1e] w-8 text-end">{row.healthScore}</span>
+                                    <span className="text-xs font-bold text-[var(--txt1)] w-8 text-end">{row.healthScore}</span>
                                   </div>
                                 </td>
                               </tr>
@@ -1638,17 +1638,17 @@ export default function SettingsPage() {
                     { icon: "biotech",           label: s.labAnalyzersLabel,    desc: s.labAnalyzersDesc,    status: s.phase2,        ok: null },
                     { icon: "image_search",      label: s.pacsLabel,            desc: s.pacsDesc,            status: s.phase3,        ok: null },
                   ].map((intg) => (
-                    <div key={intg.label} className="bg-white rounded-xl border border-[#e3e2e6] p-5 flex items-center justify-between">
+                    <div key={intg.label} className="bg-white rounded-xl border border-[var(--border)] p-5 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-[#f4f3f7] rounded-xl"><span className="material-symbols-outlined text-[#74777f] text-[22px]">{intg.icon}</span></div>
+                        <div className="p-2.5 bg-[var(--surface2)] rounded-xl"><span className="material-symbols-outlined text-[var(--txt2)] text-[22px]">{intg.icon}</span></div>
                         <div>
-                          <p className="text-sm font-semibold text-[#1a1c1e]">{intg.label}</p>
-                          <p className="text-xs text-[#74777f]">{intg.desc}</p>
+                          <p className="text-sm font-semibold text-[var(--txt1)]">{intg.label}</p>
+                          <p className="text-xs text-[var(--txt2)]">{intg.desc}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`text-xs font-semibold ${intg.ok === false ? "text-[#d97706]" : "text-[#74777f]"}`}>{intg.status}</span>
-                        <button className="flex items-center gap-1 border border-[#c4c6cf] bg-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#f4f3f7] transition-colors">
+                        <span className={`text-xs font-semibold ${intg.ok === false ? "text-[var(--warn)]" : "text-[var(--txt2)]"}`}>{intg.status}</span>
+                        <button className="flex items-center gap-1 border border-[var(--border2)] bg-[var(--surface)] px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[var(--surface2)] transition-colors">
                           <span className="material-symbols-outlined text-[14px]">settings</span>{s.configure}
                         </button>
                       </div>
@@ -1661,19 +1661,19 @@ export default function SettingsPage() {
               {activeSection === "history" && (
                 <div className="space-y-4">
                 {/* Retention panel */}
-                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
-                  <h2 className="text-base font-semibold text-[#1a1c1e] mb-1">{s.auditRetention}</h2>
-                  <p className="text-xs text-[#74777f] mb-4">{s.auditRetentionDesc}</p>
+                <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
+                  <h2 className="text-base font-semibold text-[var(--txt1)] mb-1">{s.auditRetention}</h2>
+                  <p className="text-xs text-[var(--txt2)] mb-4">{s.auditRetentionDesc}</p>
                   {retentionStats && (
                     <div className="flex gap-6 mb-4">
-                      <div><p className="text-[10px] text-[#74777f] uppercase tracking-wide">{s.totalLogs}</p><p className="text-xl font-bold text-[#1a1c1e]">{retentionStats.totalLogs.toLocaleString()}</p></div>
-                      <div><p className="text-[10px] text-[#74777f] uppercase tracking-wide">{s.oldestLog}</p><p className="text-sm font-medium text-[#43474e]">{retentionStats.oldestLog ? new Date(retentionStats.oldestLog).toLocaleDateString() : "—"}</p></div>
+                      <div><p className="text-[10px] text-[var(--txt2)] uppercase tracking-wide">{s.totalLogs}</p><p className="text-xl font-bold text-[var(--txt1)]">{retentionStats.totalLogs.toLocaleString()}</p></div>
+                      <div><p className="text-[10px] text-[var(--txt2)] uppercase tracking-wide">{s.oldestLog}</p><p className="text-sm font-medium text-[var(--txt2)]">{retentionStats.oldestLog ? new Date(retentionStats.oldestLog).toLocaleDateString() : "—"}</p></div>
                     </div>
                   )}
-                  {purgedCount !== null && <p className="text-xs text-[#0d9488] font-semibold mb-3">{purgedCount} {s.purgedCount}</p>}
+                  {purgedCount !== null && <p className="text-xs text-[var(--ok)] font-semibold mb-3">{purgedCount} {s.purgedCount}</p>}
                   <div className="flex items-end gap-3 flex-wrap">
                     <div>
-                      <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.purgeOlderThan}</label>
+                      <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.purgeOlderThan}</label>
                       <input type="number" className="input-field w-32" value={retentionDays} min={30} max={3650}
                         onChange={e => setRetentionDays(Number(e.target.value))} />
                     </div>
@@ -1683,17 +1683,17 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
-                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                  <div className="p-5 border-b border-[#e3e2e6]">
-                    <h2 className="text-base font-semibold text-[#1a1c1e]">{s.settingsHistory}</h2>
-                    <p className="text-xs text-[#74777f] mt-0.5">{s.settingsHistoryDesc}</p>
+                <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                  <div className="p-5 border-b border-[var(--border)]">
+                    <h2 className="text-base font-semibold text-[var(--txt1)]">{s.settingsHistory}</h2>
+                    <p className="text-xs text-[var(--txt2)] mt-0.5">{s.settingsHistoryDesc}</p>
                   </div>
                   {historyLoading ? (
                     <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                   ) : history.length === 0 ? (
                     <div className="p-12 flex flex-col items-center gap-3">
                       <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">history</span>
-                      <p className="text-sm text-[#74777f]">{s.noHistory}</p>
+                      <p className="text-sm text-[var(--txt2)]">{s.noHistory}</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -1709,10 +1709,10 @@ export default function SettingsPage() {
                         <tbody>
                           {history.map((h) => (
                             <tr key={h.id} className="table-row">
-                              <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{h.field}</span></td>
-                              <td className="table-cell text-[#74777f] text-xs max-w-[160px] truncate">{h.oldValue ?? "—"}</td>
-                              <td className="table-cell text-[#1a1c1e] text-xs font-medium max-w-[160px] truncate">{h.newValue ?? "—"}</td>
-                              <td className="table-cell text-[#74777f] text-xs whitespace-nowrap">{h.changedAt ? new Date(h.changedAt).toLocaleString() : "—"}</td>
+                              <td className="table-cell"><span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{h.field}</span></td>
+                              <td className="table-cell text-[var(--txt2)] text-xs max-w-[160px] truncate">{h.oldValue ?? "—"}</td>
+                              <td className="table-cell text-[var(--txt1)] text-xs font-medium max-w-[160px] truncate">{h.newValue ?? "—"}</td>
+                              <td className="table-cell text-[var(--txt2)] text-xs whitespace-nowrap">{h.changedAt ? new Date(h.changedAt).toLocaleString() : "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1726,11 +1726,11 @@ export default function SettingsPage() {
               {/* ── Insurance Providers ── */}
               {activeSection === "insurance" && (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <div className="p-5 border-b border-[#e3e2e6] flex items-center justify-between gap-4">
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)] flex items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-base font-semibold text-[#1a1c1e]">{s.insuranceProvidersTitle}</h2>
-                        <p className="text-xs text-[#74777f] mt-0.5">{s.insuranceProvidersDesc}</p>
+                        <h2 className="text-base font-semibold text-[var(--txt1)]">{s.insuranceProvidersTitle}</h2>
+                        <p className="text-xs text-[var(--txt2)] mt-0.5">{s.insuranceProvidersDesc}</p>
                       </div>
                       <button
                         onClick={() => { setEditingProvider(null); setProviderForm({ name: "", code: "", contactPhone: "", contactEmail: "", notes: "", isActive: true }); setProviderError(""); setInsuranceModal("add"); }}
@@ -1741,16 +1741,16 @@ export default function SettingsPage() {
                       </button>
                     </div>
 
-                    {providerStatus === "saved" && <div className="px-5 py-2.5 bg-[#ccfbf1] text-[#0d9488] text-sm font-semibold">{s.providerSaved}</div>}
-                    {providerStatus === "deleted" && <div className="px-5 py-2.5 bg-[#ffdad6] text-[#ba1a1a] text-sm font-semibold">{s.providerDeleted}</div>}
+                    {providerStatus === "saved" && <div className="px-5 py-2.5 bg-[var(--ok-bg)] text-[var(--ok)] text-sm font-semibold">{s.providerSaved}</div>}
+                    {providerStatus === "deleted" && <div className="px-5 py-2.5 bg-[var(--err-bg)] text-[var(--err)] text-sm font-semibold">{s.providerDeleted}</div>}
 
                     {insuranceLoading ? (
                       <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
                     ) : insuranceProviders.length === 0 ? (
                       <div className="p-12 flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">health_and_safety</span>
-                        <p className="text-sm font-semibold text-[#74777f]">{s.noInsuranceProviders}</p>
-                        <p className="text-xs text-[#74777f] text-center max-w-xs">{s.noInsuranceProvidersDesc}</p>
+                        <p className="text-sm font-semibold text-[var(--txt2)]">{s.noInsuranceProviders}</p>
+                        <p className="text-xs text-[var(--txt2)] text-center max-w-xs">{s.noInsuranceProvidersDesc}</p>
                         <button
                           onClick={() => { setProviderForm({ name: "", code: "", contactPhone: "", contactEmail: "", notes: "", isActive: true }); setProviderError(""); setInsuranceModal("add"); }}
                           className="mt-2 btn-primary text-sm px-4 py-2"
@@ -1774,12 +1774,12 @@ export default function SettingsPage() {
                           <tbody>
                             {insuranceProviders.map((prov) => (
                               <tr key={prov.id} className="table-row">
-                                <td className="table-cell font-semibold text-[#1a1c1e]">{prov.name}</td>
-                                <td className="table-cell"><span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{prov.code ?? "—"}</span></td>
-                                <td className="table-cell text-[#74777f]">{prov.contactPhone ?? "—"}</td>
-                                <td className="table-cell text-[#74777f]">{prov.contactEmail ?? "—"}</td>
+                                <td className="table-cell font-semibold text-[var(--txt1)]">{prov.name}</td>
+                                <td className="table-cell"><span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{prov.code ?? "—"}</span></td>
+                                <td className="table-cell text-[var(--txt2)]">{prov.contactPhone ?? "—"}</td>
+                                <td className="table-cell text-[var(--txt2)]">{prov.contactEmail ?? "—"}</td>
                                 <td className="table-cell">
-                                  <span className={`badge text-[10px] ${prov.isActive ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#f4f3f7] text-[#74777f]"}`}>
+                                  <span className={`badge text-[10px] ${prov.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>
                                     {prov.isActive ? t.common.active : t.common.inactive}
                                   </span>
                                 </td>
@@ -1787,14 +1787,14 @@ export default function SettingsPage() {
                                   <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => { setEditingProvider(prov); setProviderForm({ name: prov.name, code: prov.code ?? "", contactPhone: prov.contactPhone ?? "", contactEmail: prov.contactEmail ?? "", notes: prov.notes ?? "", isActive: prov.isActive }); setProviderError(""); setInsuranceModal("edit"); }}
-                                      className="p-1.5 rounded hover:bg-[#f4f3f7] text-[#74777f] hover:text-[#1960a3] transition-colors"
+                                      className="p-1.5 rounded hover:bg-[var(--surface2)] text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
                                       aria-label={t.common.edit}
                                     >
                                       <span className="material-symbols-outlined text-[16px]">edit</span>
                                     </button>
                                     <button
                                       onClick={() => deleteProvider(prov.id, prov.name)}
-                                      className="p-1.5 rounded hover:bg-[#ffdad6] text-[#74777f] hover:text-[#ba1a1a] transition-colors"
+                                      className="p-1.5 rounded hover:bg-[var(--err-bg)] text-[var(--txt2)] hover:text-[var(--err)] transition-colors"
                                       aria-label={t.common.delete}
                                     >
                                       <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -1818,51 +1818,51 @@ export default function SettingsPage() {
       {/* ── Branch Modal ── */}
       {branchModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="branch-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setBranchModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 id="branch-modal-title" className="text-lg font-bold text-[#1a1c1e]">{branchModal === "add" ? s.addBranch : s.editBranch}</h2>
-              <button onClick={() => setBranchModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="branch-modal-title" className="text-lg font-bold text-[var(--txt1)]">{branchModal === "add" ? s.addBranch : s.editBranch}</h2>
+              <button onClick={() => setBranchModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              {branchError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{branchError}</div>}
+              {branchError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-sm px-4 py-2.5 rounded-lg">{branchError}</div>}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchName} *</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchName} *</label>
                   <input className="input-field" placeholder="Main Branch" value={branchForm.name} onChange={(e) => setBranchForm(f => ({ ...f, name: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchCode} *</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchCode} *</label>
                   <input className="input-field font-mono" placeholder="MAIN" value={branchForm.code} onChange={(e) => setBranchForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
-                  <p className="text-xs text-[#74777f] mt-1">{s.branchCodeHint}</p>
+                  <p className="text-xs text-[var(--txt2)] mt-1">{s.branchCodeHint}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchPhone}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchPhone}</label>
                   <input className="input-field" placeholder="+962 6 000 0000" value={branchForm.phone} onChange={(e) => setBranchForm(f => ({ ...f, phone: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchCountry}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchCountry}</label>
                   <input className="input-field" placeholder="Jordan" value={branchForm.country} onChange={(e) => setBranchForm(f => ({ ...f, country: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchCity}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchCity}</label>
                   <input className="input-field" placeholder="Amman" value={branchForm.city} onChange={(e) => setBranchForm(f => ({ ...f, city: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchEmail}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchEmail}</label>
                   <input type="email" className="input-field" placeholder="branch@clinic.com" value={branchForm.email} onChange={(e) => setBranchForm(f => ({ ...f, email: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchDescription}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchDescription}</label>
                   <textarea className="input-field resize-none" rows={2} placeholder="Brief description of this branch" value={branchForm.description} onChange={(e) => setBranchForm(f => ({ ...f, description: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchAddress}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchAddress}</label>
                   <textarea className="input-field resize-none" rows={2} placeholder="Street, City, Country" value={branchForm.address} onChange={(e) => setBranchForm(f => ({ ...f, address: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchTimezone}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchTimezone}</label>
                   <select className="select-field" value={branchForm.timezone} onChange={(e) => setBranchForm(f => ({ ...f, timezone: e.target.value }))}>
                     <option value="Asia/Amman">Asia/Amman (GMT+3)</option>
                     <option value="Asia/Riyadh">Asia/Riyadh (GMT+3)</option>
@@ -1874,7 +1874,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setBranchModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={saveBranch} disabled={branchSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
                 {branchSaving ? <Spinner /> : null}{t.common.save}
@@ -1887,25 +1887,25 @@ export default function SettingsPage() {
       {/* ── Template Edit Modal ── */}
       {tplEditing && (
         <div role="dialog" aria-modal="true" aria-labelledby="tpl-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setTplEditing(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
               <div>
-                <h2 id="tpl-modal-title" className="text-lg font-bold text-[#1a1c1e]">{s.tplEdit}</h2>
+                <h2 id="tpl-modal-title" className="text-lg font-bold text-[var(--txt1)]">{s.tplEdit}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-xs bg-[#f4f3f7] px-2 py-0.5 rounded">{tplEditing.eventType}</span>
-                  <span className={`badge text-[10px] ${tplEditing.channel === "email" ? "bg-[#d3e4ff] text-[#1960a3]" : tplEditing.channel === "sms" ? "bg-[#fff7ed] text-[#d97706]" : "bg-[#ccfbf1] text-[#0d9488]"}`}>{tplEditing.channel}</span>
-                  <span className="text-xs text-[#74777f]">{tplEditing.language}</span>
+                  <span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{tplEditing.eventType}</span>
+                  <span className={`badge text-[10px] ${tplEditing.channel === "email" ? "bg-[var(--blue-bg)] text-[var(--blue)]" : tplEditing.channel === "sms" ? "bg-[var(--warn-bg)] text-[var(--warn)]" : "bg-[var(--ok-bg)] text-[var(--ok)]"}`}>{tplEditing.channel}</span>
+                  <span className="text-xs text-[var(--txt2)]">{tplEditing.language}</span>
                 </div>
               </div>
-              <button onClick={() => { setTplEditing(null); setAiGenerateMsg(""); }} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+              <button onClick={() => { setTplEditing(null); setAiGenerateMsg(""); }} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg"><span className="material-symbols-outlined text-[var(--txt2)]">close</span></button>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               {/* AI Generate */}
               <div className="bg-[#f8f7fb] rounded-xl p-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold text-[#43474e]">{s.aiGenerate}</p>
-                  <p className="text-[11px] text-[#74777f]">{s.aiGenerateHint}</p>
-                  {aiGenerateMsg && <p className={`text-[11px] mt-1 font-semibold ${aiGenerateMsg === s.aiGenerateSuccess ? "text-[#0d9488]" : "text-[#ba1a1a]"}`}>{aiGenerateMsg}</p>}
+                  <p className="text-xs font-semibold text-[var(--txt2)]">{s.aiGenerate}</p>
+                  <p className="text-[11px] text-[var(--txt2)]">{s.aiGenerateHint}</p>
+                  {aiGenerateMsg && <p className={`text-[11px] mt-1 font-semibold ${aiGenerateMsg === s.aiGenerateSuccess ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{aiGenerateMsg}</p>}
                 </div>
                 <button onClick={handleAiGenerate} disabled={aiGenerating}
                   className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 whitespace-nowrap disabled:opacity-60 flex-shrink-0 min-h-[44px]">
@@ -1914,20 +1914,20 @@ export default function SettingsPage() {
               </div>
               {tplEditing.channel === "email" && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.tplSubject}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.tplSubject}</label>
                   <input className="input-field" value={tplEditing.subject} onChange={e => setTplEditing(tpl => tpl ? ({ ...tpl, subject: e.target.value }) : tpl)} />
                 </div>
               )}
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.tplBody}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.tplBody}</label>
                 <textarea className="input-field resize-none font-mono text-xs" rows={10} value={tplEditing.body} onChange={e => setTplEditing(tpl => tpl ? ({ ...tpl, body: e.target.value }) : tpl)} />
               </div>
               {tplEditing.variables.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.tplVariables}</p>
+                  <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{s.tplVariables}</p>
                   <div className="flex flex-wrap gap-1">
                     {tplEditing.variables.map(v => (
-                      <code key={v} className="bg-[#f4f3f7] text-[#1960a3] text-[11px] px-2 py-0.5 rounded font-mono cursor-pointer hover:bg-[#d3e4ff]"
+                      <code key={v} className="bg-[var(--surface2)] text-[var(--blue)] text-[11px] px-2 py-0.5 rounded font-mono cursor-pointer hover:bg-[var(--blue-bg)]"
                         onClick={() => navigator.clipboard.writeText(`{{${v}}}`)}
                         title="Click to copy">
                         {`{{${v}}}`}
@@ -1936,20 +1936,20 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
-              <div className="flex items-center justify-between py-2 border-t border-[#e3e2e6]">
-                <span className="text-sm font-medium text-[#1a1c1e]">{t.common.active}</span>
+              <div className="flex items-center justify-between py-2 border-t border-[var(--border)]">
+                <span className="text-sm font-medium text-[var(--txt1)]">{t.common.active}</span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={tplEditing.isActive}
                   dir="ltr"
                   onClick={() => setTplEditing(tpl => tpl ? ({ ...tpl, isActive: !tpl.isActive }) : tpl)}
-                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${tplEditing.isActive ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${tplEditing.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${tplEditing.isActive ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${tplEditing.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                 </button>
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setTplEditing(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={saveTplEdit} disabled={tplSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
                 {tplSaving ? <Spinner /> : null}{t.common.save}
@@ -1962,35 +1962,35 @@ export default function SettingsPage() {
       {/* ── Create API Key Modal ── */}
       {apiKeyModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="apikey-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setApiKeyModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 id="apikey-modal-title" className="text-lg font-bold text-[#1a1c1e]">{s.addApiKey}</h2>
-              <button onClick={() => setApiKeyModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg"><span className="material-symbols-outlined text-[#74777f]">close</span></button>
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="apikey-modal-title" className="text-lg font-bold text-[var(--txt1)]">{s.addApiKey}</h2>
+              <button onClick={() => setApiKeyModal(false)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg"><span className="material-symbols-outlined text-[var(--txt2)]">close</span></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apiKeyName} *</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.apiKeyName} *</label>
                 <input className="input-field" value={apiKeyForm.name} onChange={e => setApiKeyForm(f => ({ ...f, name: e.target.value }))} placeholder="My Integration Key" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apiKeyBranch}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.apiKeyBranch}</label>
                 <select className="select-field" value={apiKeyForm.branchId} onChange={e => setApiKeyForm(f => ({ ...f, branchId: e.target.value }))}>
                   <option value="">{t.common.all}</option>
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.apiKeyExpiry}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.apiKeyExpiry}</label>
                 <input type="date" className="input-field" value={apiKeyForm.expiresAt} onChange={e => setApiKeyForm(f => ({ ...f, expiresAt: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-2">{s.apiKeyScopes}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-2">{s.apiKeyScopes}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {API_SCOPES.map(sc => {
                     const on = apiKeyForm.scopes.includes(sc);
                     return (
                       <button key={sc} type="button" onClick={() => setApiKeyForm(f => ({ ...f, scopes: on ? f.scopes.filter(s => s !== sc) : [...f.scopes, sc] }))}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium text-start transition-colors ${on ? "border-[#1960a3] bg-[#d3e4ff] text-[#1960a3]" : "border-[#e3e2e6] text-[#43474e] hover:bg-[#f4f3f7]"}`}>
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium text-start transition-colors ${on ? "border-[#1960a3] bg-[var(--blue-bg)] text-[var(--blue)]" : "border-[var(--border)] text-[var(--txt2)] hover:bg-[var(--surface2)]"}`}>
                         <span className="material-symbols-outlined text-[14px]">{on ? "check_box" : "check_box_outline_blank"}</span>
                         {sc}
                       </button>
@@ -1999,7 +1999,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setApiKeyModal(false)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={createApiKey} disabled={apiKeyCreating || !apiKeyForm.name.trim()} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
                 {apiKeyCreating ? <Spinner /> : null}{t.common.create}
@@ -2012,24 +2012,24 @@ export default function SettingsPage() {
       {/* ── Show-once API Key Modal ── */}
       {apiKeyCreated && (
         <div role="dialog" aria-modal="true" aria-labelledby="apikey-created-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 id="apikey-created-title" className="text-lg font-bold text-[#1a1c1e]">{s.apiKeyCreated}</h2>
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="apikey-created-title" className="text-lg font-bold text-[var(--txt1)]">{s.apiKeyCreated}</h2>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-[#fff7ed] border border-[#d97706] rounded-xl p-4 text-sm text-[#d97706] font-semibold flex items-center gap-2">
+              <div className="bg-[var(--warn-bg)] border border-[#d97706] rounded-xl p-4 text-sm text-[var(--warn)] font-semibold flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]">warning</span>
                 {s.apiKeyOnce}
               </div>
               <div className="flex items-center gap-2">
-                <code className="flex-1 bg-[#f4f3f7] rounded-lg px-4 py-3 text-xs font-mono text-[#1a1c1e] break-all">{apiKeyCreated.key}</code>
-                <button onClick={() => copyKey(apiKeyCreated.key!)} aria-label={s.apiKeyCopied} className="p-2.5 rounded-lg border border-[#e3e2e6] hover:bg-[#f4f3f7] transition-colors flex-shrink-0">
-                  <span className="material-symbols-outlined text-[20px] text-[#1960a3]">{apiKeyCopied ? "check" : "content_copy"}</span>
+                <code className="flex-1 bg-[var(--surface2)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--txt1)] break-all">{apiKeyCreated.key}</code>
+                <button onClick={() => copyKey(apiKeyCreated.key!)} aria-label={s.apiKeyCopied} className="p-2.5 rounded-lg border border-[var(--border)] hover:bg-[var(--surface2)] transition-colors flex-shrink-0">
+                  <span className="material-symbols-outlined text-[20px] text-[var(--blue)]">{apiKeyCopied ? "check" : "content_copy"}</span>
                 </button>
               </div>
-              {apiKeyCopied && <p className="text-xs text-[#0d9488] font-semibold">{s.apiKeyCopied}</p>}
+              {apiKeyCopied && <p className="text-xs text-[var(--ok)] font-semibold">{s.apiKeyCopied}</p>}
             </div>
-            <div className="flex justify-end px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setApiKeyCreated(null)} className="btn-primary px-6 py-2 text-sm">{t.common.close}</button>
             </div>
           </div>
@@ -2039,46 +2039,46 @@ export default function SettingsPage() {
       {/* ── Insurance Provider Modal ── */}
       {insuranceModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="provider-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setInsuranceModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 id="provider-modal-title" className="text-lg font-bold text-[#1a1c1e]">
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="provider-modal-title" className="text-lg font-bold text-[var(--txt1)]">
                 {insuranceModal === "add" ? s.addInsuranceProvider : s.editInsuranceProvider}
               </h2>
-              <button onClick={() => setInsuranceModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+              <button onClick={() => setInsuranceModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {providerError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{providerError}</div>}
+              {providerError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-sm px-4 py-2.5 rounded-lg">{providerError}</div>}
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderName} *</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.insuranceProviderName} *</label>
                 <input className="input-field" placeholder="e.g. CIGNA, AXA, BUPA" value={providerForm.name} onChange={(e) => setProviderForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderCode}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.insuranceProviderCode}</label>
                 <input className="input-field font-mono uppercase" placeholder="e.g. CIGNA" value={providerForm.code} onChange={(e) => setProviderForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderPhone}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.insuranceProviderPhone}</label>
                   <input className="input-field" placeholder="+962 6 000 0000" value={providerForm.contactPhone} onChange={(e) => setProviderForm(f => ({ ...f, contactPhone: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderEmail}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.insuranceProviderEmail}</label>
                   <input type="email" className="input-field" placeholder="claims@provider.com" value={providerForm.contactEmail} onChange={(e) => setProviderForm(f => ({ ...f, contactEmail: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.insuranceProviderNotes}</label>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.insuranceProviderNotes}</label>
                 <textarea className="input-field resize-none" rows={2} value={providerForm.notes} onChange={(e) => setProviderForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
               <div className="flex items-center justify-between pt-1">
-                <span className="text-sm font-semibold text-[#43474e]">{t.common.active}</span>
+                <span className="text-sm font-semibold text-[var(--txt2)]">{t.common.active}</span>
                 <button
                   type="button" role="switch" aria-checked={providerForm.isActive} dir="ltr"
                   onClick={() => setProviderForm(f => ({ ...f, isActive: !f.isActive }))}
-                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none ${providerForm.isActive ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${providerForm.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none ${providerForm.isActive ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${providerForm.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                 </button>
               </div>
             </div>
@@ -2095,71 +2095,71 @@ export default function SettingsPage() {
       {/* ── Clinic Modal ── */}
       {clinicModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="clinic-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setClinicModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-[#e3e2e6]">
-              <h2 id="clinic-modal-title" className="text-lg font-bold text-[#1a1c1e]">{clinicModal === "add" ? s.addClinic : s.editClinic}</h2>
-              <button onClick={() => setClinicModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[#74777f]">close</span>
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="clinic-modal-title" className="text-lg font-bold text-[var(--txt1)]">{clinicModal === "add" ? s.addClinic : s.editClinic}</h2>
+              <button onClick={() => setClinicModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              {clinicError && <div className="bg-[#ffdad6] text-[#ba1a1a] text-sm px-4 py-2.5 rounded-lg">{clinicError}</div>}
+              {clinicError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-sm px-4 py-2.5 rounded-lg">{clinicError}</div>}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.clinicName} *</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.clinicName} *</label>
                   <input className="input-field" placeholder="General Practice" value={clinicForm.name} onChange={e => setClinicForm(f => ({ ...f, name: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.clinicCode} *</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.clinicCode} *</label>
                   <input className="input-field font-mono" placeholder="GEN" value={clinicForm.code} onChange={e => setClinicForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
-                  <p className="text-xs text-[#74777f] mt-1">{s.clinicCodeHint}</p>
+                  <p className="text-xs text-[var(--txt2)] mt-1">{s.clinicCodeHint}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.clinicType}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.clinicType}</label>
                   <select className="select-field" value={clinicForm.clinicType} onChange={e => setClinicForm(f => ({ ...f, clinicType: e.target.value }))}>
                     {CLINIC_TYPES.map(t => <option key={t} value={t}>{(s.clinicTypes as Record<string, string>)[t] || t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.clinicCapacity}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.clinicCapacity}</label>
                   <input type="number" className="input-field" value={clinicForm.capacity} min={1} max={500} onChange={e => setClinicForm(f => ({ ...f, capacity: Number(e.target.value) }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.clinicApptDuration}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.clinicApptDuration}</label>
                   <input type="number" className="input-field" value={clinicForm.apptDurationMin} min={5} max={180} onChange={e => setClinicForm(f => ({ ...f, apptDurationMin: Number(e.target.value) }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.clinicColor}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.clinicColor}</label>
                   <div className="flex items-center gap-2">
-                    <input type="color" className="w-10 h-10 rounded-lg border border-[#c4c6cf] cursor-pointer" value={clinicForm.colorTheme} onChange={e => setClinicForm(f => ({ ...f, colorTheme: e.target.value }))} />
-                    <span className="text-xs text-[#74777f] font-mono">{clinicForm.colorTheme}</span>
+                    <input type="color" className="w-10 h-10 rounded-lg border border-[var(--border2)] cursor-pointer" value={clinicForm.colorTheme} onChange={e => setClinicForm(f => ({ ...f, colorTheme: e.target.value }))} />
+                    <span className="text-xs text-[var(--txt2)] font-mono">{clinicForm.colorTheme}</span>
                   </div>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{s.branchDescription}</label>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{s.branchDescription}</label>
                   <textarea className="input-field resize-none" rows={2} value={clinicForm.description} onChange={e => setClinicForm(f => ({ ...f, description: e.target.value }))} />
                 </div>
-                <div className="col-span-2 space-y-3 pt-2 border-t border-[#e3e2e6]">
+                <div className="col-span-2 space-y-3 pt-2 border-t border-[var(--border)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[#1a1c1e]">{s.clinicQueue}</span>
+                    <span className="text-sm font-medium text-[var(--txt1)]">{s.clinicQueue}</span>
                     <button type="button" role="switch" aria-checked={clinicForm.queueEnabled} dir="ltr"
                       onClick={() => setClinicForm(f => ({ ...f, queueEnabled: !f.queueEnabled }))}
-                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.queueEnabled ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${clinicForm.queueEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.queueEnabled ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${clinicForm.queueEnabled ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[#1a1c1e]">{s.clinicOnlineBooking}</span>
+                    <span className="text-sm font-medium text-[var(--txt1)]">{s.clinicOnlineBooking}</span>
                     <button type="button" role="switch" aria-checked={clinicForm.onlineBooking} dir="ltr"
                       onClick={() => setClinicForm(f => ({ ...f, onlineBooking: !f.onlineBooking }))}
-                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.onlineBooking ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${clinicForm.onlineBooking ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                      className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${clinicForm.onlineBooking ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${clinicForm.onlineBooking ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setClinicModal(null)} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
               <button onClick={saveClinic} disabled={clinicSaving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2">
                 {clinicSaving ? <Spinner /> : null}{t.common.save}
@@ -2176,10 +2176,10 @@ export default function SettingsPage() {
 
 function SettingsCard({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
-      <div className="mb-5 pb-4 border-b border-[#e3e2e6]">
-        <h2 className="text-base font-semibold text-[#1a1c1e]">{title}</h2>
-        <p className="text-xs text-[#74777f] mt-0.5">{desc}</p>
+    <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-6">
+      <div className="mb-5 pb-4 border-b border-[var(--border)]">
+        <h2 className="text-base font-semibold text-[var(--txt1)]">{title}</h2>
+        <p className="text-xs text-[var(--txt2)] mt-0.5">{desc}</p>
       </div>
       {children}
     </div>
@@ -2189,7 +2189,7 @@ function SettingsCard({ title, desc, children }: { title: string; desc: string; 
 function Field({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
   return (
     <div className={full ? "md:col-span-2" : ""}>
-      <label className="block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5">{label}</label>
+      <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -2205,8 +2205,8 @@ function Toggle({ label, desc, checked, onChange, defaultChecked }: {
   return (
     <div className="flex items-center justify-between py-2">
       <div>
-        <p className="text-sm font-medium text-[#1a1c1e]">{label}</p>
-        {desc && <p className="text-xs text-[#74777f]">{desc}</p>}
+        <p className="text-sm font-medium text-[var(--txt1)]">{label}</p>
+        {desc && <p className="text-xs text-[var(--txt2)]">{desc}</p>}
       </div>
       <button
         type="button"
@@ -2214,9 +2214,9 @@ function Toggle({ label, desc, checked, onChange, defaultChecked }: {
         aria-checked={isOn}
         dir="ltr"
         onClick={toggle}
-        className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${isOn ? "bg-[#002045]" : "bg-[#c4c6cf]"}`}
+        className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1960a3] focus-visible:ring-offset-2 ${isOn ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}
       >
-        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isOn ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${isOn ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
       </button>
     </div>
   );

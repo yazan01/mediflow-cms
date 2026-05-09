@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Appointment } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -25,17 +26,36 @@ interface WorkingConfig {
 }
 interface OverlapInfo { col: number; totalCols: number; }
 
-// ── Type color map (color by appointment type, not status) ─────────────────────
+// ── Framer Motion variants ─────────────────────────────────────────────────────
+
+const modalAnim = {
+  hidden:  { opacity: 0, scale: 0.95, y: 8 },
+  visible: { opacity: 1, scale: 1,    y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
+  exit:    { opacity: 0, scale: 0.95, y: 4, transition: { duration: 0.15, ease: "easeIn" as const } },
+};
+
+const backdropAnim = {
+  hidden:  { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.18 } },
+  exit:    { opacity: 0, transition: { duration: 0.15 } },
+};
+
+const rowAnim = {
+  hidden:  { opacity: 0, y: 8 },
+  visible: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 0.3, delay: i * 0.04, ease: "easeOut" as const } }),
+};
+
+// ── Type color map (kept as semantic colors — unchanged by theme) ──────────────
 
 const TYPE_COLORS: Record<string, { bg: string; text: string; barHex: string; dotCls: string }> = {
-  CONSULTATION: { bg: "bg-[#eff6ff]", text: "text-[#1d4ed8]", barHex: "#1960a3", dotCls: "bg-[#1960a3]" },
-  FOLLOW_UP:    { bg: "bg-[#f0fdf4]", text: "text-[#166534]", barHex: "#16a34a", dotCls: "bg-[#16a34a]" },
-  PROCEDURE:    { bg: "bg-[#faf5ff]", text: "text-[#6b21a8]", barHex: "#7c3aed", dotCls: "bg-[#7c3aed]" },
-  LAB_VISIT:    { bg: "bg-[#fffbeb]", text: "text-[#92400e]", barHex: "#d97706", dotCls: "bg-[#d97706]" },
-  IMAGING:      { bg: "bg-[#eef2ff]", text: "text-[#3730a3]", barHex: "#4f46e5", dotCls: "bg-[#4f46e5]" },
-  EMERGENCY:    { bg: "bg-[#fef2f2]", text: "text-[#991b1b]", barHex: "#ba1a1a", dotCls: "bg-[#ba1a1a]" },
-  DENTAL:       { bg: "bg-[#fdf2f8]", text: "text-[#9d174d]", barHex: "#db2777", dotCls: "bg-[#db2777]" },
-  CHECKUP:      { bg: "bg-[#ecfdf5]", text: "text-[#065f46]", barHex: "#0d9488", dotCls: "bg-[#0d9488]" },
+  CONSULTATION: { bg: "bg-[#eff6ff]",  text: "text-[#1d4ed8]", barHex: "#1960a3", dotCls: "bg-[#1960a3]" },
+  FOLLOW_UP:    { bg: "bg-[#f0fdf4]",  text: "text-[#166534]", barHex: "#16a34a", dotCls: "bg-[#16a34a]" },
+  PROCEDURE:    { bg: "bg-[#faf5ff]",  text: "text-[#6b21a8]", barHex: "#7c3aed", dotCls: "bg-[#7c3aed]" },
+  LAB_VISIT:    { bg: "bg-[#fffbeb]",  text: "text-[#92400e]", barHex: "#d97706", dotCls: "bg-[#d97706]" },
+  IMAGING:      { bg: "bg-[#eef2ff]",  text: "text-[#3730a3]", barHex: "#4f46e5", dotCls: "bg-[#4f46e5]" },
+  EMERGENCY:    { bg: "bg-[#fef2f2]",  text: "text-[#991b1b]", barHex: "#ba1a1a", dotCls: "bg-[#ba1a1a]" },
+  DENTAL:       { bg: "bg-[#fdf2f8]",  text: "text-[#9d174d]", barHex: "#db2777", dotCls: "bg-[#db2777]" },
+  CHECKUP:      { bg: "bg-[#ecfdf5]",  text: "text-[#065f46]", barHex: "#0d9488", dotCls: "bg-[#0d9488]" },
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -120,21 +140,27 @@ function MiniCalendar({ value, onChange, appointments, parseLocalFn }: {
   ];
 
   return (
-    <div className="p-3 border-b border-[#e3e2e6]">
+    <div className="p-3 border-b border-[var(--border)]">
       <div className="flex items-center justify-between mb-2">
-        <button onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
-          className="p-1 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-          <span className="material-symbols-outlined text-[14px] text-[#74777f]">chevron_left</span>
+        <button
+          onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
+          className="p-1 hover:bg-[var(--surface2)] rounded-lg transition-colors"
+          aria-label="Previous month"
+        >
+          <span className="material-symbols-outlined text-[14px] text-[var(--txt2)]">chevron_left</span>
         </button>
-        <span className="text-[11px] font-bold text-[#1a1c1e]">{monthLabel}</span>
-        <button onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
-          className="p-1 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-          <span className="material-symbols-outlined text-[14px] text-[#74777f]">chevron_right</span>
+        <span className="text-[11px] font-bold text-[var(--txt1)]">{monthLabel}</span>
+        <button
+          onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
+          className="p-1 hover:bg-[var(--surface2)] rounded-lg transition-colors"
+          aria-label="Next month"
+        >
+          <span className="material-symbols-outlined text-[14px] text-[var(--txt2)]">chevron_right</span>
         </button>
       </div>
       <div className="grid grid-cols-7">
         {DAYS_SHORT.map((d, i) => (
-          <div key={i} className="text-[9px] font-bold text-center text-[#74777f] uppercase py-1">{d}</div>
+          <div key={i} className="text-[9px] font-bold text-center text-[var(--txt3)] uppercase py-1">{d}</div>
         ))}
         {cells.map((day, i) => {
           if (!day) return <div key={i} />;
@@ -144,13 +170,13 @@ function MiniCalendar({ value, onChange, appointments, parseLocalFn }: {
           return (
             <button key={i} onClick={() => onChange(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day))}
               className={`relative w-7 h-7 mx-auto flex items-center justify-center text-[11px] font-semibold rounded-full transition-all ${
-                isSelected ? "bg-[#002045] text-white" :
-                isToday ? "bg-[#1960a3]/10 text-[#1960a3] font-bold" :
-                "text-[#1a1c1e] hover:bg-[#f4f3f7]"
+                isSelected ? "bg-[var(--brand)] text-white" :
+                isToday    ? "bg-[var(--blue-bg)] text-[var(--blue)] font-bold" :
+                             "text-[var(--txt1)] hover:bg-[var(--surface2)]"
               }`}>
               {day}
               {hasAppt && !isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1960a3]" />
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--blue)]" />
               )}
             </button>
           );
@@ -177,19 +203,17 @@ function ApptChip({ apt, onClick, height, style, parseLocalFn }: {
       style={{ ...style, borderInlineStartColor: tc.barHex }}
       className={`absolute rounded-lg ps-1.5 pe-1 py-1 cursor-pointer hover:shadow-md hover:brightness-95 transition-all z-20 border-s-[3px] overflow-hidden select-none ${tc.bg} ${isUrgent ? "ring-1 ring-[#ba1a1a]" : ""}`}
     >
-      {/* Status dot */}
       <span className={`absolute top-1.5 end-1.5 w-1.5 h-1.5 rounded-full ${STATUS_DOT[apt.status] ?? "bg-[#94a3b8]"}`} />
-
       <p className={`text-[11px] font-bold truncate leading-tight ${tc.text} pe-2`}>
         {apt.patientName}
       </p>
       {height > 36 && (
-        <p className="text-[9px] text-[#74777f] truncate">
+        <p className="text-[9px] text-[var(--txt2)] truncate">
           {timeStr}{apt.doctorName ? ` · ${apt.doctorName.split(" ").slice(-1)[0]}` : ""}
         </p>
       )}
       {height > 52 && apt.room && (
-        <p className="text-[9px] text-[#74777f] truncate">{apt.room}</p>
+        <p className="text-[9px] text-[var(--txt2)] truncate">{apt.room}</p>
       )}
     </div>
   );
@@ -200,12 +224,47 @@ function ApptChip({ apt, onClick, height, style, parseLocalFn }: {
 function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="material-symbols-outlined text-[15px] text-[#74777f] mt-0.5 flex-shrink-0">{icon}</span>
+      <span className="material-symbols-outlined text-[15px] text-[var(--txt3)] mt-0.5 flex-shrink-0">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[9px] text-[#74777f] font-bold uppercase tracking-wider">{label}</p>
-        <p className="text-xs font-semibold text-[#1a1c1e] truncate">{value}</p>
+        <p className="text-[9px] text-[var(--txt3)] font-bold uppercase tracking-wider">{label}</p>
+        <p className="text-xs font-semibold text-[var(--txt1)] truncate">{value}</p>
       </div>
     </div>
+  );
+}
+
+// ── Skeleton list rows ─────────────────────────────────────────────────────────
+
+function SkeletonListRows() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <tr key={i}>
+          <td className="table-cell">
+            <div className="space-y-1.5">
+              <div className="skeleton h-3 w-12" />
+              <div className="skeleton h-2.5 w-16" />
+            </div>
+          </td>
+          <td className="table-cell">
+            <div className="space-y-1.5">
+              <div className="skeleton h-3 w-28" />
+              <div className="skeleton h-2.5 w-16" />
+            </div>
+          </td>
+          <td className="table-cell"><div className="skeleton h-3 w-24" /></td>
+          <td className="table-cell"><div className="skeleton h-5 w-20 rounded-full" /></td>
+          <td className="table-cell"><div className="skeleton h-3 w-14" /></td>
+          <td className="table-cell"><div className="skeleton h-5 w-20 rounded-full" /></td>
+          <td className="table-cell">
+            <div className="flex gap-1">
+              <div className="skeleton h-7 w-7 rounded-lg" />
+              <div className="skeleton h-7 w-7 rounded-lg" />
+            </div>
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }
 
@@ -231,7 +290,7 @@ export default function AppointmentsPage() {
 
   const DAYS = a.days;
   const DAY_NAMES = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
-  const CELL_H = 72; // px per hour
+  const CELL_H = 72;
   const HOURS_START = 6;
   const HOURS_END = 21;
   const HOURS = Array.from({ length: HOURS_END - HOURS_START }, (_, i) => i + HOURS_START);
@@ -252,7 +311,6 @@ export default function AppointmentsPage() {
   const [fetchError, setFetchError]     = useState<Error | null>(null);
   const [quickConsult, setQuickConsult] = useState<{ appointmentId: string; patientName: string; doctorName: string } | null>(null);
 
-  // Quick book
   const [quickBook, setQuickBook]             = useState<{ date: Date; hour: number; minute: number } | null>(null);
   const [qbTime, setQbTime]                   = useState("08:00");
   const [qbPatientSearch, setQbPatientSearch] = useState("");
@@ -266,7 +324,6 @@ export default function AppointmentsPage() {
   const [qbError, setQbError]                 = useState("");
   const [qbDropdownOpen, setQbDropdownOpen]   = useState(false);
 
-  // Inline patient creation
   const [createPatientModal, setCreatePatientModal] = useState(false);
   const [cpForm, setCpForm] = useState({ firstName: "", lastName: "", phone: "", dob: "", gender: "MALE" });
   const [cpSaving, setCpSaving] = useState(false);
@@ -308,7 +365,6 @@ export default function AppointmentsPage() {
   const weekDates = getWeekDates(currentDate);
   const visibleDates = view === "day" ? [currentDate] : weekDates;
 
-  // Month view
   function getMonthCells(): (Date | null)[] {
     const yr = currentDate.getFullYear(), mo = currentDate.getMonth();
     const firstDay = new Date(yr, mo, 1).getDay();
@@ -320,7 +376,6 @@ export default function AppointmentsPage() {
 
   const monthLabel = currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  // Current time indicator
   const nowH = today.getHours(), nowM = today.getMinutes();
   const nowPx = ((nowH - HOURS_START) + nowM / 60) * CELL_H;
 
@@ -348,7 +403,6 @@ export default function AppointmentsPage() {
         params.set("startDate", localDateTimeStr(s));
         params.set("endDate", localDateTimeStr(e));
       } else {
-        // list view: today ±30 days
         const s = new Date(today); s.setDate(s.getDate() - 30); s.setHours(0,0,0,0);
         const e = new Date(today); e.setDate(e.getDate() + 30); e.setHours(23,59,59,999);
         params.set("startDate", localDateTimeStr(s));
@@ -368,15 +422,11 @@ export default function AppointmentsPage() {
     fetch("/api/branches").then(r => r.ok ? r.json() : []).then(setBranches).catch(() => {});
   }, []);
 
-  // Reload doctors when branch filter changes (show only doctors in that branch)
   useEffect(() => {
-    const url = filterBranch !== "ALL"
-      ? `/api/doctors?branch_id=${filterBranch}`
-      : "/api/doctors";
+    const url = filterBranch !== "ALL" ? `/api/doctors?branch_id=${filterBranch}` : "/api/doctors";
     fetch(url).then(r => r.ok ? r.json() : []).then(setDoctors).catch(() => {});
   }, [filterBranch]);
 
-  // Load branch working config
   useEffect(() => {
     if (filterBranch === "ALL") {
       setWorkingCfg({ startTime: "06:00", endTime: "21:00", workingDays: ["SUN","MON","TUE","WED","THU","FRI","SAT"], slotDuration: 30 });
@@ -388,16 +438,13 @@ export default function AppointmentsPage() {
       .catch(() => {});
   }, [filterBranch]);
 
-  // Auto-scroll: show working hours start (8 AM) with current time visible if possible
   useEffect(() => {
     if (!calendarRef.current || (view !== "week" && view !== "day")) return;
     const workStartPx = (workingStartH() - HOURS_START) * CELL_H;
-    // Prefer showing work-start, but shift forward if now is past it + viewport
     const target = Math.min(nowPx - 120, workStartPx);
     calendarRef.current.scrollTop = Math.max(0, target);
   }, [view, loading]);
 
-  // Patient search for quick book
   useEffect(() => {
     if (!debouncedSearch || debouncedSearch.length < 2) { setQbPatients([]); return; }
     fetch(`/api/patients?search=${encodeURIComponent(debouncedSearch)}&pageSize=8`)
@@ -430,11 +477,8 @@ export default function AppointmentsPage() {
     setQbTime(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
     setQbDoctor(filterDoctor !== "ALL" ? filterDoctor : "");
     setQbType("CONSULTATION");
-    setQbRoom("");
-    setQbNotes("");
-    setQbSelectedPatient(null);
-    setQbPatientSearch("");
-    setQbError("");
+    setQbRoom(""); setQbNotes("");
+    setQbSelectedPatient(null); setQbPatientSearch(""); setQbError("");
   }
 
   async function handleCreatePatient() {
@@ -442,25 +486,14 @@ export default function AppointmentsPage() {
       setCpError(t.appointments.patientRequiredFields);
       return;
     }
-    setCpSaving(true);
-    setCpError("");
+    setCpSaving(true); setCpError("");
     try {
       const res = await fetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: cpForm.firstName,
-          lastName: cpForm.lastName,
-          phone: cpForm.phone,
-          dateOfBirth: cpForm.dob,
-          gender: cpForm.gender,
-        }),
+        body: JSON.stringify({ firstName: cpForm.firstName, lastName: cpForm.lastName, phone: cpForm.phone, dateOfBirth: cpForm.dob, gender: cpForm.gender }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setCpError(err.detail || t.appointments.createPatientFailed);
-        return;
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); setCpError(err.detail || t.appointments.createPatientFailed); return; }
       const patient = await res.json();
       setQbSelectedPatient({ id: patient.id, firstName: patient.firstName, lastName: patient.lastName, mrn: patient.mrn });
       setCreatePatientModal(false);
@@ -470,56 +503,36 @@ export default function AppointmentsPage() {
   }
 
   async function handleQuickBook() {
-    if (!quickBook || !qbSelectedPatient || !qbDoctor) {
-      setQbError(a.requiredFields);
-      return;
-    }
-    setQbSaving(true);
-    setQbError("");
+    if (!quickBook || !qbSelectedPatient || !qbDoctor) { setQbError(a.requiredFields); return; }
+    setQbSaving(true); setQbError("");
     try {
       const [h, m] = qbTime.split(":").map(Number);
       const d = new Date(quickBook.date);
       d.setHours(isNaN(h) ? quickBook.hour : h, isNaN(m) ? quickBook.minute : m, 0, 0);
       const end = new Date(d.getTime() + workingCfg.slotDuration * 60000);
       const body = {
-        patientId: qbSelectedPatient.id,
-        doctorId: qbDoctor,
-        scheduledAt: localDateTimeStr(d),
-        scheduledEnd: localDateTimeStr(end),
-        type: qbType,
-        room: qbRoom || undefined,
-        notes: qbNotes || undefined,
+        patientId: qbSelectedPatient.id, doctorId: qbDoctor,
+        scheduledAt: localDateTimeStr(d), scheduledEnd: localDateTimeStr(end),
+        type: qbType, room: qbRoom || undefined, notes: qbNotes || undefined,
         branchId: filterBranch !== "ALL" ? filterBranch : undefined,
       };
       const res = await fetch("/api/appointments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setQbError(err.detail || a.createFailed);
-        return;
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); setQbError(err.detail || a.createFailed); return; }
       setQuickBook(null);
       fetchAppointments();
     } catch { setQbError(a.networkError); }
     finally { setQbSaving(false); }
   }
 
-  // ── Status update ───────────────────────────────────────────────────────────
-
   async function updateStatus(apptId: string, status: string) {
     await fetch(`/api/appointments/${apptId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
     });
     fetchAppointments();
     setSelectedAppt(prev => prev ? { ...prev, status: status as Appointment["status"] } : null);
   }
-
-  // ── Stats ───────────────────────────────────────────────────────────────────
 
   const stats = {
     total:     appointments.length,
@@ -535,8 +548,7 @@ export default function AppointmentsPage() {
     <div className="flex h-full -m-6 overflow-hidden">
 
       {/* ── LEFT SIDEBAR ───────────────────────────────────────── */}
-      <aside className="w-56 border-e border-[#e3e2e6] bg-white flex-shrink-0 flex flex-col overflow-y-auto hidden md:flex">
-        {/* Mini calendar */}
+      <aside className="w-56 border-e border-[var(--border)] bg-[var(--surface)] flex-shrink-0 flex flex-col overflow-y-auto hidden md:flex">
         <MiniCalendar
           value={currentDate}
           onChange={d => { setCurrentDate(d); if (view === "month") setView("day"); }}
@@ -544,33 +556,22 @@ export default function AppointmentsPage() {
           parseLocalFn={parseLocal}
         />
 
-        {/* Filters */}
         <div className="p-3 space-y-3 flex-1">
-          <p className="text-[10px] font-bold text-[#74777f] uppercase tracking-wider">Filters</p>
+          <p className="text-[10px] font-bold text-[var(--txt3)] uppercase tracking-wider">Filters</p>
 
-          {/* Branch */}
           {branches.length > 0 && (
             <div>
-              <label className="text-[10px] font-semibold text-[#43474e] block mb-1">{a.branch}</label>
-              <select
-                value={filterBranch}
-                onChange={e => setFilterBranch(e.target.value)}
-                className="w-full border border-[#c4c6cf] bg-white rounded-lg px-2.5 py-2 text-xs text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-              >
+              <label className="form-label">{a.branch}</label>
+              <select value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="select-field text-xs py-2">
                 <option value="ALL">{a.allBranches}</option>
                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
           )}
 
-          {/* Doctor */}
           <div>
-            <label className="text-[10px] font-semibold text-[#43474e] block mb-1">{a.doctor}</label>
-            <select
-              value={filterDoctor}
-              onChange={e => setFilterDoctor(e.target.value)}
-              className="w-full border border-[#c4c6cf] bg-white rounded-lg px-2.5 py-2 text-xs text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            >
+            <label className="form-label">{a.doctor}</label>
+            <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)} className="select-field text-xs py-2">
               <option value="ALL">{a.allDoctors}</option>
               {doctors.map(d => (
                 <option key={d.id} value={d.id}>
@@ -581,14 +582,9 @@ export default function AppointmentsPage() {
             </select>
           </div>
 
-          {/* Status */}
           <div>
-            <label className="text-[10px] font-semibold text-[#43474e] block mb-1">{t.common.status}</label>
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              className="w-full border border-[#c4c6cf] bg-white rounded-lg px-2.5 py-2 text-xs text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-            >
+            <label className="form-label">{t.common.status}</label>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="select-field text-xs py-2">
               <option value="ALL">{a.allStatuses}</option>
               {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
@@ -596,23 +592,22 @@ export default function AppointmentsPage() {
 
           {/* Type legend */}
           <div>
-            <p className="text-[10px] font-bold text-[#74777f] uppercase tracking-wider mb-2">Type Legend</p>
+            <p className="text-[10px] font-bold text-[var(--txt3)] uppercase tracking-wider mb-2">Type Legend</p>
             <div className="space-y-1.5">
               {Object.entries(TYPE_COLORS).map(([type, cfg]) => (
                 <div key={type} className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: cfg.barHex }} />
-                  <span className="text-[10px] text-[#43474e] capitalize">{type.replace("_", " ").toLowerCase()}</span>
+                  <span className="text-[10px] text-[var(--txt2)] capitalize">{type.replace("_", " ").toLowerCase()}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Working hours info (when branch selected) */}
           {filterBranch !== "ALL" && (
-            <div className="bg-[#f4f3f7] rounded-lg p-2.5">
-              <p className="text-[10px] font-bold text-[#74777f] uppercase tracking-wider mb-1.5">{a.workingHoursNote}</p>
-              <p className="text-[11px] text-[#43474e]">{workingCfg.startTime} – {workingCfg.endTime}</p>
-              <p className="text-[10px] text-[#74777f] mt-0.5">{workingCfg.slotDuration} {a.minutesSuffix} slots</p>
+            <div className="bg-[var(--surface2)] rounded-lg p-2.5">
+              <p className="text-[10px] font-bold text-[var(--txt3)] uppercase tracking-wider mb-1.5">{a.workingHoursNote}</p>
+              <p className="text-[11px] text-[var(--txt2)]">{workingCfg.startTime} – {workingCfg.endTime}</p>
+              <p className="text-[10px] text-[var(--txt3)] mt-0.5">{workingCfg.slotDuration} {a.minutesSuffix} slots</p>
             </div>
           )}
         </div>
@@ -622,15 +617,15 @@ export default function AppointmentsPage() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* ── Top bar ── */}
-        <div className="px-4 pt-4 pb-3 border-b border-[#e3e2e6] bg-[#faf9fd] flex-shrink-0">
+        <div className="px-4 pt-4 pb-3 border-b border-[var(--border)] bg-[var(--bg)] flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-xl font-bold text-[#1a1c1e]">{a.title}</h1>
-              <p className="text-xs text-[#74777f]">{stats.total} {a.title.toLowerCase()}</p>
+              <h1 className="text-xl font-bold text-[var(--txt1)]">{a.title}</h1>
+              <p className="text-xs text-[var(--txt2)]">{stats.total} {a.title.toLowerCase()}</p>
             </div>
             <Link
               href="/appointments/new"
-              className="flex items-center gap-1.5 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+              className="btn-primary flex items-center gap-1.5 px-4 py-2 text-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               {a.newAppointment}
@@ -639,51 +634,51 @@ export default function AppointmentsPage() {
 
           {fetchError && <div className="mb-2"><ErrorBanner error={fetchError} onRetry={fetchAppointments} /></div>}
 
-          {/* Stats + navigation */}
+          {/* Stats + nav */}
           <div className="flex items-center gap-4 flex-wrap">
             {[
-              { label: a.total,         value: stats.total,     color: "text-[#1a1c1e]" },
-              { label: a.scheduled,     value: stats.scheduled, color: "text-[#74777f]" },
-              { label: a.checkedIn,     value: stats.checkedIn, color: "text-[#1960a3]" },
-              { label: a.inConsultation,value: stats.inConsult, color: "text-[#7c3aed]" },
-              { label: a.urgent,        value: stats.urgent,    color: "text-[#ba1a1a]" },
+              { label: a.total,          value: stats.total,     color: "text-[var(--txt1)]" },
+              { label: a.scheduled,      value: stats.scheduled, color: "text-[var(--txt2)]" },
+              { label: a.checkedIn,      value: stats.checkedIn, color: "text-[var(--blue)]" },
+              { label: a.inConsultation, value: stats.inConsult, color: "text-[#7c3aed]" },
+              { label: a.urgent,         value: stats.urgent,    color: "text-[var(--err)]" },
             ].map(s => (
               <div key={s.label} className="text-center">
                 <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                <p className="text-[10px] text-[#74777f] whitespace-nowrap">{s.label}</p>
+                <p className="text-[10px] text-[var(--txt3)] whitespace-nowrap">{s.label}</p>
               </div>
             ))}
 
             <div className="ms-auto flex items-center gap-2">
               {/* Navigation */}
-              <div className="flex items-center gap-1 bg-[#f4f3f7] rounded-xl p-1">
-                <button onClick={prevPeriod} className="p-1.5 hover:bg-white rounded-lg transition-colors">
-                  <span className="material-symbols-outlined text-[18px] text-[#74777f]">chevron_left</span>
+              <div className="flex items-center gap-1 bg-[var(--surface2)] rounded-xl p-1">
+                <button onClick={prevPeriod} aria-label="Previous" className="p-1.5 hover:bg-[var(--surface)] rounded-lg transition-colors">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--txt2)]">chevron_left</span>
                 </button>
                 <button onClick={() => setCurrentDate(new Date())}
-                  className="px-3 py-1 text-xs font-bold text-[#1960a3] hover:bg-white rounded-lg transition-colors">
+                  className="px-3 py-1 text-xs font-bold text-[var(--blue)] hover:bg-[var(--surface)] rounded-lg transition-colors">
                   {a.today}
                 </button>
-                <span className="text-sm font-semibold text-[#1a1c1e] px-2 whitespace-nowrap">
+                <span className="text-sm font-semibold text-[var(--txt1)] px-2 whitespace-nowrap">
                   {view === "day"
                     ? currentDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
                     : monthLabel}
                 </span>
-                <button onClick={nextPeriod} className="p-1.5 hover:bg-white rounded-lg transition-colors">
-                  <span className="material-symbols-outlined text-[18px] text-[#74777f]">chevron_right</span>
+                <button onClick={nextPeriod} aria-label="Next" className="p-1.5 hover:bg-[var(--surface)] rounded-lg transition-colors">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--txt2)]">chevron_right</span>
                 </button>
               </div>
 
               {/* View toggle */}
-              <div className="flex bg-[#f4f3f7] rounded-xl p-1">
+              <div className="flex bg-[var(--surface2)] rounded-xl p-1">
                 {(["month", "week", "day", "list"] as const).map(v => (
                   <button key={v} onClick={() => setView(v)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
-                      view === v ? "bg-white text-[#1960a3] shadow-sm" : "text-[#74777f] hover:text-[#1a1c1e]"
+                      view === v
+                        ? "bg-[var(--surface)] text-[var(--blue)] shadow-[var(--sh-xs)]"
+                        : "text-[var(--txt2)] hover:text-[var(--txt1)]"
                     }`}>
-                    {v === "month" ? a.monthView :
-                     v === "week"  ? a.weekView  :
-                     v === "day"   ? a.dayView   : a.listView}
+                    {v === "month" ? a.monthView : v === "week" ? a.weekView : v === "day" ? a.dayView : a.listView}
                   </button>
                 ))}
               </div>
@@ -696,18 +691,17 @@ export default function AppointmentsPage() {
 
           {/* ── MONTH VIEW ── */}
           {view === "month" && (
-            <div className="h-full overflow-y-auto bg-[#faf9fd]">
-              {/* Day headers */}
-              <div className="grid grid-cols-7 border-b border-[#e3e2e6] bg-white sticky top-0 z-10">
+            <div className="h-full overflow-y-auto bg-[var(--bg)]">
+              <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-10">
                 {DAYS.map((d, i) => (
-                  <div key={i} className="text-center text-[10px] font-bold text-[#74777f] uppercase tracking-wider py-2 border-e border-[#e3e2e6] last:border-e-0">
+                  <div key={i} className="text-center text-[10px] font-bold text-[var(--txt3)] uppercase tracking-wider py-2 border-e border-[var(--border)] last:border-e-0">
                     {d}
                   </div>
                 ))}
               </div>
               <div className="grid grid-cols-7">
                 {getMonthCells().map((date, i) => {
-                  if (!date) return <div key={i} className="min-h-[120px] border-e border-b border-[#e3e2e6] bg-[#f9f9fb]" />;
+                  if (!date) return <div key={i} className="min-h-[120px] border-e border-b border-[var(--border)] bg-[var(--surface2)]" />;
                   const isToday = date.toDateString() === today.toDateString();
                   const dateKey = localDateStr(date);
                   const dayAppts = appointments.filter(ap => localDateStr(parseLocal(ap.scheduledAt)) === dateKey);
@@ -715,13 +709,13 @@ export default function AppointmentsPage() {
                   const extra = dayAppts.length - visible.length;
                   return (
                     <div key={i}
-                      className={`min-h-[120px] border-e border-b border-[#e3e2e6] p-1.5 last:border-e-0 cursor-pointer group transition-colors ${
-                        isToday ? "bg-[#eff6ff]/40" : "bg-white hover:bg-[#f4f3f7]/60"
+                      className={`min-h-[120px] border-e border-b border-[var(--border)] p-1.5 last:border-e-0 cursor-pointer group transition-colors ${
+                        isToday ? "bg-[var(--blue-bg)]/30" : "bg-[var(--surface)] hover:bg-[var(--surface2)]"
                       }`}
                       onClick={() => { setCurrentDate(date); setView("day"); }}
                     >
                       <div className={`w-6 h-6 flex items-center justify-center rounded-full text-[11px] font-bold mb-1 ${
-                        isToday ? "bg-[#002045] text-white" : "text-[#1a1c1e]"
+                        isToday ? "bg-[var(--brand)] text-white" : "text-[var(--txt1)]"
                       }`}>{date.getDate()}</div>
                       <div className="space-y-0.5" onClick={e => e.stopPropagation()}>
                         {visible.map(ap => {
@@ -736,7 +730,7 @@ export default function AppointmentsPage() {
                           );
                         })}
                         {extra > 0 && (
-                          <div className="text-[10px] text-[#1960a3] font-semibold px-1 cursor-pointer hover:underline">
+                          <div className="text-[10px] text-[var(--blue)] font-semibold px-1 cursor-pointer hover:underline">
                             +{extra} {a.moreEvents}
                           </div>
                         )}
@@ -751,68 +745,86 @@ export default function AppointmentsPage() {
           {/* ── LIST VIEW ── */}
           {view === "list" && (
             <div className="h-full overflow-y-auto px-4 py-4">
-              {loading ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" />
-                </div>
-              ) : appointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <div className="w-16 h-16 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[#74777f] text-3xl">event_busy</span>
+              {!loading && appointments.length === 0 ? (
+                <div className="empty-state py-20">
+                  <div className="empty-state-icon">
+                    <span className="material-symbols-outlined text-3xl text-[var(--txt3)]">event_busy</span>
                   </div>
-                  <p className="text-sm font-semibold text-[#1a1c1e]">{a.noAppointments}</p>
-                  <Link href="/appointments/new" className="text-sm text-[#1960a3] font-semibold hover:underline">{a.bookFirst}</Link>
+                  <p className="empty-state-title">{a.noAppointments}</p>
+                  <Link href="/appointments/new" className="text-sm text-[var(--blue)] font-semibold hover:underline">{a.bookFirst}</Link>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+                <div className="table-wrapper">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr>
                           {[a.time, a.patient, a.doctor, a.type, t.common.room, t.common.status, t.common.actions].map(h => (
-                            <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-4 py-3 bg-[#f4f3f7] border-b border-[#e3e2e6] whitespace-nowrap">{h}</th>
+                            <th key={h} className="table-header">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {appointments.slice().sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()).map(apt => {
-                          const st = STATUS_STYLES[apt.status] ?? STATUS_STYLES.SCHEDULED;
-                          const tc = TYPE_COLORS[apt.type] ?? TYPE_COLORS.CONSULTATION;
-                          const dt = parseLocal(apt.scheduledAt);
-                          return (
-                            <tr key={apt.id} className="hover:bg-[#f4f3f7] transition-colors cursor-pointer group" onClick={() => setSelectedAppt(apt)}>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
-                                <p className="text-sm font-bold text-[#1a1c1e]">{dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</p>
-                                <p className="text-[10px] text-[#74777f]">{dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
-                              </td>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
-                                <p className="text-sm font-semibold text-[#1a1c1e] group-hover:text-[#1960a3] transition-colors">{apt.patientName}</p>
-                                {apt.mrn && <p className="text-[10px] text-[#74777f]">{apt.mrn}</p>}
-                              </td>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6] text-sm text-[#43474e]">{apt.doctorName ?? "—"}</td>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tc.bg} ${tc.text}`}>{apt.type.replace("_"," ")}</span>
-                              </td>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6] text-xs text-[#74777f]">{apt.room ?? "—"}</td>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
-                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
-                              </td>
-                              <td className="px-4 py-3.5 border-b border-[#e3e2e6]">
-                                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                  <button aria-label={a.openEMR} title={a.openEMR} onClick={() => router.push(`/emr/${apt.patientId}`)}
-                                    className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors">
-                                    <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
-                                  </button>
-                                  <button aria-label={a.quickConsult} title={a.quickConsult}
-                                    onClick={() => setQuickConsult({ appointmentId: apt.id, patientName: apt.patientName, doctorName: apt.doctorName ?? "" })}
-                                    className="p-1.5 hover:bg-[#ccfbf1] rounded-lg text-[#74777f] hover:text-[#0d9488] transition-colors">
-                                    <span className="material-symbols-outlined text-[18px]">stethoscope</span>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {loading ? (
+                          <SkeletonListRows />
+                        ) : (
+                          appointments
+                            .slice()
+                            .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                            .map((apt, idx) => {
+                              const st = STATUS_STYLES[apt.status] ?? STATUS_STYLES.SCHEDULED;
+                              const tc = TYPE_COLORS[apt.type] ?? TYPE_COLORS.CONSULTATION;
+                              const dt = parseLocal(apt.scheduledAt);
+                              return (
+                                <motion.tr
+                                  key={apt.id}
+                                  custom={idx}
+                                  variants={rowAnim}
+                                  initial="hidden"
+                                  animate="visible"
+                                  className="table-row cursor-pointer group"
+                                  onClick={() => setSelectedAppt(apt)}
+                                >
+                                  <td className="table-cell">
+                                    <p className="text-sm font-bold text-[var(--txt1)]">
+                                      {dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                    </p>
+                                    <p className="text-[10px] text-[var(--txt3)]">
+                                      {dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                    </p>
+                                  </td>
+                                  <td className="table-cell">
+                                    <p className="text-sm font-semibold text-[var(--txt1)] group-hover:text-[var(--blue)] transition-colors">{apt.patientName}</p>
+                                    {apt.mrn && <p className="text-[10px] text-[var(--txt3)]">{apt.mrn}</p>}
+                                  </td>
+                                  <td className="table-cell text-sm text-[var(--txt2)]">{apt.doctorName ?? "—"}</td>
+                                  <td className="table-cell">
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tc.bg} ${tc.text}`}>
+                                      {apt.type.replace("_"," ")}
+                                    </span>
+                                  </td>
+                                  <td className="table-cell text-xs text-[var(--txt3)]">{apt.room ?? "—"}</td>
+                                  <td className="table-cell">
+                                    <span className={`badge text-xs ${st.bg} ${st.text}`}>{st.label}</span>
+                                  </td>
+                                  <td className="table-cell">
+                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                      <button aria-label={a.openEMR} title={a.openEMR}
+                                        onClick={() => router.push(`/emr/${apt.patientId}`)}
+                                        className="btn-icon">
+                                        <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
+                                      </button>
+                                      <button aria-label={a.quickConsult} title={a.quickConsult}
+                                        onClick={() => setQuickConsult({ appointmentId: apt.id, patientName: apt.patientName, doctorName: apt.doctorName ?? "" })}
+                                        className="btn-icon">
+                                        <span className="material-symbols-outlined text-[18px]">stethoscope</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              );
+                            })
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -823,16 +835,18 @@ export default function AppointmentsPage() {
 
           {/* ── WEEK / DAY VIEW ── */}
           {(view === "week" || view === "day") && (
-            <div ref={calendarRef} className="flex-1 overflow-auto h-full bg-[#faf9fd]">
+            <div ref={calendarRef} className="flex-1 overflow-auto h-full bg-[var(--bg)]">
               <div className={`flex ${view === "day" ? "min-w-[500px]" : "min-w-[900px]"}`}>
 
                 {/* Time column */}
-                <div className="w-14 border-e border-[#e3e2e6] bg-white sticky start-0 z-10 flex-shrink-0">
-                  <div className="sticky top-0 h-14 border-b border-[#e3e2e6] bg-white z-20" />
+                <div className="w-14 border-e border-[var(--border)] bg-[var(--surface)] sticky start-0 z-10 flex-shrink-0">
+                  <div className="sticky top-0 h-14 border-b border-[var(--border)] bg-[var(--surface)] z-20" />
                   {HOURS.map(h => (
-                    <div key={h} className={`flex items-start justify-end pe-2 pt-1 text-[9px] font-semibold border-b border-[#e3e2e6] relative ${
-                      h >= workingStartH() && h < workingEndH() ? "text-[#74777f]" : "text-[#c4c6cf]"
-                    }`} style={{ height: CELL_H }}>
+                    <div key={h}
+                      className={`flex items-start justify-end pe-2 pt-1 text-[9px] font-semibold border-b border-[var(--border)] relative ${
+                        h >= workingStartH() && h < workingEndH() ? "text-[var(--txt2)]" : "text-[var(--txt4)]"
+                      }`}
+                      style={{ height: CELL_H }}>
                       {formatHour(h)}
                     </div>
                   ))}
@@ -848,17 +862,19 @@ export default function AppointmentsPage() {
                     const overlapMap = computeOverlap(dayAppts, parseLocal);
 
                     return (
-                      <div key={dateKey} className="border-e border-[#e3e2e6] last:border-e-0">
+                      <div key={dateKey} className="border-e border-[var(--border)] last:border-e-0">
                         {/* Day header */}
-                        <div className={`h-14 flex flex-col items-center justify-center border-b border-[#e3e2e6] sticky top-0 z-10 ${isToday ? "bg-[#eff6ff]" : "bg-white"}`}>
-                          <span className={`text-[9px] font-bold uppercase tracking-widest ${isToday ? "text-[#1960a3]" : "text-[#74777f]"}`}>
+                        <div className={`h-14 flex flex-col items-center justify-center border-b border-[var(--border)] sticky top-0 z-10 ${
+                          isToday ? "bg-[var(--blue-bg)]" : "bg-[var(--surface)]"
+                        }`}>
+                          <span className={`text-[9px] font-bold uppercase tracking-widest ${isToday ? "text-[var(--blue)]" : "text-[var(--txt3)]"}`}>
                             {DAYS[date.getDay()]}
                           </span>
                           <span className={`text-lg font-bold mt-0.5 w-8 h-8 flex items-center justify-center rounded-full ${
-                            isToday ? "bg-[#002045] text-white" : "text-[#1a1c1e]"
+                            isToday ? "bg-[var(--brand)] text-white" : "text-[var(--txt1)]"
                           }`}>{date.getDate()}</span>
                           {!isWorking && filterBranch !== "ALL" && (
-                            <span className="text-[9px] text-[#ba1a1a] font-bold">{a.nonWorkingDay}</span>
+                            <span className="text-[9px] text-[var(--err)] font-bold">{a.nonWorkingDay}</span>
                           )}
                         </div>
 
@@ -869,16 +885,13 @@ export default function AppointmentsPage() {
                             return (
                               <div
                                 key={h}
-                                className={`border-b border-[#e3e2e6] transition-colors cursor-pointer ${
-                                  isWorkingHour
-                                    ? "hover:bg-[#eff6ff]/50 bg-white"
-                                    : "bg-[#f9f9fb]"
+                                className={`border-b border-[var(--border)] transition-colors cursor-pointer ${
+                                  isWorkingHour ? "hover:bg-[var(--blue-bg)]/30 bg-[var(--surface)]" : "bg-[var(--surface2)]"
                                 }`}
                                 style={{ height: CELL_H }}
                                 onClick={() => isWorkingHour && openQuickBook(date, h)}
                               >
-                                {/* Half-hour divider */}
-                                <div className="h-1/2 border-b border-dashed border-[#e3e2e6]/60"
+                                <div className="h-1/2 border-b border-dashed border-[var(--border)]"
                                   onClick={e => { e.stopPropagation(); isWorkingHour && openQuickBook(date, h, 30); }} />
                                 <div className="h-1/2" />
                               </div>
@@ -889,8 +902,8 @@ export default function AppointmentsPage() {
                           {isToday && nowPx >= 0 && nowPx <= HOURS.length * CELL_H && (
                             <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ top: nowPx }}>
                               <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-[#ba1a1a] -ms-1 flex-shrink-0" />
-                                <div className="flex-1 h-px bg-[#ba1a1a]" />
+                                <div className="w-2 h-2 rounded-full bg-[var(--err)] -ms-1 flex-shrink-0" />
+                                <div className="flex-1 h-px bg-[var(--err)]" />
                               </div>
                             </div>
                           )}
@@ -915,8 +928,7 @@ export default function AppointmentsPage() {
                                 height={heightPx}
                                 parseLocalFn={parseLocal}
                                 style={{
-                                  top: topPx,
-                                  height: heightPx,
+                                  top: topPx, height: heightPx,
                                   left: `calc(${leftPct}% + 2px)`,
                                   width: `calc(${widthPct}% - 4px)`,
                                 }}
@@ -935,252 +947,278 @@ export default function AppointmentsPage() {
       </div>
 
       {/* ── QUICK BOOK MODAL ──────────────────────────────────────── */}
-      {quickBook && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setQuickBook(null)}>
-          <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.18)] p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-bold text-[#1a1c1e]">{a.quickBook}</h3>
-                <p className="text-xs text-[#74777f]">
-                  {quickBook.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                </p>
-              </div>
-              <button onClick={() => setQuickBook(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-[20px] text-[#74777f]">close</span>
-              </button>
-            </div>
-
-            {qbError && <p className="text-xs text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2 mb-3">{qbError}</p>}
-
-            <div className="space-y-3">
-              {/* Time field — editable */}
-              <div>
-                <label className="text-xs font-semibold text-[#43474e] block mb-1">{a.timeLabel} *</label>
-                <input
-                  type="time"
-                  value={qbTime}
-                  onChange={e => setQbTime(e.target.value)}
-                  className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-                />
-              </div>
-
-              {/* Patient search */}
-              <div className="relative">
-                <label className="text-xs font-semibold text-[#43474e] block mb-1">{a.patientLabel} *</label>
-                <div className="relative">
-                  <span className="absolute start-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[16px] text-[#74777f]">search</span>
-                  <input
-                    type="text"
-                    value={qbSelectedPatient ? `${qbSelectedPatient.firstName} ${qbSelectedPatient.lastName}` : qbPatientSearch}
-                    onChange={e => { setQbPatientSearch(e.target.value); setQbSelectedPatient(null); setQbDropdownOpen(true); }}
-                    onFocus={() => setQbDropdownOpen(true)}
-                    placeholder={a.selectPatient}
-                    className="w-full border border-[#c4c6cf] rounded-lg ps-9 pe-3 py-2 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
-                  />
+      <AnimatePresence>
+        {quickBook && (
+          <motion.div
+            className="modal-overlay"
+            variants={backdropAnim} initial="hidden" animate="visible" exit="exit"
+            onClick={() => setQuickBook(null)}
+          >
+            <motion.div
+              className="modal-panel max-w-sm mx-4"
+              variants={modalAnim}
+              onClick={e => e.stopPropagation()}
+              role="dialog" aria-labelledby="qb-title"
+            >
+              <div className="modal-header">
+                <div>
+                  <h3 id="qb-title" className="text-base font-bold text-[var(--txt1)]">{a.quickBook}</h3>
+                  <p className="text-xs text-[var(--txt2)]">
+                    {quickBook.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  </p>
                 </div>
-                {qbDropdownOpen && !qbSelectedPatient && qbPatientSearch.length >= 2 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#e3e2e6] rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
-                    {qbPatients.length === 0 ? (
-                      <div>
-                        <p className="text-xs text-[#74777f] px-3 py-2">{a.noPatients}</p>
-                        <button
-                          onClick={() => { setQbDropdownOpen(false); setCreatePatientModal(true); }}
-                          className="w-full text-start px-3 py-2 text-xs font-semibold text-[#1960a3] hover:bg-[#eff6ff] border-t border-[#e3e2e6] flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-[14px]">person_add</span>
-                          {a.createPatient}
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {qbPatients.map(p => (
-                          <button key={p.id}
-                            onClick={() => { setQbSelectedPatient(p); setQbPatientSearch(""); setQbDropdownOpen(false); }}
-                            className="w-full text-start px-3 py-2 text-sm hover:bg-[#f4f3f7] transition-colors">
-                            <span className="font-semibold text-[#1a1c1e]">{p.firstName} {p.lastName}</span>
-                            <span className="text-xs text-[#74777f] ms-2">{p.mrn}</span>
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => { setQbDropdownOpen(false); setCreatePatientModal(true); }}
-                          className="w-full text-start px-3 py-2 text-xs font-semibold text-[#1960a3] hover:bg-[#eff6ff] border-t border-[#e3e2e6] flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-[14px]">person_add</span>
-                          {a.createPatient}
-                        </button>
-                      </>
-                    )}
+                <button onClick={() => setQuickBook(null)} aria-label={t.common.close} className="btn-icon ms-2">
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {qbError && (
+                  <div className="alert alert-error mb-3">
+                    <span className="material-symbols-outlined text-[16px]">error</span>
+                    {qbError}
                   </div>
                 )}
-              </div>
 
-              {/* Doctor */}
-              <div>
-                <label className="text-xs font-semibold text-[#43474e] block mb-1">{a.doctor} *</label>
-                <select value={qbDoctor} onChange={e => setQbDoctor(e.target.value)}
-                  className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
-                  <option value="">{a.selectDoctor}</option>
-                  {doctors.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {d.name || d.user?.name}
-                      {" — "}{d.departmentName || d.specialization}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="form-label">{a.timeLabel} *</label>
+                    <input type="time" value={qbTime} onChange={e => setQbTime(e.target.value)} className="input-field" />
+                  </div>
 
-              {/* Type */}
-              <div>
-                <label className="text-xs font-semibold text-[#43474e] block mb-1">{a.apptType}</label>
-                <select value={qbType} onChange={e => setQbType(e.target.value)}
-                  className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
-                  {Object.keys(TYPE_COLORS).map(k => <option key={k} value={k}>{k.replace("_"," ")}</option>)}
-                </select>
-              </div>
+                  <div className="relative">
+                    <label className="form-label">{a.patientLabel} *</label>
+                    <div className="input-group">
+                      <span className="material-symbols-outlined text-[16px] text-[var(--txt3)]">search</span>
+                      <input
+                        type="text"
+                        value={qbSelectedPatient ? `${qbSelectedPatient.firstName} ${qbSelectedPatient.lastName}` : qbPatientSearch}
+                        onChange={e => { setQbPatientSearch(e.target.value); setQbSelectedPatient(null); setQbDropdownOpen(true); }}
+                        onFocus={() => setQbDropdownOpen(true)}
+                        placeholder={a.selectPatient}
+                        className="flex-1 bg-transparent outline-none text-sm text-[var(--txt1)] placeholder:text-[var(--txt3)]"
+                      />
+                    </div>
+                    <AnimatePresence>
+                      {qbDropdownOpen && !qbSelectedPatient && qbPatientSearch.length >= 2 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.15 }}
+                          className="popup-panel absolute left-0 right-0 top-full mt-1 z-50 max-h-48 overflow-y-auto"
+                        >
+                          {qbPatients.length === 0 ? (
+                            <div>
+                              <p className="text-xs text-[var(--txt3)] px-3 py-2">{a.noPatients}</p>
+                              <button
+                                onClick={() => { setQbDropdownOpen(false); setCreatePatientModal(true); }}
+                                className="menu-item w-full text-start border-t border-[var(--border)] text-[var(--blue)]">
+                                <span className="material-symbols-outlined text-[14px]">person_add</span>
+                                {a.createPatient}
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {qbPatients.map(p => (
+                                <button key={p.id}
+                                  onClick={() => { setQbSelectedPatient(p); setQbPatientSearch(""); setQbDropdownOpen(false); }}
+                                  className="menu-item w-full text-start">
+                                  <span className="font-semibold text-[var(--txt1)]">{p.firstName} {p.lastName}</span>
+                                  <span className="text-xs text-[var(--txt3)] ms-2">{p.mrn}</span>
+                                </button>
+                              ))}
+                              <button
+                                onClick={() => { setQbDropdownOpen(false); setCreatePatientModal(true); }}
+                                className="menu-item w-full text-start border-t border-[var(--border)] text-[var(--blue)]">
+                                <span className="material-symbols-outlined text-[14px]">person_add</span>
+                                {a.createPatient}
+                              </button>
+                            </>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-              {/* Room + Notes row */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.common.room}</label>
-                  <input value={qbRoom} onChange={e => setQbRoom(e.target.value)} placeholder="e.g. Room 3"
-                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
+                  <div>
+                    <label className="form-label">{a.doctor} *</label>
+                    <select value={qbDoctor} onChange={e => setQbDoctor(e.target.value)} className="select-field">
+                      <option value="">{a.selectDoctor}</option>
+                      {doctors.map(d => (
+                        <option key={d.id} value={d.id}>
+                          {d.name || d.user?.name}{" — "}{d.departmentName || d.specialization}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">{a.apptType}</label>
+                    <select value={qbType} onChange={e => setQbType(e.target.value)} className="select-field">
+                      {Object.keys(TYPE_COLORS).map(k => <option key={k} value={k}>{k.replace("_"," ")}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="form-label">{t.common.room}</label>
+                      <input value={qbRoom} onChange={e => setQbRoom(e.target.value)} placeholder="e.g. Room 3" className="input-field" />
+                    </div>
+                    <div>
+                      <label className="form-label">{t.common.notes}</label>
+                      <input value={qbNotes} onChange={e => setQbNotes(e.target.value)} placeholder="..." className="input-field" />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.common.notes}</label>
-                  <input value={qbNotes} onChange={e => setQbNotes(e.target.value)} placeholder="..."
-                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
-                </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2 pt-1">
-                <button onClick={handleQuickBook} disabled={qbSaving}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#002045] text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60">
-                  {qbSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">event_available</span>}
+              <div className="modal-footer">
+                <button onClick={() => setQuickBook(null)} className="btn-secondary flex-1 justify-center">
+                  {t.common.cancel}
+                </button>
+                <button onClick={handleQuickBook} disabled={qbSaving} className="btn-primary flex-1 justify-center gap-2">
+                  {qbSaving
+                    ? <span className="spinner spinner-sm" />
+                    : <span className="material-symbols-outlined text-[18px]">event_available</span>}
                   {qbSaving ? a.saving : a.bookSlot}
                 </button>
                 <Link href="/appointments/new"
-                  className="flex items-center justify-center px-3 py-2.5 border border-[#c4c6cf] bg-white rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
+                  className="btn-ghost flex items-center justify-center px-3 py-2">
                   <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                 </Link>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── APPOINTMENT DETAIL PANEL ──────────────────────────────── */}
-      {selectedAppt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setSelectedAppt(null)}>
-          <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-[0_8px_32px_rgba(26,54,93,0.15)] w-full max-w-md mx-4 overflow-hidden"
-            onClick={e => e.stopPropagation()} role="dialog" aria-labelledby="appt-detail-title">
-            {/* Color bar by type */}
-            <div className="h-1.5" style={{ backgroundColor: (TYPE_COLORS[selectedAppt.type] ?? TYPE_COLORS.CONSULTATION).barHex }} />
+      <AnimatePresence>
+        {selectedAppt && (
+          <motion.div
+            className="modal-overlay"
+            variants={backdropAnim} initial="hidden" animate="visible" exit="exit"
+            onClick={() => setSelectedAppt(null)}
+          >
+            <motion.div
+              className="modal-panel max-w-md mx-4 overflow-hidden"
+              variants={modalAnim}
+              onClick={e => e.stopPropagation()}
+              role="dialog" aria-labelledby="appt-detail-title"
+            >
+              {/* Color bar by type */}
+              <div className="h-1.5" style={{ backgroundColor: (TYPE_COLORS[selectedAppt.type] ?? TYPE_COLORS.CONSULTATION).barHex }} />
 
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                    style={{ backgroundColor: (TYPE_COLORS[selectedAppt.type] ?? TYPE_COLORS.CONSULTATION).barHex }}>
-                    {selectedAppt.patientName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="avatar avatar-lg text-white text-sm font-bold flex-shrink-0"
+                      style={{ backgroundColor: (TYPE_COLORS[selectedAppt.type] ?? TYPE_COLORS.CONSULTATION).barHex }}>
+                      {selectedAppt.patientName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 id="appt-detail-title" className="font-bold text-[var(--txt1)] leading-tight">{selectedAppt.patientName}</h3>
+                      <p className="text-xs text-[var(--txt2)]">{selectedAppt.mrn && `MRN: ${selectedAppt.mrn} · `}{selectedAppt.type.replace("_"," ")}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 id="appt-detail-title" className="font-bold text-[#1a1c1e] leading-tight">{selectedAppt.patientName}</h3>
-                    <p className="text-xs text-[#74777f]">{selectedAppt.mrn && `MRN: ${selectedAppt.mrn} · `}{selectedAppt.type.replace("_"," ")}</p>
+                  <div className="flex items-center gap-1">
+                    {selectedAppt.isUrgent && (
+                      <span className="badge text-[10px] bg-[var(--err-bg)] text-[var(--err)]">URGENT</span>
+                    )}
+                    <button onClick={() => setSelectedAppt(null)} aria-label={t.common.close} className="btn-icon ms-1">
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  {selectedAppt.isUrgent && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fee2e2] text-[#991b1b]">URGENT</span>
-                  )}
-                  <button onClick={() => setSelectedAppt(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg transition-colors ms-1">
-                    <span className="material-symbols-outlined text-[20px] text-[#74777f]">close</span>
-                  </button>
-                </div>
-              </div>
 
-              {/* Status badge + change */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${STATUS_STYLES[selectedAppt.status]?.bg} ${STATUS_STYLES[selectedAppt.status]?.text}`}>
-                  {STATUS_STYLES[selectedAppt.status]?.label}
-                </span>
-                {selectedAppt.branchName && (
-                  <span className="text-[10px] text-[#1960a3] bg-[#eff6ff] px-2 py-1 rounded-full flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[12px]">location_on</span>
-                    {selectedAppt.branchName}
+                {/* Status + branch */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className={`badge ${STATUS_STYLES[selectedAppt.status]?.bg} ${STATUS_STYLES[selectedAppt.status]?.text}`}>
+                    {STATUS_STYLES[selectedAppt.status]?.label}
                   </span>
-                )}
-              </div>
-
-              {/* Info grid */}
-              <div className="grid grid-cols-2 gap-3 p-4 bg-[#f4f3f7] rounded-xl mb-4">
-                <InfoRow icon="calendar_today" label={t.common.date}
-                  value={parseLocal(selectedAppt.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} />
-                <InfoRow icon="schedule" label={t.common.time}
-                  value={parseLocal(selectedAppt.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
-                    + (selectedAppt.scheduledEnd ? ` – ${parseLocal(selectedAppt.scheduledEnd).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}` : "")} />
-                <InfoRow icon="stethoscope" label={a.doctor} value={selectedAppt.doctorName ?? "—"} />
-                <InfoRow icon="science" label={a.specialization} value={selectedAppt.specialization || "—"} />
-                {selectedAppt.room && <InfoRow icon="meeting_room" label={t.common.room} value={selectedAppt.room} />}
-                {selectedAppt.checkedInAt && <InfoRow icon="login" label={a.checkIn} value={parseLocal(selectedAppt.checkedInAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })} />}
-              </div>
-
-              {selectedAppt.reason && (
-                <div className="p-3 bg-[#eff6ff] rounded-xl mb-4">
-                  <p className="text-[10px] font-bold text-[#1960a3] uppercase tracking-wider mb-1">{t.common.reason}</p>
-                  <p className="text-sm text-[#1a1c1e]">{selectedAppt.reason}</p>
+                  {selectedAppt.branchName && (
+                    <span className="badge bg-[var(--blue-bg)] text-[var(--blue)] flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[12px]">location_on</span>
+                      {selectedAppt.branchName}
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {/* Quick status actions */}
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {selectedAppt.status === "SCHEDULED" && (
-                  <button onClick={() => updateStatus(selectedAppt.id, "CHECKED_IN")}
-                    className="flex items-center gap-1.5 bg-[#1960a3] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
-                    <span className="material-symbols-outlined text-[14px]">login</span>{a.checkIn}
-                  </button>
-                )}
-                {selectedAppt.status === "CHECKED_IN" && (
-                  <button onClick={() => updateStatus(selectedAppt.id, "IN_CONSULTATION")}
-                    className="flex items-center gap-1.5 bg-[#7c3aed] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
-                    <span className="material-symbols-outlined text-[14px]">stethoscope</span>{a.startConsultation}
-                  </button>
-                )}
-                {(selectedAppt.status === "IN_CONSULTATION" || selectedAppt.status === "CHECKED_IN") && (
-                  <button onClick={() => updateStatus(selectedAppt.id, "COMPLETED")}
-                    className="flex items-center gap-1.5 bg-[#0d9488] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
-                    <span className="material-symbols-outlined text-[14px]">task_alt</span>{a.markCompleted}
-                  </button>
-                )}
-                {!["COMPLETED", "CANCELLED", "NO_SHOW"].includes(selectedAppt.status) && (
-                  <button onClick={() => updateStatus(selectedAppt.id, "NO_SHOW")}
-                    className="flex items-center gap-1.5 border border-[#ba1a1a] text-[#ba1a1a] px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#fee2e2] transition-colors">
-                    <span className="material-symbols-outlined text-[14px]">person_off</span>{a.markNoShow}
-                  </button>
-                )}
-              </div>
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-3 p-4 bg-[var(--surface2)] rounded-xl mb-4">
+                  <InfoRow icon="calendar_today" label={t.common.date}
+                    value={parseLocal(selectedAppt.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} />
+                  <InfoRow icon="schedule" label={t.common.time}
+                    value={parseLocal(selectedAppt.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+                      + (selectedAppt.scheduledEnd ? ` – ${parseLocal(selectedAppt.scheduledEnd).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}` : "")} />
+                  <InfoRow icon="stethoscope" label={a.doctor} value={selectedAppt.doctorName ?? "—"} />
+                  <InfoRow icon="science" label={a.specialization} value={selectedAppt.specialization || "—"} />
+                  {selectedAppt.room && <InfoRow icon="meeting_room" label={t.common.room} value={selectedAppt.room} />}
+                  {selectedAppt.checkedInAt && (
+                    <InfoRow icon="login" label={a.checkIn}
+                      value={parseLocal(selectedAppt.checkedInAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })} />
+                  )}
+                </div>
 
-              {/* Action buttons */}
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => { setSelectedAppt(null); router.push(`/appointments/${selectedAppt.id}`); }}
-                  className="flex flex-col items-center gap-1 bg-[#002045] text-white py-2.5 rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity">
-                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                  {a.viewDetail}
-                </button>
-                <Link href={`/emr/${selectedAppt.patientId}`}
-                  className="flex flex-col items-center gap-1 border border-[#c4c6cf] py-2.5 rounded-xl text-xs font-semibold text-[#1a1c1e] hover:bg-[#f4f3f7] transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
-                  {a.openEMR}
-                </Link>
-                <button onClick={() => { setSelectedAppt(null); setQuickConsult({ appointmentId: selectedAppt.id, patientName: selectedAppt.patientName, doctorName: selectedAppt.doctorName ?? "" }); }}
-                  className="flex flex-col items-center gap-1 border border-[#c4c6cf] py-2.5 rounded-xl text-xs font-semibold text-[#1a1c1e] hover:bg-[#ccfbf1] hover:border-[#0d9488] hover:text-[#0d9488] transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">stethoscope</span>
-                  {a.quickConsult}
-                </button>
+                {selectedAppt.reason && (
+                  <div className="p-3 bg-[var(--blue-bg)] rounded-xl mb-4">
+                    <p className="text-[10px] font-bold text-[var(--blue)] uppercase tracking-wider mb-1">{t.common.reason}</p>
+                    <p className="text-sm text-[var(--txt1)]">{selectedAppt.reason}</p>
+                  </div>
+                )}
+
+                {/* Quick status actions */}
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {selectedAppt.status === "SCHEDULED" && (
+                    <button onClick={() => updateStatus(selectedAppt.id, "CHECKED_IN")}
+                      className="flex items-center gap-1.5 bg-[var(--blue)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+                      <span className="material-symbols-outlined text-[14px]">login</span>{a.checkIn}
+                    </button>
+                  )}
+                  {selectedAppt.status === "CHECKED_IN" && (
+                    <button onClick={() => updateStatus(selectedAppt.id, "IN_CONSULTATION")}
+                      className="flex items-center gap-1.5 bg-[#7c3aed] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+                      <span className="material-symbols-outlined text-[14px]">stethoscope</span>{a.startConsultation}
+                    </button>
+                  )}
+                  {(selectedAppt.status === "IN_CONSULTATION" || selectedAppt.status === "CHECKED_IN") && (
+                    <button onClick={() => updateStatus(selectedAppt.id, "COMPLETED")}
+                      className="flex items-center gap-1.5 bg-[var(--ok)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+                      <span className="material-symbols-outlined text-[14px]">task_alt</span>{a.markCompleted}
+                    </button>
+                  )}
+                  {!["COMPLETED", "CANCELLED", "NO_SHOW"].includes(selectedAppt.status) && (
+                    <button onClick={() => updateStatus(selectedAppt.id, "NO_SHOW")}
+                      className="flex items-center gap-1.5 border border-[var(--err)] text-[var(--err)] px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[var(--err-bg)] transition-colors">
+                      <span className="material-symbols-outlined text-[14px]">person_off</span>{a.markNoShow}
+                    </button>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button onClick={() => { setSelectedAppt(null); router.push(`/appointments/${selectedAppt.id}`); }}
+                    className="btn-primary flex-col gap-1 py-2.5 rounded-xl text-xs">
+                    <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                    {a.viewDetail}
+                  </button>
+                  <Link href={`/emr/${selectedAppt.patientId}`}
+                    className="btn-secondary flex-col gap-1 py-2.5 rounded-xl text-xs justify-center">
+                    <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
+                    {a.openEMR}
+                  </Link>
+                  <button
+                    onClick={() => { setSelectedAppt(null); setQuickConsult({ appointmentId: selectedAppt.id, patientName: selectedAppt.patientName, doctorName: selectedAppt.doctorName ?? "" }); }}
+                    className="btn-secondary flex-col gap-1 py-2.5 rounded-xl text-xs hover:border-[var(--ok)] hover:text-[var(--ok)] transition-colors">
+                    <span className="material-symbols-outlined text-[18px]">stethoscope</span>
+                    {a.quickConsult}
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Quick Consultation Modal ────────────────────────────── */}
       {quickConsult && (
@@ -1194,61 +1232,77 @@ export default function AppointmentsPage() {
       )}
 
       {/* ── Create Patient Modal ──────────────────────────────────── */}
-      {createPatientModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setCreatePatientModal(false)}>
-          <div className="bg-white rounded-2xl border border-[#e3e2e6] shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()} role="dialog" aria-labelledby="cp-title">
-            <div className="flex items-center justify-between mb-4">
-              <h3 id="cp-title" className="text-base font-bold text-[#1a1c1e]">{a.createPatient}</h3>
-              <button onClick={() => setCreatePatientModal(false)} aria-label={t.common.close} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg">
-                <span className="material-symbols-outlined text-[20px] text-[#74777f]">close</span>
-              </button>
-            </div>
-            {cpError && <p className="text-xs text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2 mb-3">{cpError}</p>}
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.firstName} *</label>
-                  <input value={cpForm.firstName} onChange={e => setCpForm(f => ({ ...f, firstName: e.target.value }))}
-                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.lastName} *</label>
-                  <input value={cpForm.lastName} onChange={e => setCpForm(f => ({ ...f, lastName: e.target.value }))}
-                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.common.phone} *</label>
-                <input type="tel" value={cpForm.phone} onChange={e => setCpForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.dob} *</label>
-                  <input type="date" value={cpForm.dob} onChange={e => setCpForm(f => ({ ...f, dob: e.target.value }))}
-                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#43474e] block mb-1">{t.patients.gender}</label>
-                  <select value={cpForm.gender} onChange={e => setCpForm(f => ({ ...f, gender: e.target.value }))}
-                    className="w-full border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
-                    <option value="MALE">{t.patients.male}</option>
-                    <option value="FEMALE">{t.patients.female}</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setCreatePatientModal(false)} className="flex-1 border border-[#c4c6cf] py-2 rounded-lg text-sm text-[#1a1c1e] hover:bg-[#f4f3f7]">{t.common.cancel}</button>
-                <button onClick={handleCreatePatient} disabled={cpSaving}
-                  className="flex-1 bg-[#002045] text-white py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2">
-                  {cpSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                  {cpSaving ? t.common.saving : t.common.create || "Create"}
+      <AnimatePresence>
+        {createPatientModal && (
+          <motion.div
+            className="modal-overlay z-[60]"
+            variants={backdropAnim} initial="hidden" animate="visible" exit="exit"
+            onClick={() => setCreatePatientModal(false)}
+          >
+            <motion.div
+              className="modal-panel max-w-sm mx-4"
+              variants={modalAnim}
+              onClick={e => e.stopPropagation()}
+              role="dialog" aria-labelledby="cp-title"
+            >
+              <div className="modal-header">
+                <h3 id="cp-title" className="text-base font-bold text-[var(--txt1)]">{a.createPatient}</h3>
+                <button onClick={() => setCreatePatientModal(false)} aria-label={t.common.close} className="btn-icon">
+                  <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+              <div className="modal-body">
+                {cpError && (
+                  <div className="alert alert-error mb-3">
+                    <span className="material-symbols-outlined text-[16px]">error</span>
+                    {cpError}
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="form-label">{t.patients.firstName} *</label>
+                      <input value={cpForm.firstName} onChange={e => setCpForm(f => ({ ...f, firstName: e.target.value }))} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="form-label">{t.patients.lastName} *</label>
+                      <input value={cpForm.lastName} onChange={e => setCpForm(f => ({ ...f, lastName: e.target.value }))} className="input-field" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="form-label">{t.common.phone} *</label>
+                    <input type="tel" value={cpForm.phone} onChange={e => setCpForm(f => ({ ...f, phone: e.target.value }))} className="input-field" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="form-label">{t.patients.dob} *</label>
+                      <input type="date" value={cpForm.dob} onChange={e => setCpForm(f => ({ ...f, dob: e.target.value }))} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="form-label">{t.patients.gender}</label>
+                      <select value={cpForm.gender} onChange={e => setCpForm(f => ({ ...f, gender: e.target.value }))} className="select-field">
+                        <option value="MALE">{t.patients.male}</option>
+                        <option value="FEMALE">{t.patients.female}</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button onClick={() => setCreatePatientModal(false)} className="btn-secondary flex-1 justify-center">
+                  {t.common.cancel}
+                </button>
+                <button onClick={handleCreatePatient} disabled={cpSaving} className="btn-primary flex-1 justify-center gap-2">
+                  {cpSaving ? <span className="spinner spinner-sm" /> : null}
+                  {cpSaving ? t.common.saving : (t.common.create || "Create")}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

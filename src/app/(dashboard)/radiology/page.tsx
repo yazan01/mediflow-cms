@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { formatDateTime } from "@/lib/utils";
@@ -8,12 +8,12 @@ import { apiFetch } from "@/lib/hooks/useDataFetch";
 import { ErrorBanner } from "@/components/ErrorBanner";
 
 const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
-  XRAY:  { bg: "bg-[#f4f3f7]",   text: "text-[#43474e]" },
-  CT:    { bg: "bg-[#d3e4ff]",   text: "text-[#00477f]" },
-  MRI:   { bg: "bg-[#dbeafe]",   text: "text-[#1960a3]" },
-  US:    { bg: "bg-[#ccfbf1]",   text: "text-[#0d9488]" },
+  XRAY:  { bg: "bg-[var(--surface2)]",   text: "text-[var(--txt2)]" },
+  CT:    { bg: "bg-[var(--blue-bg)]",   text: "text-[#00477f]" },
+  MRI:   { bg: "bg-[var(--blue-bg)]",   text: "text-[var(--blue)]" },
+  US:    { bg: "bg-[var(--ok-bg)]",   text: "text-[var(--ok)]" },
   ECHO:  { bg: "bg-[#fdf4ff]",   text: "text-[#9333ea]" },
-  DEXA:  { bg: "bg-[#fffbeb]",   text: "text-[#d97706]" },
+  DEXA:  { bg: "bg-[#fffbeb]",   text: "text-[var(--warn)]" },
   MAMMO: { bg: "bg-[#fce7f3]",   text: "text-[#be185d]" },
 };
 
@@ -39,7 +39,7 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
     return () => clearTimeout(t);
   }, [onClose]);
   return (
-    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[#ccfbf1] text-[#0d9488]" : "bg-[#ffdad6] text-[#ba1a1a]"}`}>
+    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--err-bg)] text-[var(--err)]"}`}>
       <span className="material-symbols-outlined text-[18px]">{type === "success" ? "check_circle" : "error"}</span>
       {message}
       <button onClick={onClose} className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
@@ -51,12 +51,12 @@ export default function RadiologyPage() {
   const { t } = useLanguage();
 
   const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-    PENDING:          { label: t.radiology.pendingStatus,    bg: "bg-[#e9e7eb]",   text: "text-[#43474e]" },
-    SCHEDULED:        { label: t.radiology.scheduledStatus,  bg: "bg-[#d3e4ff]",   text: "text-[#00477f]" },
+    PENDING:          { label: t.radiology.pendingStatus,    bg: "bg-[#e9e7eb]",   text: "text-[var(--txt2)]" },
+    SCHEDULED:        { label: t.radiology.scheduledStatus,  bg: "bg-[var(--blue-bg)]",   text: "text-[#00477f]" },
     IN_PROGRESS:      { label: t.radiology.inProgressStatus, bg: "bg-[#ffddba]",   text: "text-[#633f0f]" },
-    IMAGES_ACQUIRED:  { label: t.radiology.imagesAcquired,   bg: "bg-[#ccfbf1]",   text: "text-[#0d9488]" },
+    IMAGES_ACQUIRED:  { label: t.radiology.imagesAcquired,   bg: "bg-[var(--ok-bg)]",   text: "text-[var(--ok)]" },
     REPORT_READY:     { label: t.radiology.reportReady,      bg: "bg-[#d6e3ff]",   text: "text-[#002045]" },
-    CANCELLED:        { label: t.radiology.cancelledStatus,  bg: "bg-[#ffdad6]",   text: "text-[#ba1a1a]" },
+    CANCELLED:        { label: t.radiology.cancelledStatus,  bg: "bg-[var(--err-bg)]",   text: "text-[var(--err)]" },
   };
 
   const [orders, setOrders] = useState<RadiologyOrder[]>([]);
@@ -172,10 +172,10 @@ export default function RadiologyPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a1c1e]">{t.radiology.title}</h1>
-          <p className="text-sm text-[#74777f] mt-0.5">{t.radiology.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[var(--txt1)]">{t.radiology.title}</h1>
+          <p className="text-sm text-[var(--txt2)] mt-0.5">{t.radiology.subtitle}</p>
         </div>
-        <button className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
+        <button className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
           <span className="material-symbols-outlined text-[18px]">add</span>
           {t.radiology.newOrder}
         </button>
@@ -186,51 +186,51 @@ export default function RadiologyPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
-          { label: t.radiology.totalOrders,  value: stats.total,       icon: "image_search",  color: "text-[#1960a3]", bg: "bg-[#d3e4ff]" },
-          { label: t.radiology.pending,       value: stats.pending,     icon: "pending",        color: "text-[#74777f]", bg: "bg-[#f4f3f7]" },
-          { label: t.radiology.inProgress,    value: stats.inProgress,  icon: "hourglass",      color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
-          { label: t.radiology.reportsReady,  value: stats.reportReady, icon: "description",    color: "text-[#0d9488]", bg: "bg-[#ccfbf1]" },
-          { label: t.radiology.urgentStat,    value: stats.urgent,      icon: "emergency",      color: "text-[#ba1a1a]", bg: "bg-[#ffdad6]" },
+          { label: t.radiology.totalOrders,  value: stats.total,       icon: "image_search",  color: "text-[var(--blue)]", bg: "bg-[var(--blue-bg)]" },
+          { label: t.radiology.pending,       value: stats.pending,     icon: "pending",        color: "text-[var(--txt2)]", bg: "bg-[var(--surface2)]" },
+          { label: t.radiology.inProgress,    value: stats.inProgress,  icon: "hourglass",      color: "text-[var(--warn)]", bg: "bg-[#fffbeb]" },
+          { label: t.radiology.reportsReady,  value: stats.reportReady, icon: "description",    color: "text-[var(--ok)]", bg: "bg-[var(--ok-bg)]" },
+          { label: t.radiology.urgentStat,    value: stats.urgent,      icon: "emergency",      color: "text-[var(--err)]", bg: "bg-[var(--err-bg)]" },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex items-center gap-3 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div key={s.label} className="bg-white rounded-xl border border-[var(--border)] p-4 flex items-center gap-3 shadow-[var(--sh-sm)]">
             <div className={`p-2 ${s.bg} rounded-xl`}><span className={`material-symbols-outlined ${s.color} text-[20px]`}>{s.icon}</span></div>
             <div>
-              <p className="text-xl font-bold text-[#1a1c1e]">{s.value}</p>
-              <p className="text-xs text-[#74777f]">{s.label}</p>
+              <p className="text-xl font-bold text-[var(--txt1)]">{s.value}</p>
+              <p className="text-xs text-[var(--txt2)]">{s.label}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex flex-col sm:flex-row gap-3">
+      <div className="bg-white rounded-xl border border-[var(--border)] p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[#74777f] text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-[var(--txt2)] text-[18px]">search</span>
           <input
-            className="w-full bg-[#f4f3f7] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
+            className="w-full bg-[var(--surface2)] border-none rounded-lg py-2.5 ps-10 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20"
             placeholder={t.radiology.searchPlaceholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <select value={modalityFilter} onChange={(e) => { setModalityFilter(e.target.value); setPage(1); }} className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
+        <select value={modalityFilter} onChange={(e) => { setModalityFilter(e.target.value); setPage(1); }} className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
           <option value="ALL">{t.radiology.allModalities}</option>
           {["XRAY", "CT", "MRI", "US", "ECHO", "DEXA", "MAMMO"].map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="border border-[#c4c6cf] bg-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="border border-[var(--border2)] bg-[var(--surface)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20">
           <option value="ALL">{t.radiology.allStatuses}</option>
           {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>
                 {[t.radiology.orderId, t.radiology.patient, t.radiology.modality, t.radiology.study, t.radiology.priority, t.radiology.orderedBy, t.radiology.scheduled, t.radiology.status, t.radiology.actions].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6] whitespace-nowrap">{h}</th>
+                  <th key={h} className="text-left text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 bg-[var(--surface2)] border-b border-[var(--border)] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -239,64 +239,64 @@ export default function RadiologyPage() {
                 <tr><td colSpan={9} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin"></div>
-                    <p className="text-sm text-[#74777f]">{t.radiology.loading}</p>
+                    <p className="text-sm text-[var(--txt2)]">{t.radiology.loading}</p>
                   </div>
                 </td></tr>
               ) : orders.length === 0 ? (
                 <tr><td colSpan={9} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#74777f] text-2xl">image_search</span>
+                    <div className="w-14 h-14 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[var(--txt2)] text-2xl">image_search</span>
                     </div>
-                    <p className="text-sm font-semibold text-[#1a1c1e]">{t.radiology.noOrders}</p>
-                    <p className="text-xs text-[#74777f]">{search ? t.radiology.trySearch : t.radiology.noOrdersDesc}</p>
+                    <p className="text-sm font-semibold text-[var(--txt1)]">{t.radiology.noOrders}</p>
+                    <p className="text-xs text-[var(--txt2)]">{search ? t.radiology.trySearch : t.radiology.noOrdersDesc}</p>
                   </div>
                 </td></tr>
               ) : (
                 orders.map((order) => {
                   const st = STATUS_STYLES[order.status] ?? STATUS_STYLES.PENDING;
-                  const mod = MODALITY_STYLES[order.modality] ?? { bg: "bg-[#f4f3f7]", text: "text-[#43474e]" };
+                  const mod = MODALITY_STYLES[order.modality] ?? { bg: "bg-[var(--surface2)]", text: "text-[var(--txt2)]" };
                   const isCancelled = order.status === "CANCELLED";
                   return (
-                    <tr key={order.id} className="hover:bg-[#f4f3f7] transition-colors">
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                        <span className="text-xs font-mono font-semibold text-[#43474e] bg-[#f4f3f7] px-2 py-1 rounded">{order.id.slice(0, 8).toUpperCase()}</span>
+                    <tr key={order.id} className="hover:bg-[var(--surface2)] transition-colors">
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
+                        <span className="text-xs font-mono font-semibold text-[var(--txt2)] bg-[var(--surface2)] px-2 py-1 rounded">{order.id.slice(0, 8).toUpperCase()}</span>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                        <p className="text-sm font-semibold text-[#1a1c1e]">{order.patientName}</p>
-                        <p className="text-xs text-[#74777f]">{order.mrn}</p>
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
+                        <p className="text-sm font-semibold text-[var(--txt1)]">{order.patientName}</p>
+                        <p className="text-xs text-[var(--txt2)]">{order.mrn}</p>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${mod.bg} ${mod.text}`}>{order.modality}</span>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                        <p className="text-sm text-[#1a1c1e]">{order.study}</p>
-                        <p className="text-xs text-[#74777f]">{order.bodyPart}</p>
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
+                        <p className="text-sm text-[var(--txt1)]">{order.study}</p>
+                        <p className="text-xs text-[var(--txt2)]">{order.bodyPart}</p>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                          order.priority === "STAT" ? "bg-[#ba1a1a] text-white" :
+                          order.priority === "STAT" ? "bg-[var(--err)] text-white" :
                           order.priority === "URGENT" ? "bg-[#ffddba] text-[#633f0f]" :
-                          "bg-[#f4f3f7] text-[#74777f]"
+                          "bg-[var(--surface2)] text-[var(--txt2)]"
                         }`}>{order.priority}</span>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                        <p className="text-sm text-[#43474e]">{order.orderedBy}</p>
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
+                        <p className="text-sm text-[var(--txt2)]">{order.orderedBy}</p>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
-                        <p className="text-xs text-[#74777f]">{order.scheduledAt ? formatDateTime(order.scheduledAt) : "—"}</p>
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
+                        <p className="text-xs text-[var(--txt2)]">{order.scheduledAt ? formatDateTime(order.scheduledAt) : "—"}</p>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>{st.label}</span>
                       </td>
-                      <td className="px-5 py-4 border-b border-[#e3e2e6]">
+                      <td className="px-5 py-4 border-b border-[var(--border)]">
                         <div className="flex items-center gap-1">
                           {!isCancelled && (
                             <button
                               aria-label={t.radiology.enterReport}
                               title={t.radiology.enterReport}
                               onClick={() => { setReportText(order.report ?? ""); setReportModal(order); }}
-                              className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                              className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[18px]">description</span>
                             </button>
@@ -306,7 +306,7 @@ export default function RadiologyPage() {
                               aria-label={t.radiology.uploadImages}
                               title={t.radiology.uploadImages}
                               onClick={() => setUploadOrderId(order.id)}
-                              className="p-1.5 hover:bg-[#dbeafe] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                              className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[18px]">upload_file</span>
                             </button>
@@ -316,7 +316,7 @@ export default function RadiologyPage() {
                               aria-label={t.radiology.schedule}
                               title={t.radiology.schedule}
                               onClick={() => { setScheduleDateTime(order.scheduledAt ?? ""); setScheduleModal(order); }}
-                              className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                              className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[18px]">calendar_month</span>
                             </button>
@@ -325,7 +325,7 @@ export default function RadiologyPage() {
                             aria-label={t.radiology.printAction}
                             title={t.radiology.printAction}
                             onClick={() => window.print()}
-                            className="p-1.5 hover:bg-[#d3e4ff] rounded-lg text-[#74777f] hover:text-[#1960a3] transition-colors"
+                            className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">print</span>
                           </button>
@@ -334,7 +334,7 @@ export default function RadiologyPage() {
                               aria-label={t.radiology.cancelAction}
                               title={t.radiology.cancelAction}
                               onClick={() => setConfirmCancel(order.id)}
-                              className="p-1.5 hover:bg-[#ffdad6] rounded-lg text-[#74777f] hover:text-[#ba1a1a] transition-colors"
+                              className="p-1.5 hover:bg-[var(--err-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--err)] transition-colors"
                             >
                               <span className="material-symbols-outlined text-[18px]">cancel</span>
                             </button>
@@ -349,11 +349,11 @@ export default function RadiologyPage() {
           </table>
         </div>
         {Math.ceil(total / pageSize) > 1 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t border-[#e3e2e6] bg-[#faf9fd]">
-            <p className="text-xs text-[#74777f]">{t.radiology.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total}</p>
+          <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+            <p className="text-xs text-[var(--txt2)]">{t.radiology.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total}</p>
             <div className="flex items-center gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
-              <button onClick={() => setPage((p) => Math.min(Math.ceil(total / pageSize), p + 1))} disabled={page === Math.ceil(total / pageSize)} className="p-1.5 rounded-lg border border-[#c4c6cf] hover:bg-[#f4f3f7] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
+              <button onClick={() => setPage((p) => Math.min(Math.ceil(total / pageSize), p + 1))} disabled={page === Math.ceil(total / pageSize)} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
             </div>
           </div>
         )}
@@ -362,15 +362,15 @@ export default function RadiologyPage() {
       {/* Cancel confirmation modal */}
       {confirmCancel && (
         <div role="dialog" aria-modal="true" aria-labelledby="cancel-rad-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-[#ffdad6] flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-[28px] text-[#ba1a1a]">cancel</span>
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] max-w-sm w-full p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-[var(--err-bg)] flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[28px] text-[var(--err)]">cancel</span>
             </div>
-            <h2 id="cancel-rad-title" className="text-base font-bold text-[#1a1c1e] mb-2">{t.radiology.cancelAction}</h2>
-            <p className="text-sm text-[#74777f] mb-6">{t.radiology.confirmCancelOrder}</p>
+            <h2 id="cancel-rad-title" className="text-base font-bold text-[var(--txt1)] mb-2">{t.radiology.cancelAction}</h2>
+            <p className="text-sm text-[var(--txt2)] mb-6">{t.radiology.confirmCancelOrder}</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmCancel(null)} className="btn-secondary flex-1">{t.common.cancel}</button>
-              <button onClick={handleCancelOrder} className="flex-1 bg-[#ba1a1a] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.radiology.cancelAction}</button>
+              <button onClick={handleCancelOrder} className="flex-1 bg-[var(--err)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90">{t.radiology.cancelAction}</button>
             </div>
           </div>
         </div>
@@ -379,15 +379,15 @@ export default function RadiologyPage() {
       {/* Enter Report modal */}
       {reportModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="report-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
-              <h2 id="report-title" className="text-base font-bold text-[#1a1c1e]">{t.radiology.reportTitle}</h2>
-              <button aria-label={t.common.close} onClick={() => setReportModal(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] max-w-xl w-full">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+              <h2 id="report-title" className="text-base font-bold text-[var(--txt1)]">{t.radiology.reportTitle}</h2>
+              <button aria-label={t.common.close} onClick={() => setReportModal(null)} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg text-[var(--txt2)]">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-[#74777f] mb-3">{reportModal.patientName} · {reportModal.modality} — {reportModal.study}</p>
+              <p className="text-sm text-[var(--txt2)] mb-3">{reportModal.patientName} · {reportModal.modality} — {reportModal.study}</p>
               <textarea
                 className="input-field w-full min-h-[160px] resize-y"
                 placeholder={t.radiology.reportPlaceholder}
@@ -408,16 +408,16 @@ export default function RadiologyPage() {
       {/* Schedule modal */}
       {scheduleModal && (
         <div role="dialog" aria-modal="true" aria-labelledby="schedule-title" className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
-              <h2 id="schedule-title" className="text-base font-bold text-[#1a1c1e]">{t.radiology.scheduleTitle}</h2>
-              <button aria-label={t.common.close} onClick={() => setScheduleModal(null)} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] max-w-sm w-full">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+              <h2 id="schedule-title" className="text-base font-bold text-[var(--txt1)]">{t.radiology.scheduleTitle}</h2>
+              <button aria-label={t.common.close} onClick={() => setScheduleModal(null)} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg text-[var(--txt2)]">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-[#74777f] mb-3">{scheduleModal.patientName} · {scheduleModal.modality}</p>
-              <label className="block text-xs font-semibold text-[#43474e] mb-1">{t.radiology.scheduleDateTime}</label>
+              <p className="text-sm text-[var(--txt2)] mb-3">{scheduleModal.patientName} · {scheduleModal.modality}</p>
+              <label className="block text-xs font-semibold text-[var(--txt2)] mb-1">{t.radiology.scheduleDateTime}</label>
               <input
                 type="datetime-local"
                 className="input-field w-full"
@@ -527,18 +527,18 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-lg overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
-          <h2 id="img-upload-title" className="text-base font-bold text-[#1a1c1e]">{t.radiology.uploadImages}</h2>
-          <button onClick={onClose} aria-label={t.common.close} className="p-1.5 hover:bg-[#f4f3f7] rounded-lg text-[#74777f]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+          <h2 id="img-upload-title" className="text-base font-bold text-[var(--txt1)]">{t.radiology.uploadImages}</h2>
+          <button onClick={onClose} aria-label={t.common.close} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg text-[var(--txt2)]">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         <div className="p-6 space-y-4">
           {error && (
-            <div className="flex items-center gap-2 text-sm text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-[var(--err)] bg-[var(--err-bg)] rounded-lg px-3 py-2">
               <span className="material-symbols-outlined text-base">error</span>
               {error}
             </div>
@@ -551,12 +551,12 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
             onDragLeave={() => setDragOver(false)}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-              dragOver ? "border-[#1960a3] bg-[#d3e4ff]/30" : "border-[#c4c6cf] hover:border-[#1960a3] hover:bg-[#f4f3f7]"
+              dragOver ? "border-[#1960a3] bg-[var(--blue-bg)]/30" : "border-[var(--border2)] hover:border-[#1960a3] hover:bg-[var(--surface2)]"
             }`}
           >
-            <span className="material-symbols-outlined text-4xl text-[#74777f] mb-2 block">cloud_upload</span>
-            <p className="text-sm font-semibold text-[#1a1c1e]">{t.radiology.uploadDrag}</p>
-            <p className="text-xs text-[#74777f] mt-1">{t.radiology.uploadFormats}</p>
+            <span className="material-symbols-outlined text-4xl text-[var(--txt2)] mb-2 block">cloud_upload</span>
+            <p className="text-sm font-semibold text-[var(--txt1)]">{t.radiology.uploadDrag}</p>
+            <p className="text-xs text-[var(--txt2)] mt-1">{t.radiology.uploadFormats}</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -570,13 +570,13 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
           {/* Upload progress */}
           {uploading && (
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs text-[#74777f]">
+              <div className="flex items-center justify-between text-xs text-[var(--txt2)]">
                 <span>{t.radiology.uploading}</span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="h-1.5 bg-[#e3e2e6] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#1960a3] rounded-full transition-all duration-300"
+                  className="h-full bg-[var(--blue)] rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
@@ -591,25 +591,25 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
               </div>
             )}
             {!loading && images.length === 0 && (
-              <p className="text-center text-sm text-[#74777f] py-4">{t.radiology.noImages}</p>
+              <p className="text-center text-sm text-[var(--txt2)] py-4">{t.radiology.noImages}</p>
             )}
             {images.map((img) => (
-              <div key={img.id} className="flex items-center gap-3 bg-[#f4f3f7] rounded-lg px-3 py-2">
-                <span className="material-symbols-outlined text-[20px] text-[#1960a3] flex-shrink-0">
+              <div key={img.id} className="flex items-center gap-3 bg-[var(--surface2)] rounded-lg px-3 py-2">
+                <span className="material-symbols-outlined text-[20px] text-[var(--blue)] flex-shrink-0">
                   {img.filename.endsWith(".pdf") ? "picture_as_pdf" : "image"}
                 </span>
                 <a
                   href={img.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 text-sm text-[#1a1c1e] font-medium truncate hover:text-[#1960a3] hover:underline"
+                  className="flex-1 text-sm text-[var(--txt1)] font-medium truncate hover:text-[var(--blue)] hover:underline"
                 >
                   {img.filename}
                 </a>
                 <button
                   aria-label={t.radiology.deleteImage}
                   onClick={() => handleDelete(img.id)}
-                  className="p-1 hover:bg-[#ffdad6] rounded text-[#74777f] hover:text-[#ba1a1a] transition-colors flex-shrink-0"
+                  className="p-1 hover:bg-[var(--err-bg)] rounded text-[var(--txt2)] hover:text-[var(--err)] transition-colors flex-shrink-0"
                 >
                   <span className="material-symbols-outlined text-[16px]">delete</span>
                 </button>
@@ -618,7 +618,7 @@ function ImageUploadModal({ orderId, onClose }: { orderId: string; onClose: () =
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-[#e3e2e6] flex justify-end">
+        <div className="px-6 py-4 border-t border-[var(--border)] flex justify-end">
           <button onClick={onClose} className="btn-secondary">{t.common.close}</button>
         </div>
       </div>

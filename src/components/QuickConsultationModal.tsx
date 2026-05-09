@@ -62,26 +62,26 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <div>
-            <h2 id="qc-title" className="text-base font-semibold text-[#1a1c1e]">{t.appointments.quickConsult}</h2>
-            <p className="text-xs text-[#74777f] mt-0.5">{patientName} · {doctorName}</p>
+            <h2 id="qc-title" className="text-base font-semibold text-[var(--txt1)]">{t.appointments.quickConsult}</h2>
+            <p className="text-xs text-[var(--txt2)] mt-0.5">{patientName} · {doctorName}</p>
           </div>
-          <button onClick={onClose} aria-label={t.common.close} className="p-2 rounded-lg hover:bg-[#f4f3f7] text-[#74777f]">
+          <button onClick={onClose} aria-label={t.common.close} className="p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--txt2)]">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
         <div className="p-6 space-y-4">
           {error && (
-            <div className="flex items-center gap-2 text-sm text-[#ba1a1a] bg-[#ffdad6] rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-[var(--err)] bg-[var(--err-bg)] rounded-lg px-3 py-2">
               <span className="material-symbols-outlined text-base">error</span>
               {error}
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium text-[#43474e] mb-1">
-              {t.emr.chiefComplaint} <span className="text-[#ba1a1a]">*</span>
+            <label className="block text-sm font-medium text-[var(--txt2)] mb-1">
+              {t.emr.chiefComplaint} <span className="text-[var(--err)]">*</span>
             </label>
             <textarea
               value={chiefComplaint}
@@ -93,7 +93,7 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#43474e] mb-1">{t.emr.assessment}</label>
+            <label className="block text-sm font-medium text-[var(--txt2)] mb-1">{t.emr.assessment}</label>
             <textarea
               value={assessment}
               onChange={(e) => setAssessment(e.target.value)}
@@ -103,7 +103,7 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#43474e] mb-1">{t.emr.plan}</label>
+            <label className="block text-sm font-medium text-[var(--txt2)] mb-1">{t.emr.plan}</label>
             <textarea
               value={plan}
               onChange={(e) => setPlan(e.target.value)}
@@ -114,7 +114,7 @@ export function QuickConsultationModal({ appointmentId, patientName, doctorName,
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-[#e3e2e6] flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-[var(--border)] flex justify-end gap-3">
           <button onClick={onClose} className="btn-secondary" disabled={saving}>{t.common.cancel}</button>
           <button onClick={handleSave} className="btn-primary" disabled={saving}>
             {saving ? (

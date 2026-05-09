@@ -120,8 +120,8 @@ export function GlobalSearch({ onClose }: Props) {
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#e3e2e6]">
-          <span className="material-symbols-outlined text-[#74777f] text-xl flex-shrink-0">search</span>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
+          <span className="material-symbols-outlined text-[var(--txt2)] text-xl flex-shrink-0">search</span>
           <input
             ref={inputRef}
             type="text"
@@ -129,16 +129,16 @@ export function GlobalSearch({ onClose }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t.common.searchSystemPlaceholder}
-            className="flex-1 text-[#1a1c1e] placeholder-[#74777f] bg-transparent outline-none text-sm"
+            className="flex-1 text-[var(--txt1)] placeholder-[#74777f] bg-transparent outline-none text-sm"
             aria-label={t.common.searchLabel}
             role="combobox"
             aria-expanded={results.length > 0}
             aria-autocomplete="list"
           />
           {loading && (
-            <span className="animate-spin material-symbols-outlined text-[#74777f] text-lg">progress_activity</span>
+            <span className="animate-spin material-symbols-outlined text-[var(--txt2)] text-lg">progress_activity</span>
           )}
-          <button onClick={onClose} aria-label={t.common.closeSearch} className="text-[#74777f] hover:text-[#1a1c1e]">
+          <button onClick={onClose} aria-label={t.common.closeSearch} className="text-[var(--txt2)] hover:text-[var(--txt1)]">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -147,13 +147,13 @@ export function GlobalSearch({ onClose }: Props) {
         <div className="max-h-[60vh] overflow-y-auto" role="listbox">
           {!query && history.length > 0 && (
             <div className="p-4">
-              <p className="text-xs text-[#74777f] font-medium mb-2">{t.common.recentSearches}</p>
+              <p className="text-xs text-[var(--txt2)] font-medium mb-2">{t.common.recentSearches}</p>
               <div className="flex flex-wrap gap-2">
                 {history.map((h) => (
                   <button
                     key={h}
                     onClick={() => setQuery(h)}
-                    className="flex items-center gap-1.5 text-xs text-[#43474e] bg-[#f0f4ff] rounded-full px-3 py-1.5 hover:bg-[#dbeafe] transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-[var(--txt2)] bg-[#f0f4ff] rounded-full px-3 py-1.5 hover:bg-[#dbeafe] transition-colors"
                   >
                     <span className="material-symbols-outlined text-sm">history</span>
                     {h}
@@ -164,7 +164,7 @@ export function GlobalSearch({ onClose }: Props) {
           )}
 
           {query && results.length === 0 && !loading && (
-            <div className="p-8 text-center text-[#74777f]">
+            <div className="p-8 text-center text-[var(--txt2)]">
               <span className="material-symbols-outlined text-4xl mb-2 block">search_off</span>
               <p className="text-sm">{t.common.noResultsFor} &ldquo;{query}&rdquo;</p>
             </div>
@@ -172,8 +172,8 @@ export function GlobalSearch({ onClose }: Props) {
 
           {Object.entries(grouped).map(([type, items]) => (
             <div key={type}>
-              <div className="px-4 py-2 bg-[#faf9fd] border-b border-[#e3e2e6]">
-                <span className="text-xs font-semibold text-[#74777f] uppercase tracking-wide">
+              <div className="px-4 py-2 bg-[#faf9fd] border-b border-[var(--border)]">
+                <span className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wide">
                   {typeLabels[type] ?? type}
                 </span>
               </div>
@@ -191,15 +191,15 @@ export function GlobalSearch({ onClose }: Props) {
                     }`}
                   >
                     <span className={`material-symbols-outlined text-xl flex-shrink-0 ${
-                      idx === active ? "text-[#1960a3]" : "text-[#74777f]"
+                      idx === active ? "text-[var(--blue)]" : "text-[var(--txt2)]"
                     }`}>
                       {TYPE_ICONS[r.type] ?? "article"}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#1a1c1e] truncate">{r.title}</p>
-                      <p className="text-xs text-[#74777f] truncate">{r.subtitle}</p>
+                      <p className="text-sm font-medium text-[var(--txt1)] truncate">{r.title}</p>
+                      <p className="text-xs text-[var(--txt2)] truncate">{r.subtitle}</p>
                     </div>
-                    <span className="material-symbols-outlined text-sm text-[#74777f]">arrow_forward</span>
+                    <span className="material-symbols-outlined text-sm text-[var(--txt2)]">arrow_forward</span>
                   </button>
                 );
               })}
@@ -207,15 +207,15 @@ export function GlobalSearch({ onClose }: Props) {
           ))}
         </div>
 
-        <div className="px-4 py-2 bg-[#faf9fd] border-t border-[#e3e2e6] flex items-center gap-4 text-xs text-[#74777f]">
+        <div className="px-4 py-2 bg-[#faf9fd] border-t border-[var(--border)] flex items-center gap-4 text-xs text-[var(--txt2)]">
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">↑↓</kbd> {t.common.kbNavigate}
+            <kbd className="rounded border border-[var(--border)] px-1 font-mono">↑↓</kbd> {t.common.kbNavigate}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">Enter</kbd> {t.common.kbSelect}
+            <kbd className="rounded border border-[var(--border)] px-1 font-mono">Enter</kbd> {t.common.kbSelect}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-[#e3e2e6] px-1 font-mono">Esc</kbd> {t.common.kbClose}
+            <kbd className="rounded border border-[var(--border)] px-1 font-mono">Esc</kbd> {t.common.kbClose}
           </span>
         </div>
       </div>

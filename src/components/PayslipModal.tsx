@@ -64,14 +64,14 @@ export function PayslipModal({ payrollId, onClose }: Props) {
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden print:shadow-none print:rounded-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6] print:border-b-2 print:border-[#002045]">
-          <h2 id="payslip-title" className="text-base font-bold text-[#1a1c1e]">{t.hr.payslip}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] print:border-b-2 print:border-[#002045]">
+          <h2 id="payslip-title" className="text-base font-bold text-[var(--txt1)]">{t.hr.payslip}</h2>
           <div className="flex gap-2 print:hidden">
             <button onClick={() => window.print()} className="btn-secondary text-sm flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base">print</span>
               {t.hr.print}
             </button>
-            <button onClick={onClose} aria-label={t.common.close} className="p-2 rounded-lg hover:bg-[#f4f3f7] text-[#74777f]">
+            <button onClick={onClose} aria-label={t.common.close} className="p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--txt2)]">
               <span className="material-symbols-outlined">close</span>
             </button>
           </div>
@@ -80,17 +80,17 @@ export function PayslipModal({ payrollId, onClose }: Props) {
         <div className="p-6 space-y-4">
           {loading && (
             <div className="flex justify-center py-8">
-              <span className="material-symbols-outlined animate-spin text-[#1960a3] text-3xl">progress_activity</span>
+              <span className="material-symbols-outlined animate-spin text-[var(--blue)] text-3xl">progress_activity</span>
             </div>
           )}
-          {error && <p className="text-center text-sm text-[#ba1a1a]">{error}</p>}
+          {error && <p className="text-center text-sm text-[var(--err)]">{error}</p>}
           {data && (
             <>
               {/* Employee info */}
               <div className="bg-[#f0f4ff] rounded-xl p-4 space-y-1">
-                <p className="font-semibold text-[#1a1c1e]">{data.employeeName}</p>
-                <p className="text-sm text-[#43474e]">{data.jobTitle} · {data.department}</p>
-                <p className="text-xs text-[#74777f]">
+                <p className="font-semibold text-[var(--txt1)]">{data.employeeName}</p>
+                <p className="text-sm text-[var(--txt2)]">{data.jobTitle} · {data.department}</p>
+                <p className="text-xs text-[var(--txt2)]">
                   {getMonthName(data.month, data.year)} {data.year}
                 </p>
               </div>
@@ -102,7 +102,7 @@ export function PayslipModal({ payrollId, onClose }: Props) {
                 {data.bonus > 0 && <Row label={t.hr.bonus} value={data.bonus} positive />}
                 {data.overtimePay > 0 && <Row label={t.hr.overtimePay} value={data.overtimePay} positive />}
 
-                <div className="border-t border-[#e3e2e6] pt-2 mt-2">
+                <div className="border-t border-[var(--border)] pt-2 mt-2">
                   <Row label={t.hr.grossSalary} value={data.grossSalary} bold />
                 </div>
 
@@ -118,7 +118,7 @@ export function PayslipModal({ payrollId, onClose }: Props) {
               </div>
 
               {data.notes && (
-                <p className="text-xs text-[#74777f] border-t border-[#e3e2e6] pt-3">{data.notes}</p>
+                <p className="text-xs text-[var(--txt2)] border-t border-[var(--border)] pt-3">{data.notes}</p>
               )}
             </>
           )}
@@ -131,10 +131,10 @@ export function PayslipModal({ payrollId, onClose }: Props) {
 function Row({ label, value, positive, negative, bold, large }: {
   label: string; value: number; positive?: boolean; negative?: boolean; bold?: boolean; large?: boolean;
 }) {
-  const colorClass = negative ? "text-[#ba1a1a]" : positive ? "text-[#0d9488]" : "text-[#1a1c1e]";
+  const colorClass = negative ? "text-[var(--err)]" : positive ? "text-[var(--ok)]" : "text-[var(--txt1)]";
   return (
     <div className={`flex justify-between items-center ${bold ? "font-semibold" : ""} ${large ? "text-base" : ""}`}>
-      <span className="text-[#43474e]">{label}</span>
+      <span className="text-[var(--txt2)]">{label}</span>
       <span className={colorClass}>{Math.abs(value).toFixed(3)}</span>
     </div>
   );
