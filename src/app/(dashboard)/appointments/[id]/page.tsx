@@ -40,6 +40,9 @@ export default function AppointmentDetailPage() {
   const [appt, setAppt]                   = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading]             = useState(true);
   const [updating, setUpdating]           = useState(false);
+  const [actionError, setActionError]     = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [startingConsult, setStartingConsult] = useState(false);
   const [consultError, setConsultError]   = useState("");
   const [reminderResult, setReminderResult] = useState<{ sent: boolean; phone: string; message: string; configured: boolean } | null>(null);
@@ -57,27 +60,48 @@ export default function AppointmentDetailPage() {
   async function sendReminder() {
     setSendingReminder(true);
     setReminderResult(null);
+    setActionError("");
     try {
-      const data = await apiFetch<Record<string, unknown>>(`/api/appointments/${id}/remind`, { method: "POST" });
+      const data = await apiFetch<{ sent: boolean; phone: string; message: string; configured: boolean }>(
+        `/api/appointments/${id}/remind`,
+        { method: "POST" }
+      );
       setReminderResult(data);
-    } catch { /* ignore */ }
-    finally { setSendingReminder(false); }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t.common.networkError);
+    } finally {
+      setSendingReminder(false);
+    }
   }
 
   async function updateStatus(status: string) {
     setUpdating(true);
+    setActionError("");
+    setActionSuccess("");
     const body: Record<string, unknown> = { status };
     if (status === "CHECKED_IN") body.checkedInAt = new Date().toISOString();
     if (status === "COMPLETED")  body.completedAt  = new Date().toISOString();
     if (status === "CANCELLED")  body.cancelledAt  = new Date().toISOString();
     try {
-      const updated = await apiFetch<typeof appt>(`/api/appointments/${id}`, {
+      const updated = await apiFetch<Record<string, unknown>>(`/api/appointments/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       });
       setAppt(updated);
-    } catch { /* handled by existing error state */ }
-    setUpdating(false);
+      const labels: Record<string, string> = {
+        CHECKED_IN:      a.checkedIn,
+        IN_CONSULTATION: a.inConsultation,
+        COMPLETED:       a.completed,
+        NO_SHOW:         a.noShow,
+        CANCELLED:       a.cancelled,
+      };
+      setActionSuccess(`${a.statusUpdated ?? "Status updated to"} ${labels[status] ?? status}`);
+      setTimeout(() => setActionSuccess(""), 4000);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t.common.networkError);
+    } finally {
+      setUpdating(false);
+    }
   }
 
   async function startConsultation() {
@@ -293,49 +317,114 @@ export default function AppointmentDetailPage() {
           </div>
 
           {/* ── Actions ── */}
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
-            <h2 className="text-sm font-semibold text-[#43474e] uppercase tracking-wider mb-4">{t.common.actions}</h2>
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-6">
+            <h2 className="text-sm font-semibold text-[var(--txt2)] uppercase tracking-wider mb-4">{t.common.actions}</h2>
+
+            {/* Error / Success banners */}
+            {actionError && (
+              <div className="flex items-center gap-2 bg-[var(--err-bg)] text-[var(--err)] px-4 py-3 rounded-xl text-sm font-semibold mb-4">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                {actionError}
+                <button onClick={() => setActionError("")} className="ms-auto opacity-60 hover:opacity-100">
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            )}
+            {actionSuccess && (
+              <div className="flex items-center gap-2 bg-[var(--ok-bg)] text-[var(--ok)] px-4 py-3 rounded-xl text-sm font-semibold mb-4">
+                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                {actionSuccess}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-3">
               {status === "SCHEDULED" && (
-                <ActionBtn icon="login" label={a.checkIn} color="bg-[#0d9488] text-white" onClick={() => updateStatus("CHECKED_IN")} loading={updating} />
+                <ActionBtn icon="login" label={a.checkIn} color="bg-[var(--ok)] text-white" onClick={() => updateStatus("CHECKED_IN")} loading={updating} />
               )}
               {status === "CHECKED_IN" && (
-                <ActionBtn icon="stethoscope" label={a.startConsultation} color="bg-[#1960a3] text-white" onClick={() => updateStatus("IN_CONSULTATION")} loading={updating} />
+                <ActionBtn icon="stethoscope" label={a.startConsultation} color="bg-[var(--blue)] text-white" onClick={() => updateStatus("IN_CONSULTATION")} loading={updating} />
               )}
               {(status === "IN_CONSULTATION" || status === "CHECKED_IN") && (
-                <ActionBtn icon="check_circle" label={a.markCompleted} color="bg-[#002045] text-white" onClick={() => updateStatus("COMPLETED")} loading={updating} />
+                <ActionBtn icon="check_circle" label={a.markCompleted} color="bg-[var(--brand)] text-white" onClick={() => updateStatus("COMPLETED")} loading={updating} />
               )}
               {status === "SCHEDULED" && (
-                <ActionBtn icon="person_off" label={a.markNoShow} color="bg-[#e3e2e6] text-[#43474e]" onClick={() => updateStatus("NO_SHOW")} loading={updating} />
+                <ActionBtn icon="person_off" label={a.markNoShow} color="bg-[var(--surface2)] text-[var(--txt2)]" onClick={() => updateStatus("NO_SHOW")} loading={updating} />
               )}
               {!["CANCELLED", "COMPLETED", "NO_SHOW"].includes(status) && (
-                <ActionBtn icon="cancel" label={a.cancelAppt} color="bg-[#ffdad6] text-[#ba1a1a]" onClick={() => updateStatus("CANCELLED")} loading={updating} />
+                <ActionBtn icon="cancel" label={a.cancelAppt} color="bg-[var(--err-bg)] text-[var(--err)]" onClick={() => setConfirmCancel(true)} loading={false} />
               )}
-              <ActionBtn icon="person" label={a.patientProfile} color="bg-[#f4f3f7] text-[#43474e]" onClick={() => router.push(`/patients/${appt.patientId}`)} />
+              <ActionBtn icon="person" label={a.patientProfile} color="bg-[var(--surface2)] text-[var(--txt2)]" onClick={() => router.push(`/patients/${appt.patientId}`)} />
               {!["CANCELLED", "COMPLETED", "NO_SHOW"].includes(status) && (
-                <ActionBtn icon="chat" label={sendingReminder ? "Sending..." : "WhatsApp Reminder"} color="bg-[#d4f7dc] text-[#1a7d3a]" onClick={sendReminder} loading={sendingReminder} />
+                <ActionBtn
+                  icon="chat"
+                  label={sendingReminder ? (t.common.loading ?? "Sending...") : "WhatsApp Reminder"}
+                  color="bg-[#d4f7dc] text-[#1a7d3a]"
+                  onClick={sendReminder}
+                  loading={sendingReminder}
+                />
               )}
             </div>
 
-            {/* Reminder result panel */}
+            {/* Cancel confirmation inline */}
+            {confirmCancel && (
+              <div className="mt-4 p-4 bg-[var(--err-bg)] rounded-xl border border-[var(--err)]/20">
+                <p className="text-sm font-semibold text-[var(--err)] mb-3">
+                  {a.confirmCancel ?? "Are you sure you want to cancel this appointment?"}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => { setConfirmCancel(false); await updateStatus("CANCELLED"); }}
+                    disabled={updating}
+                    className="flex items-center gap-1.5 bg-[var(--err)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
+                  >
+                    {updating
+                      ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : <span className="material-symbols-outlined text-[16px]">cancel</span>}
+                    {a.cancelAppt}
+                  </button>
+                  <button
+                    onClick={() => setConfirmCancel(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-[var(--border2)] text-[var(--txt2)] hover:bg-[var(--surface2)] transition-colors"
+                  >
+                    {t.common.cancel}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* WhatsApp Reminder result panel */}
             {reminderResult && (
-              <div className={`mt-4 p-3 rounded-xl border text-sm ${reminderResult.sent ? "bg-[#d4f7dc] border-[#1a7d3a]/20 text-[#1a7d3a]" : "bg-[#f0fdf4] border-[#1a7d3a]/20 text-[#1a1c1e]"}`}>
+              <div className={`mt-4 p-4 rounded-xl border text-sm ${
+                reminderResult.sent
+                  ? "bg-[#d4f7dc] border-[#1a7d3a]/20 text-[#1a7d3a]"
+                  : "bg-[var(--surface2)] border-[var(--border)] text-[var(--txt1)]"
+              }`}>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">{reminderResult.sent ? "check_circle" : "chat"}</span>
+                  <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5">
+                    {reminderResult.sent ? "check_circle" : "chat"}
+                  </span>
                   <div className="flex-1 min-w-0">
                     {reminderResult.sent ? (
                       <p className="font-semibold">WhatsApp reminder sent to {reminderResult.phone} ✓</p>
                     ) : (
                       <>
-                        <p className="font-semibold text-[#1a7d3a]">
-                          {reminderResult.configured ? "Send failed — message preview:" : "WhatsApp not configured — message preview:"}
+                        <p className="font-semibold text-[var(--txt1)]">
+                          {reminderResult.configured
+                            ? "Send failed — message preview:"
+                            : "WhatsApp not configured — message preview:"}
                         </p>
-                        <p className="text-xs text-[#43474e] mt-1 italic">To: {reminderResult.phone}</p>
-                        <pre className="text-xs text-[#43474e] mt-1.5 bg-white/70 p-2.5 rounded-lg whitespace-pre-wrap font-sans leading-relaxed">{reminderResult.message}</pre>
+                        <p className="text-xs text-[var(--txt2)] mt-1 italic">To: {reminderResult.phone}</p>
+                        <pre className="text-xs text-[var(--txt2)] mt-1.5 bg-[var(--surface)]/70 p-2.5 rounded-lg whitespace-pre-wrap font-sans leading-relaxed border border-[var(--border)]">
+                          {reminderResult.message}
+                        </pre>
                       </>
                     )}
                   </div>
-                  <button onClick={() => setReminderResult(null)} className="flex-shrink-0 text-[#74777f] hover:text-[#1a1c1e]">
+                  <button
+                    onClick={() => setReminderResult(null)}
+                    aria-label="Close"
+                    className="flex-shrink-0 text-[var(--txt3)] hover:text-[var(--txt1)]"
+                  >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 </div>
