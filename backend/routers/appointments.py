@@ -277,6 +277,7 @@ def update_appointment(
             )
 
     allowed_fields = {"status", "notes", "room", "checkedInAt", "completedAt", "cancelledAt", "cancelReason"}
+    datetime_fields = {"checkedInAt", "completedAt", "cancelledAt"}
     old_status = appt.status
     try:
         for field in allowed_fields:
@@ -284,6 +285,8 @@ def update_appointment(
                 value = body[field]
                 if field in {"notes", "room", "cancelReason"} and isinstance(value, str):
                     value = sanitize_string(value)
+                elif field in datetime_fields and isinstance(value, str):
+                    value = _parse_dt(value.replace("Z", "+00:00"), field)
                 setattr(appt, field, value)
         db.commit()
         db.refresh(appt)
