@@ -431,18 +431,18 @@ export default function BillingPage() {
                       {/* Actions */}
                       <td className="table-cell text-end" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5">
-                          <Link href={`/billing/${inv.id}`} className="btn-icon btn-sm" title={t.billing.viewInvoice}>
+                          <Link href={`/billing/${inv.id}`} className="btn-icon btn-sm" title={t.billing.viewInvoice} aria-label={t.billing.viewInvoice}>
                             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>visibility</span>
                           </Link>
                           <button
                             onClick={() => printDocument(`/print/invoice/${inv.id}`)}
-                            className="btn-icon btn-sm" title={t.billing.printInvoice}
+                            className="btn-icon btn-sm" title={t.billing.printInvoice} aria-label={t.billing.printInvoice}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>print</span>
                           </button>
                           {inv.status !== "PAID" && inv.status !== "CANCELLED" && (
                             <Link href={`/billing/${inv.id}`} className="btn-icon btn-sm"
-                              title={t.billing.recordPayment}
+                              title={t.billing.recordPayment} aria-label={t.billing.recordPayment}
                               style={{ color: "var(--teal)" }}>
                               <span className="material-symbols-outlined" style={{ fontSize: 17 }}>payments</span>
                             </Link>
@@ -467,7 +467,7 @@ export default function BillingPage() {
             </p>
             <div className="pagination">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="pagination-btn">
+                className="pagination-btn" aria-label="Previous page">
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
               </button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -481,7 +481,7 @@ export default function BillingPage() {
                 ) : null;
               })}
               <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="pagination-btn">
+                className="pagination-btn" aria-label="Next page">
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
               </button>
             </div>

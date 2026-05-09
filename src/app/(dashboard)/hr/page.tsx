@@ -1076,7 +1076,7 @@ export default function HRPage() {
                   {t.hr.showing} {((empPage - 1) * PAGE_SIZE) + 1}–{Math.min(empPage * PAGE_SIZE, empTotal)} of {empTotal} {t.hr.employeesLabel}
                 </p>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setEmpPage((p) => Math.max(1, p - 1))} disabled={empPage === 1} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <button onClick={() => setEmpPage((p) => Math.max(1, p - 1))} disabled={empPage === 1} aria-label="Previous page" className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                   </button>
                   {(() => {
@@ -1087,7 +1087,7 @@ export default function HRPage() {
                       <button key={p} onClick={() => setEmpPage(p)} className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${empPage === p ? "bg-[var(--brand)] text-white" : "hover:bg-[var(--surface2)] text-[var(--txt2)]"}`}>{p}</button>
                     ));
                   })()}
-                  <button onClick={() => setEmpPage((p) => Math.min(empTotalPages, p + 1))} disabled={empPage === empTotalPages} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <button onClick={() => setEmpPage((p) => Math.min(empTotalPages, p + 1))} disabled={empPage === empTotalPages} aria-label="Next page" className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                   </button>
                 </div>

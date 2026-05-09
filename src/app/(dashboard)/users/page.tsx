@@ -291,22 +291,24 @@ export default function UsersPage() {
                               onClick={() => setConfirmToggle({ id: user.id, name: user.name, isActive: user.isActive })}
                               disabled={togglingId === user.id}
                               title={user.isActive ? t.users.deactivate : t.users.activate}
+                              aria-label={user.isActive ? t.users.deactivate : t.users.activate}
                               className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${user.isActive ? "hover:bg-[var(--err-bg)] text-[var(--txt2)] hover:text-[var(--err)]" : "hover:bg-[var(--ok-bg)] text-[var(--txt2)] hover:text-[var(--ok)]"}`}
                             >
                               <span className="material-symbols-outlined text-[18px]">
                                 {togglingId === user.id ? "hourglass_empty" : user.isActive ? "person_off" : "person_check"}
                               </span>
                             </button>
-                            <button onClick={() => resetPassword(user.id)} title={t.users.resetPassword} className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]">
+                            <button onClick={() => resetPassword(user.id)} title={t.users.resetPassword} aria-label={t.users.resetPassword} className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]">
                               <span className="material-symbols-outlined text-[18px]">lock_reset</span>
                             </button>
-                            <button title={t.users.viewAudit} className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]">
+                            <button title={t.users.viewAudit} aria-label={t.users.viewAudit} className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]">
                               <span className="material-symbols-outlined text-[18px]">history</span>
                             </button>
                             {user.hasEmployee && user.employeeId && (
                               <a
                                 href={`/hr/${user.employeeId}`}
                                 title={t.users.viewEmployeeProfile}
+                                aria-label={t.users.viewEmployeeProfile}
                                 className="p-1.5 hover:bg-[#e9fdf4] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--ok)]"
                               >
                                 <span className="material-symbols-outlined text-[18px]">badge</span>
@@ -324,10 +326,10 @@ export default function UsersPage() {
               <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
                 <p className="text-xs text-[var(--txt2)]">{t.users.showing} {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} {t.common.of} {total}</p>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed">
+                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page" className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed">
                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                   </button>
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed">
+                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} aria-label="Next page" className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed">
                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                   </button>
                 </div>
@@ -507,10 +509,10 @@ function AddUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl border border-[var(--border)] shadow-[var(--sh-xl)] p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-[var(--border)] shadow-[var(--sh-xl)] p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="add-user-title">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-[var(--txt1)]">{t.users.addUserTitle}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-[var(--surface2)] rounded-lg"><span className="material-symbols-outlined text-[20px] text-[var(--txt2)]">close</span></button>
+          <h3 id="add-user-title" className="text-lg font-bold text-[var(--txt1)]">{t.users.addUserTitle}</h3>
+          <button onClick={onClose} aria-label="Close" className="p-1.5 hover:bg-[var(--surface2)] rounded-lg"><span className="material-symbols-outlined text-[20px] text-[var(--txt2)]">close</span></button>
         </div>
         {error && <div className="flex items-center gap-2 p-3 bg-[var(--err-bg)] border border-[var(--err)]/20 rounded-lg mb-4"><span className="material-symbols-outlined text-[var(--err)] text-[18px]">error</span><p className="text-sm text-[#93000a]">{error}</p></div>}
         <form onSubmit={handleSubmit} className="space-y-4">

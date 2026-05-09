@@ -268,6 +268,19 @@ function SkeletonListRows() {
   );
 }
 
+// ── Toast ──────────────────────────────────────────────────────────────────────
+
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => { const id = setTimeout(onClose, 3500); return () => clearTimeout(id); }, [onClose]);
+  return (
+    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--err-bg)] text-[var(--err)]"}`}>
+      <span className="material-symbols-outlined text-[18px]">{type === "success" ? "check_circle" : "error"}</span>
+      {message}
+      <button onClick={onClose} aria-label="Close" className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AppointmentsPage() {
@@ -329,6 +342,7 @@ export default function AppointmentsPage() {
   const [cpForm, setCpForm] = useState({ firstName: "", lastName: "", phone: "", dob: "", gender: "MALE" });
   const [cpSaving, setCpSaving] = useState(false);
   const [cpError, setCpError] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const debouncedSearch = useDebounce(qbPatientSearch, 300);
 
@@ -556,11 +570,17 @@ export default function AppointmentsPage() {
   }
 
   async function updateStatus(apptId: string, status: string) {
-    await fetch(`/api/appointments/${apptId}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
-    });
-    fetchAppointments();
-    setSelectedAppt(prev => prev ? { ...prev, status: status as Appointment["status"] } : null);
+    try {
+      await fetch(`/api/appointments/${apptId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
+      });
+      fetchAppointments();
+      setSelectedAppt(prev => prev ? { ...prev, status: status as Appointment["status"] } : null);
+      const label = STATUS_STYLES[status]?.label ?? status;
+      setToast({ message: `${a.statusUpdated} ${label}`, type: "success" });
+    } catch {
+      setToast({ message: t.common.unexpectedError, type: "error" });
+    }
   }
 
   const stats = {
@@ -1332,6 +1352,8 @@ export default function AppointmentsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

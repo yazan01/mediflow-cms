@@ -471,6 +471,7 @@ export default function PharmacyPage() {
                             href={`/pharmacy/${med.id}/edit`}
                             className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]"
                             title={t.common.edit}
+                            aria-label={t.common.edit}
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </Link>
@@ -478,6 +479,7 @@ export default function PharmacyPage() {
                             onClick={() => { setAdjustId(med.id); setAdjustQty(""); setAdjustNote(""); }}
                             className="p-1.5 hover:bg-[var(--ok-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--ok)]"
                             title={t.pharmacy.adjustStock}
+                            aria-label={t.pharmacy.adjustStock}
                           >
                             <span className="material-symbols-outlined text-[18px]">tune</span>
                           </button>
@@ -485,6 +487,7 @@ export default function PharmacyPage() {
                             href={`/pharmacy/${med.id}/history`}
                             className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg transition-colors text-[var(--txt2)] hover:text-[var(--blue)]"
                             title={t.common.view}
+                            aria-label={t.common.view}
                           >
                             <span className="material-symbols-outlined text-[18px]">history</span>
                           </Link>
@@ -508,6 +511,7 @@ export default function PharmacyPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
+                aria-label="Previous page"
                 className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -530,6 +534,7 @@ export default function PharmacyPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
+                aria-label="Next page"
                 className="p-1.5 rounded-lg border border-[var(--border2)] hover:bg-[var(--surface2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -550,6 +555,7 @@ export default function PharmacyPage() {
               <h3 className="text-lg font-bold text-[var(--txt1)]">{t.pharmacy.adjustStock}</h3>
               <button
                 onClick={() => setAdjustId(null)}
+                aria-label="Close"
                 className="p-1.5 hover:bg-[var(--surface2)] rounded-lg transition-colors"
               >
                 <span className="material-symbols-outlined text-[20px] text-[var(--txt2)]">close</span>

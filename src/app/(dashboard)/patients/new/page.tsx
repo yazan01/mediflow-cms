@@ -52,7 +52,7 @@ export default function NewPatientPage() {
         method: "POST",
         body: JSON.stringify(body),
       });
-      router.push(`/patients/${data.id}`);
+      router.push(`/patients/${(data as { id: string }).id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : p.registrationFailed);
     } finally {

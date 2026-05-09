@@ -16,6 +16,17 @@ const BLOOD_LABELS: Record<string, string> = {
   AB_POS: "AB+", AB_NEG: "AB−", O_POS: "O+", O_NEG: "O−",
 };
 
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => { const id = setTimeout(onClose, 3500); return () => clearTimeout(id); }, [onClose]);
+  return (
+    <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${type === "success" ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--err-bg)] text-[var(--err)]"}`}>
+      <span className="material-symbols-outlined text-[18px]">{type === "success" ? "check_circle" : "error"}</span>
+      {message}
+      <button onClick={onClose} aria-label="Close" className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+  );
+}
+
 const ease = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 export default function PatientsPage() {
@@ -30,6 +41,7 @@ export default function PatientsPage() {
   const [page,         setPage]         = useState(1);
   const [deleteId,     setDeleteId]     = useState<string | null>(null);
   const [activateId,   setActivateId]   = useState<string | null>(null);
+  const [toast,        setToast]        = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const pageSize = 10;
 
@@ -61,15 +73,23 @@ export default function PatientsPage() {
   async function handleDeactivate(id: string) {
     try {
       await apiFetch(`/api/patients/${id}`, { method: "DELETE" });
-      setDeleteId(null); fetchPatients();
-    } catch { /* soft-deleted */ }
+      setDeleteId(null);
+      fetchPatients();
+      setToast({ message: t.patients.deactivateSuccess, type: "success" });
+    } catch {
+      setToast({ message: t.common.unexpectedError, type: "error" });
+    }
   }
 
   async function handleActivate(id: string) {
     try {
       await apiFetch(`/api/patients/${id}`, { method: "PATCH", body: JSON.stringify({ isActive: true }) });
-      setActivateId(null); fetchPatients();
-    } catch { /* ignore */ }
+      setActivateId(null);
+      fetchPatients();
+      setToast({ message: t.patients.activateSuccess, type: "success" });
+    } catch {
+      setToast({ message: t.common.unexpectedError, type: "error" });
+    }
   }
 
   const totalPages = Math.ceil(total / pageSize);
@@ -372,6 +392,7 @@ export default function PatientsPage() {
                           href={`/patients/${patient.id}`}
                           className="btn-icon btn-sm"
                           title={t.patients.viewProfile}
+                          aria-label={t.patients.viewProfile}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: 17 }}>visibility</span>
                         </Link>
@@ -379,6 +400,7 @@ export default function PatientsPage() {
                           href={`/emr/${patient.id}`}
                           className="btn-icon btn-sm"
                           title={t.patients.viewEmr}
+                          aria-label={t.patients.viewEmr}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: 17 }}>clinical_notes</span>
                         </Link>
@@ -386,6 +408,7 @@ export default function PatientsPage() {
                           href={`/appointments?patientId=${patient.id}&action=book`}
                           className="btn-icon btn-sm"
                           title={t.patients.bookAppt}
+                          aria-label={t.patients.bookAppt}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: 17 }}>event</span>
                         </Link>
@@ -394,6 +417,7 @@ export default function PatientsPage() {
                             onClick={() => setDeleteId(patient.id)}
                             className="btn-icon btn-sm"
                             title={t.patients.deactivate}
+                            aria-label={t.patients.deactivate}
                             style={{ color: "var(--err)" }}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>person_off</span>
@@ -403,6 +427,7 @@ export default function PatientsPage() {
                             onClick={() => setActivateId(patient.id)}
                             className="btn-icon btn-sm"
                             title={t.patients.activate}
+                            aria-label={t.patients.activate}
                             style={{ color: "var(--teal)" }}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>how_to_reg</span>
@@ -491,6 +516,8 @@ export default function PatientsPage() {
           />
         )}
       </AnimatePresence>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -503,7 +530,7 @@ function ConfirmModal({
   onCancel: () => void; onConfirm: () => void;
 }) {
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1,    y: 0  }}
@@ -523,7 +550,7 @@ function ConfirmModal({
               {icon}
             </span>
           </div>
-          <h3 className="t-h2 mb-2">{title}</h3>
+          <h3 id="confirm-modal-title" className="t-h2 mb-2">{title}</h3>
           <p className="t-body text-center" style={{ color: "var(--txt3)" }}>{desc}</p>
           <div className="flex gap-3 mt-6">
             <button onClick={onCancel} className="btn-secondary flex-1 justify-center">

@@ -22,13 +22,13 @@ export default function InvoiceDetailPage() {
   const { t } = useLanguage();
 
   const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-    DRAFT:     { label: t.billing.statusDraft,      ...STATUS_BG_TEXT.DRAFT },
-    PENDING:   { label: t.billing.statusPending,    ...STATUS_BG_TEXT.PENDING },
-    PAID:      { label: t.billing.statusPaid,       ...STATUS_BG_TEXT.PAID },
-    PARTIAL:   { label: t.billing.statusPartial,    ...STATUS_BG_TEXT.PARTIAL },
-    OVERDUE:   { label: t.billing.statusOverdue,    ...STATUS_BG_TEXT.OVERDUE },
-    CANCELLED: { label: t.billing.statusCancelled,  ...STATUS_BG_TEXT.CANCELLED },
-    REFUNDED:  { label: t.billing.statusRefunded,   ...STATUS_BG_TEXT.REFUNDED },
+    DRAFT:     { label: t.billing.draft,          ...STATUS_BG_TEXT.DRAFT },
+    PENDING:   { label: t.billing.pendingStatus,  ...STATUS_BG_TEXT.PENDING },
+    PAID:      { label: t.billing.paidStatus,     ...STATUS_BG_TEXT.PAID },
+    PARTIAL:   { label: t.billing.partial,        ...STATUS_BG_TEXT.PARTIAL },
+    OVERDUE:   { label: t.billing.overdue,        ...STATUS_BG_TEXT.OVERDUE },
+    CANCELLED: { label: t.billing.cancelled,      ...STATUS_BG_TEXT.CANCELLED },
+    REFUNDED:  { label: t.billing.refunded,       ...STATUS_BG_TEXT.REFUNDED },
   };
 
   const [invoice, setInvoice] = useState<Record<string, unknown> | null>(null);
@@ -36,6 +36,8 @@ export default function InvoiceDetailPage() {
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(null), 3500); return () => clearTimeout(id); }, [toast]);
 
   useEffect(() => {
     fetch(`/api/billing/${id}`)
@@ -57,7 +59,12 @@ export default function InvoiceDetailPage() {
         const updated = await fetch(`/api/billing/${id}`).then((r) => r.json());
         setInvoice(updated);
         setPaymentAmount("");
+        setToast({ message: t.billing.paymentRecorded, type: "success" });
+      } else {
+        setToast({ message: t.billing.paymentFailed, type: "error" });
       }
+    } catch {
+      setToast({ message: t.billing.paymentFailed, type: "error" });
     } finally {
       setRecordingPayment(false);
     }
@@ -114,7 +121,7 @@ export default function InvoiceDetailPage() {
             className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">print</span>
-            {t.billing.print}
+            {t.billing.printInvoice}
           </button>
         </div>
       </div>
@@ -225,7 +232,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div className="p-3 bg-[#eff6ff] border border-[#1960a3]/20 rounded-xl text-center">
                   <p className="text-[10px] font-semibold text-[#1960a3] uppercase tracking-wider mb-0.5">
-                    {t.billing.insuranceClaim} ({100 - copayPct}%)
+                    {t.billing.insuranceShare} ({100 - copayPct}%)
                   </p>
                   <p className="text-lg font-bold text-[#1960a3]">{formatCurrency(insuranceShare)}</p>
                   {invoice.insuranceProvider != null && (
@@ -311,6 +318,14 @@ export default function InvoiceDetailPage() {
 
       {/* Edit Log */}
       <EditLog entityId={id} />
+
+      {toast && (
+        <div className={`fixed bottom-6 end-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold ${toast.type === "success" ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--err-bg)] text-[var(--err)]"}`}>
+          <span className="material-symbols-outlined text-[18px]">{toast.type === "success" ? "check_circle" : "error"}</span>
+          {toast.message}
+          <button onClick={() => setToast(null)} aria-label="Close" className="ms-1 opacity-70 hover:opacity-100"><span className="material-symbols-outlined text-[16px]">close</span></button>
+        </div>
+      )}
     </div>
   );
 }

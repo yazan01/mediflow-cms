@@ -256,6 +256,8 @@ const en = {
     registrationFailed: "Registration failed",
     nationalityPlaceholder: "e.g. Jordanian",
     addressPlaceholder: "Street, city, country",
+    deactivateSuccess: "Patient deactivated successfully",
+    activateSuccess: "Patient reactivated successfully",
   },
 
   appointments: {
@@ -569,14 +571,9 @@ const en = {
     mrn: "MRN",
     dueDate: "Due Date",
     lineItems: "Line Items",
-    colDescription: "Description",
-    colCategory: "Category",
-    colQty: "Qty",
-    colUnitPrice: "Unit Price",
     colDiscount: "Discount",
     colTotal: "Total",
     amountPaid: "Amount Paid",
-    balanceDue: "Balance Due",
     paymentHistory: "Payment History",
     colDate: "Date",
     colMethod: "Method",
@@ -590,6 +587,8 @@ const en = {
     methodInsurance: "Insurance",
     methodBankTransfer: "Bank Transfer",
     methodMobile: "Mobile Payment",
+    paymentRecorded: "Payment recorded successfully",
+    paymentFailed: "Failed to record payment",
   },
 
   pharmacy: {
@@ -2141,6 +2140,8 @@ export const ar: T = {
     registrationFailed: "فشل التسجيل",
     nationalityPlaceholder: "مثال: أردني",
     addressPlaceholder: "الشارع، المدينة، الدولة",
+    deactivateSuccess: "تم تعطيل المريض بنجاح",
+    activateSuccess: "تم إعادة تفعيل المريض بنجاح",
   },
 
   appointments: {
@@ -2454,14 +2455,9 @@ export const ar: T = {
     mrn: "رقم السجل",
     dueDate: "تاريخ الاستحقاق",
     lineItems: "بنود الفاتورة",
-    colDescription: "الوصف",
-    colCategory: "الفئة",
-    colQty: "الكمية",
-    colUnitPrice: "سعر الوحدة",
     colDiscount: "الخصم",
     colTotal: "الإجمالي",
     amountPaid: "المبلغ المدفوع",
-    balanceDue: "الرصيد المستحق",
     paymentHistory: "سجل الدفعات",
     colDate: "التاريخ",
     colMethod: "طريقة الدفع",
@@ -2475,6 +2471,8 @@ export const ar: T = {
     methodInsurance: "تأمين",
     methodBankTransfer: "تحويل بنكي",
     methodMobile: "دفع إلكتروني",
+    paymentRecorded: "تم تسجيل الدفعة بنجاح",
+    paymentFailed: "فشل في تسجيل الدفعة",
   },
 
   pharmacy: {
