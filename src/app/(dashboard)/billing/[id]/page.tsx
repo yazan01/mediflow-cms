@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, formatDateTime, formatCurrency, printDocument } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import EditLog from "@/components/layout/EditLog";
 
 const STATUS_BG_TEXT: Record<string, { bg: string; text: string }> = {
@@ -50,19 +51,15 @@ export default function InvoiceDetailPage() {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) return;
     setRecordingPayment(true);
     try {
-      const res = await fetch(`/api/billing/${id}/payments`, {
+      await apiFetch(`/api/billing/${id}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: parseFloat(paymentAmount), method: paymentMethod }),
       });
-      if (res.ok) {
-        const updated = await fetch(`/api/billing/${id}`).then((r) => r.json());
-        setInvoice(updated);
-        setPaymentAmount("");
-        setToast({ message: t.billing.paymentRecorded, type: "success" });
-      } else {
-        setToast({ message: t.billing.paymentFailed, type: "error" });
-      }
+      const updated = await fetch(`/api/billing/${id}`).then((r) => r.json());
+      setInvoice(updated);
+      setPaymentAmount("");
+      setToast({ message: t.billing.paymentRecorded, type: "success" });
     } catch {
       setToast({ message: t.billing.paymentFailed, type: "error" });
     } finally {

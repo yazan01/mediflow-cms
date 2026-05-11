@@ -14,7 +14,7 @@ import models
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
-VALID_PAYMENT_METHODS = {"CASH", "CARD", "CHECK", "TRANSFER", "INSURANCE"}
+VALID_PAYMENT_METHODS = {"CASH", "CARD", "CHECK", "TRANSFER", "INSURANCE", "BANK_TRANSFER", "MOBILE"}
 
 
 class InvoiceItemIn(BaseModel):
