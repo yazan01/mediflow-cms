@@ -1238,6 +1238,22 @@ class InsuranceProvider(Base):
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class Service(Base):
+    """Clinic service catalog — pre-defined services with default prices per branch."""
+    __tablename__ = "services"
+    id          = Column(String(25), primary_key=True)
+    name        = Column(String(200), nullable=False)
+    category    = Column(String(100), nullable=False, default="Consultation")
+    defaultPrice= Column(Numeric(12, 2), nullable=False)
+    description = Column(Text, nullable=True)
+    isActive    = Column(Boolean, default=True)
+    branchId    = Column(String(25), ForeignKey("branches.id"), nullable=True)   # null = all branches
+    createdAt   = Column(DateTime, server_default=func.now())
+    updatedAt   = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    branch = relationship("Branch", foreign_keys=[branchId])
+
+
 class TokenBlocklist(Base):
     """Revoked JWT tokens — checked on every authenticated request."""
     __tablename__ = "token_blocklist"

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { apiFetch } from "@/lib/hooks/useDataFetch";
 
-type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history" | "health" | "insurance";
+type Section = "clinic" | "security" | "notifications" | "billing" | "branches" | "clinics" | "smtp" | "whatsapp" | "sms" | "payment" | "features" | "apikeys" | "templates" | "integrations" | "history" | "health" | "insurance" | "services";
 
 type Settings = {
   clinicName: string; licenseNumber: string; phone: string; email: string;
@@ -84,6 +84,12 @@ type NotifTemplate = {
 type InsuranceProviderRow = {
   id: string; name: string; code: string | null; contactPhone: string | null;
   contactEmail: string | null; notes: string | null; isActive: boolean; createdAt: string | null;
+};
+
+type ServiceRow = {
+  id: string; name: string; category: string; defaultPrice: number;
+  description: string | null; isActive: boolean; branchId: string | null;
+  branchName: string | null; createdAt: string | null;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -245,6 +251,18 @@ export default function SettingsPage() {
   const [providerError, setProviderError] = useState("");
   const [providerStatus, setProviderStatus] = useState<"idle" | "saved" | "deleted">("idle");
 
+  // Services
+  const [servicesList, setServicesList] = useState<ServiceRow[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [serviceFilterBranch, setServiceFilterBranch] = useState("");
+  const [serviceModal, setServiceModal] = useState<"add" | "edit" | null>(null);
+  const [editingService, setEditingService] = useState<ServiceRow | null>(null);
+  const [serviceForm, setServiceForm] = useState({ name: "", category: "Consultation", defaultPrice: 0, description: "", isActive: true, branchId: "" });
+  const [serviceSaving, setServiceSaving] = useState(false);
+  const [serviceError, setServiceError] = useState("");
+  const [serviceStatus, setServiceStatus] = useState<"idle" | "saved" | "deleted">("idle");
+
   // Nav accordion
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -281,6 +299,7 @@ export default function SettingsPage() {
     if (activeSection === "templates") loadTemplates();
     if (activeSection === "health") loadHealth();
     if (activeSection === "insurance") loadInsuranceProviders();
+    if (activeSection === "services") { loadBranches(); loadServices(); }
   }, [activeSection]);
 
   useEffect(() => {
@@ -397,6 +416,21 @@ export default function SettingsPage() {
       .finally(() => setInsuranceLoading(false));
   }
 
+  function loadServices(search?: string, branchId?: string) {
+    setServicesLoading(true);
+    const params = new URLSearchParams();
+    const q = search ?? serviceSearch;
+    const bid = branchId ?? serviceFilterBranch;
+    if (q) params.set("search", q);
+    if (bid) params.set("branchId", bid);
+    const qs = params.toString();
+    fetch(`/api/services${qs ? `?${qs}` : ""}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then(setServicesList)
+      .catch(() => setServicesList([]))
+      .finally(() => setServicesLoading(false));
+  }
+
   async function saveProvider() {
     if (!providerForm.name.trim()) return;
     setProviderSaving(true);
@@ -432,6 +466,44 @@ export default function SettingsPage() {
     setInsuranceProviders((ps) => ps.filter((p) => p.id !== id));
     setProviderStatus("deleted");
     setTimeout(() => setProviderStatus("idle"), 3000);
+  }
+
+  async function saveService() {
+    if (!serviceForm.name.trim()) return;
+    setServiceSaving(true); setServiceError("");
+    try {
+      const isEdit = serviceModal === "edit" && editingService;
+      const url = isEdit ? `/api/services/${editingService.id}` : "/api/services";
+      const body: Record<string, unknown> = {
+        name: serviceForm.name.trim(),
+        category: serviceForm.category,
+        defaultPrice: serviceForm.defaultPrice,
+        description: serviceForm.description || null,
+        isActive: serviceForm.isActive,
+        branchId: serviceForm.branchId || null,
+      };
+      const data = await apiFetch<ServiceRow>(url, {
+        method: isEdit ? "PATCH" : "POST",
+        body: JSON.stringify(body),
+      });
+      setServiceModal(null);
+      loadServices();
+      setServiceStatus("saved");
+      setTimeout(() => setServiceStatus("idle"), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setServiceError(msg || t.common.networkError);
+    } finally {
+      setServiceSaving(false);
+    }
+  }
+
+  async function deleteService(svc: ServiceRow) {
+    if (!confirm(t.services.confirmDelete)) return;
+    await apiFetch(`/api/services/${svc.id}`, { method: "DELETE" });
+    setServicesList((prev) => prev.filter((s) => s.id !== svc.id));
+    setServiceStatus("deleted");
+    setTimeout(() => setServiceStatus("idle"), 3000);
   }
 
   function loadRetentionStats() {
@@ -725,6 +797,7 @@ export default function SettingsPage() {
       { key: "branches",      label: s.branches,          icon: "account_tree" },
       { key: "clinics",       label: s.clinics,           icon: "medical_services" },
       { key: "insurance",     label: s.insuranceProviders, icon: "health_and_safety" },
+      { key: "services",      label: s.serviceCatalog,    icon: "receipt_long" },
       { key: "health",        label: s.branchHealth,      icon: "monitor_heart" },
     ]},
     { key: "integrations",  label: s.navIntegrations,  items: [
@@ -741,7 +814,7 @@ export default function SettingsPage() {
     ]},
   ] as const;
 
-  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history", "health", "insurance"].includes(activeSection);
+  const showGlobalSave = !["branches", "clinics", "smtp", "whatsapp", "sms", "payment", "features", "apikeys", "templates", "integrations", "history", "health", "insurance", "services"].includes(activeSection);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -778,6 +851,14 @@ export default function SettingsPage() {
         {activeSection === "apikeys" && (
           <button onClick={() => setApiKeyModal(true)} className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm">
             <span className="material-symbols-outlined text-[18px]">add</span>{s.addApiKey}
+          </button>
+        )}
+        {activeSection === "services" && (
+          <button
+            onClick={() => { setServiceForm({ name: "", category: "Consultation", defaultPrice: 0, description: "", isActive: true, branchId: "" }); setEditingService(null); setServiceError(""); setServiceModal("add"); }}
+            className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>{t.services.addService}
           </button>
         )}
       </div>
@@ -1723,6 +1804,114 @@ export default function SettingsPage() {
                 </div>
               )}
 
+              {/* ── Service Catalog ── */}
+              {activeSection === "services" && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+                    <div className="p-5 border-b border-[var(--border)]">
+                      <h2 className="text-base font-semibold text-[var(--txt1)]">{t.services.title}</h2>
+                      <p className="text-xs text-[var(--txt2)] mt-0.5">{t.services.subtitle}</p>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="p-4 border-b border-[var(--border)] flex flex-wrap gap-3">
+                      <input
+                        className="input-field flex-1 min-w-[180px] text-sm"
+                        placeholder={t.services.searchPlaceholder}
+                        value={serviceSearch}
+                        onChange={(e) => { setServiceSearch(e.target.value); loadServices(e.target.value, serviceFilterBranch); }}
+                      />
+                      <select
+                        className="select-field text-sm"
+                        value={serviceFilterBranch}
+                        onChange={(e) => { setServiceFilterBranch(e.target.value); loadServices(serviceSearch, e.target.value); }}
+                      >
+                        <option value="">{t.services.allBranches}</option>
+                        {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+
+                    {serviceStatus === "saved" && <div className="px-5 py-2.5 bg-[var(--ok-bg)] text-[var(--ok)] text-sm font-semibold">{t.services.serviceSaved}</div>}
+                    {serviceStatus === "deleted" && <div className="px-5 py-2.5 bg-[var(--err-bg)] text-[var(--err)] text-sm font-semibold">{t.services.serviceDeleted}</div>}
+
+                    {servicesLoading ? (
+                      <div className="p-12 flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#1960a3]/30 border-t-[#1960a3] rounded-full animate-spin" /></div>
+                    ) : servicesList.length === 0 ? (
+                      <div className="p-12 flex flex-col items-center gap-3">
+                        <span className="material-symbols-outlined text-[48px] text-[#c4c6cf]">receipt_long</span>
+                        <p className="text-sm font-semibold text-[var(--txt2)]">{t.services.noServices}</p>
+                        <p className="text-xs text-[var(--txt2)] text-center max-w-xs">{t.services.noServicesDesc}</p>
+                        <button
+                          onClick={() => { setServiceForm({ name: "", category: "Consultation", defaultPrice: 0, description: "", isActive: true, branchId: "" }); setEditingService(null); setServiceError(""); setServiceModal("add"); }}
+                          className="mt-2 btn-primary text-sm px-4 py-2"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">add</span>{t.services.addService}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-[#f8f7fb]">
+                              <th className="table-header">{t.services.serviceName}</th>
+                              <th className="table-header">{t.services.category}</th>
+                              <th className="table-header">{t.services.defaultPrice}</th>
+                              <th className="table-header">{t.services.branch}</th>
+                              <th className="table-header">{t.common.status}</th>
+                              <th className="table-header">{t.common.actions}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {servicesList.map((svc) => (
+                              <tr key={svc.id} className="table-row">
+                                <td className="table-cell">
+                                  <div>
+                                    <p className="font-medium text-[var(--txt1)]">{svc.name}</p>
+                                    {svc.description && <p className="text-xs text-[var(--txt2)] truncate max-w-[200px]">{svc.description}</p>}
+                                  </div>
+                                </td>
+                                <td className="table-cell">
+                                  <span className="font-mono text-xs bg-[var(--surface2)] px-2 py-0.5 rounded">{svc.category}</span>
+                                </td>
+                                <td className="table-cell font-semibold text-[var(--txt1)]">
+                                  {svc.defaultPrice.toFixed(2)}
+                                </td>
+                                <td className="table-cell text-[var(--txt2)] text-xs">
+                                  {svc.branchName ?? <span className="italic">{t.services.allBranches}</span>}
+                                </td>
+                                <td className="table-cell">
+                                  <span className={`badge text-[10px] ${svc.isActive ? "bg-[var(--ok-bg)] text-[var(--ok)]" : "bg-[var(--surface2)] text-[var(--txt2)]"}`}>
+                                    {svc.isActive ? t.services.active : t.services.inactive}
+                                  </span>
+                                </td>
+                                <td className="table-cell">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => { setEditingService(svc); setServiceForm({ name: svc.name, category: svc.category, defaultPrice: svc.defaultPrice, description: svc.description ?? "", isActive: svc.isActive, branchId: svc.branchId ?? "" }); setServiceError(""); setServiceModal("edit"); }}
+                                      className="p-1.5 rounded hover:bg-[var(--surface2)] text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
+                                      aria-label={t.common.edit}
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                                    </button>
+                                    <button
+                                      onClick={() => deleteService(svc)}
+                                      className="p-1.5 rounded hover:bg-[var(--err-bg)] text-[var(--txt2)] hover:text-[var(--err)] transition-colors"
+                                      aria-label={t.common.delete}
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* ── Insurance Providers ── */}
               {activeSection === "insurance" && (
                 <div className="space-y-4">
@@ -2031,6 +2220,69 @@ export default function SettingsPage() {
             </div>
             <div className="flex justify-end px-6 py-4 border-t border-[var(--border)]">
               <button onClick={() => setApiKeyCreated(null)} className="btn-primary px-6 py-2 text-sm">{t.common.close}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Service Modal ── */}
+      {serviceModal && (
+        <div role="dialog" aria-modal="true" aria-labelledby="service-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setServiceModal(null)}>
+          <div className="bg-white rounded-2xl shadow-[var(--sh-xl)] w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+              <h2 id="service-modal-title" className="text-lg font-bold text-[var(--txt1)]">
+                {serviceModal === "add" ? t.services.addService : t.services.editService}
+              </h2>
+              <button onClick={() => setServiceModal(null)} aria-label={t.common.close} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {serviceError && <div className="bg-[var(--err-bg)] text-[var(--err)] text-sm px-4 py-2.5 rounded-lg">{serviceError}</div>}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.services.serviceName} *</label>
+                <input className="input-field" placeholder={t.services.serviceNamePlaceholder} value={serviceForm.name} onChange={(e) => setServiceForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.services.category}</label>
+                  <select className="select-field" value={serviceForm.category} onChange={(e) => setServiceForm(f => ({ ...f, category: e.target.value }))}>
+                    {["Consultation", "Procedure", "Lab", "Radiology", "Medication", "Other"].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.services.defaultPrice} *</label>
+                  <input type="number" min={0} step={0.01} className="input-field" value={serviceForm.defaultPrice} onChange={(e) => setServiceForm(f => ({ ...f, defaultPrice: parseFloat(e.target.value) || 0 }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.services.branch}</label>
+                <select className="select-field" value={serviceForm.branchId} onChange={(e) => setServiceForm(f => ({ ...f, branchId: e.target.value }))}>
+                  <option value="">{t.services.allBranches}</option>
+                  {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider mb-1.5">{t.services.description}</label>
+                <textarea className="input-field resize-none" rows={2} placeholder={t.services.descriptionPlaceholder} value={serviceForm.description} onChange={(e) => setServiceForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-sm font-semibold text-[var(--txt2)]">{t.common.active}</span>
+                <button
+                  type="button" role="switch" aria-checked={serviceForm.isActive} dir="ltr"
+                  onClick={() => setServiceForm(f => ({ ...f, isActive: !f.isActive }))}
+                  className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200 focus:outline-none ${serviceForm.isActive ? "bg-[var(--brand)]" : "bg-[#c4c6cf]"}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ${serviceForm.isActive ? "translate-x-[1.375rem]" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 pb-6">
+              <button onClick={() => setServiceModal(null)} className="btn-secondary text-sm px-4 py-2">{t.common.cancel}</button>
+              <button onClick={saveService} disabled={serviceSaving || !serviceForm.name.trim()} className="btn-primary text-sm px-4 py-2 disabled:opacity-60 flex items-center gap-2">
+                {serviceSaving ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t.common.saving}</> : <>{t.common.save}</>}
+              </button>
             </div>
           </div>
         </div>

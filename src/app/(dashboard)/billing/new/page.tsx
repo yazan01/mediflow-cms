@@ -9,6 +9,15 @@ import { InsuranceProviderSelect } from "@/components/ui/InsuranceProviderSelect
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+interface ServiceSuggestion {
+  id: string;
+  name: string;
+  category: string;
+  defaultPrice: number;
+  description: string | null;
+  branchName: string | null;
+}
+
 interface PatientResult {
   id: string;
   firstName: string;
@@ -79,6 +88,11 @@ export default function NewInvoicePage() {
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Service autocomplete per line item
+  const [svcSuggestions, setSvcSuggestions] = useState<Record<string, ServiceSuggestion[]>>({});
+  const [svcOpen, setSvcOpen] = useState<Record<string, boolean>>({});
+  const svcDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Line items
   const [items, setItems] = useState<LineItem[]>([makeItem()]);
@@ -203,6 +217,39 @@ export default function NewInvoicePage() {
     setInsuranceClaim(false);
     setInsuranceProvider("");
     setInsurancePolicyNo("");
+  }
+
+  // ── Service autocomplete ─────────────────────────────────────────────────
+
+  function fetchServiceSuggestions(itemId: string, query: string) {
+    if (svcDebounce.current) clearTimeout(svcDebounce.current);
+    if (!query.trim()) {
+      setSvcSuggestions((p) => ({ ...p, [itemId]: [] }));
+      setSvcOpen((p) => ({ ...p, [itemId]: false }));
+      return;
+    }
+    svcDebounce.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/services?search=${encodeURIComponent(query)}&isActive=true`);
+        if (res.ok) {
+          const data: ServiceSuggestion[] = await res.json();
+          setSvcSuggestions((p) => ({ ...p, [itemId]: data.slice(0, 6) }));
+          setSvcOpen((p) => ({ ...p, [itemId]: data.length > 0 }));
+        }
+      } catch { /* silent */ }
+    }, 300);
+  }
+
+  function selectService(itemId: string, svc: ServiceSuggestion) {
+    setItems((prev) =>
+      prev.map((it) =>
+        it._id === itemId
+          ? { ...it, description: svc.name, category: svc.category, unitPrice: svc.defaultPrice }
+          : it
+      )
+    );
+    setSvcOpen((p) => ({ ...p, [itemId]: false }));
+    setSvcSuggestions((p) => ({ ...p, [itemId]: [] }));
   }
 
   // ── Line item helpers ────────────────────────────────────────────────────
@@ -553,7 +600,7 @@ export default function NewInvoicePage() {
                   className="grid grid-cols-1 md:grid-cols-[1fr_140px_68px_110px_80px_100px_36px] gap-2 px-4 py-3 items-center hover:bg-[#fafafa] transition-colors"
                 >
                   {/* Description */}
-                  <div>
+                  <div className="relative">
                     <label className="md:hidden text-[10px] font-semibold text-[#74777f] uppercase tracking-wider">
                       {b.colDescription}
                     </label>
@@ -562,10 +609,33 @@ export default function NewInvoicePage() {
                       className={INPUT}
                       placeholder={`${b.colDescription} ${idx + 1}…`}
                       value={item.description}
-                      onChange={(e) =>
-                        updateItem(item._id, "description", e.target.value)
-                      }
+                      onChange={(e) => {
+                        updateItem(item._id, "description", e.target.value);
+                        fetchServiceSuggestions(item._id, e.target.value);
+                      }}
+                      onBlur={() => setTimeout(() => setSvcOpen((p) => ({ ...p, [item._id]: false })), 150)}
+                      autoComplete="off"
                     />
+                    {svcOpen[item._id] && svcSuggestions[item._id]?.length > 0 && (
+                      <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-[#e3e2e6] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.10)] overflow-hidden max-h-52 overflow-y-auto">
+                        {svcSuggestions[item._id].map((svc) => (
+                          <button
+                            key={svc.id}
+                            type="button"
+                            onMouseDown={() => selectService(item._id, svc)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f4f3f7] border-b border-[#e3e2e6] last:border-b-0 transition-colors"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-[#d3e4ff] flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[#1960a3] text-[14px]">receipt_long</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-[#1a1c1e] truncate">{svc.name}</p>
+                              <p className="text-[10px] text-[#74777f]">{svc.category} · {svc.defaultPrice.toFixed(2)}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Category */}
