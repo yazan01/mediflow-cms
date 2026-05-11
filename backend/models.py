@@ -1254,6 +1254,25 @@ class Service(Base):
     branch = relationship("Branch", foreign_keys=[branchId])
 
 
+class Attachment(Base):
+    """Generic file attachment linked to any entity by type + id."""
+    __tablename__ = "attachments"
+    __table_args__ = (
+        Index("ix_attachment_entity", "entityType", "entityId"),
+    )
+    id           = Column(String(25), primary_key=True)
+    entityType   = Column(String(50), nullable=False)   # patient|emr|lab_order|radiology_order|invoice
+    entityId     = Column(String(25), nullable=False)
+    originalName = Column(String(300), nullable=False)
+    storedName   = Column(String(300), nullable=False)
+    mimeType     = Column(String(100), nullable=False)
+    fileSize     = Column(Integer, nullable=False)
+    uploadedById = Column(String(25), ForeignKey("users.id"), nullable=True)
+    createdAt    = Column(DateTime, server_default=func.now())
+
+    uploader = relationship("User", foreign_keys=[uploadedById])
+
+
 class TokenBlocklist(Base):
     """Revoked JWT tokens — checked on every authenticated request."""
     __tablename__ = "token_blocklist"

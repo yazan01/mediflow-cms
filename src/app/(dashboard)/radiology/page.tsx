@@ -7,6 +7,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { apiFetch } from "@/lib/hooks/useDataFetch";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { AttachmentPanel } from "@/components/ui/AttachmentPanel";
 
 const MODALITY_STYLES: Record<string, { bg: string; text: string }> = {
   XRAY:  { bg: "bg-[var(--surface2)]",   text: "text-[var(--txt2)]" },
@@ -76,6 +77,7 @@ export default function RadiologyPage() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const [uploadOrderId, setUploadOrderId] = useState<string | null>(null);
+  const [attachmentOrderId, setAttachmentOrderId] = useState<string | null>(null);
   const [reportModal, setReportModal] = useState<RadiologyOrder | null>(null);
   const [reportText, setReportText] = useState("");
   const [scheduleModal, setScheduleModal] = useState<RadiologyOrder | null>(null);
@@ -345,6 +347,14 @@ export default function RadiologyPage() {
                               <span className="material-symbols-outlined text-[18px]">cancel</span>
                             </button>
                           )}
+                          <button
+                            aria-label={t.attachments.title}
+                            title={t.attachments.title}
+                            onClick={() => setAttachmentOrderId(order.id)}
+                            className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -446,6 +456,21 @@ export default function RadiologyPage() {
           orderId={uploadOrderId}
           onClose={() => setUploadOrderId(null)}
         />
+      )}
+
+      {/* Attachment modal */}
+      {attachmentOrderId && (
+        <div role="dialog" aria-modal="true" aria-labelledby="rad-attach-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setAttachmentOrderId(null)}>
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 id="rad-attach-title" className="text-base font-bold text-white">{t.attachments.title}</h2>
+              <button onClick={() => setAttachmentOrderId(null)} aria-label={t.common.close} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-white">close</span>
+              </button>
+            </div>
+            <AttachmentPanel entityType="radiology_order" entityId={attachmentOrderId} />
+          </div>
+        </div>
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

@@ -6,6 +6,7 @@ import { formatDate, formatDateTime, formatCurrency, printDocument } from "@/lib
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { apiFetch } from "@/lib/hooks/useDataFetch";
 import EditLog from "@/components/layout/EditLog";
+import { AttachmentPanel } from "@/components/ui/AttachmentPanel";
 
 const STATUS_BG_TEXT: Record<string, { bg: string; text: string }> = {
   DRAFT:     { bg: "bg-[#e9e7eb]", text: "text-[#43474e]" },
@@ -312,6 +313,9 @@ export default function InvoiceDetailPage() {
           </table>
         </div>
       )}
+
+      {/* Attachments */}
+      <AttachmentPanel entityType="invoice" entityId={id} />
 
       {/* Edit Log */}
       <EditLog entityId={id} />

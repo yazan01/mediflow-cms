@@ -1852,6 +1852,25 @@ const en = {
     filterBranch: "Filter by branch",
   },
 
+  attachments: {
+    title: "Attachments",
+    upload: "Upload File",
+    uploading: "Uploading…",
+    noFiles: "No attachments yet",
+    noFilesDesc: "Upload documents, images, or reports",
+    fileTooLarge: "File too large (max 20 MB)",
+    fileTypeNotAllowed: "File type not allowed",
+    uploadFailed: "Upload failed",
+    deleteConfirm: "Delete this attachment? This cannot be undone.",
+    deleteSuccess: "Attachment deleted",
+    dropHere: "Drop files here or click to upload",
+    pdfDoc: "PDF",
+    imageDoc: "Image",
+    wordDoc: "Word",
+    excelDoc: "Excel",
+    otherDoc: "File",
+  },
+
   audit: {
     title: "Audit Logs",
     subtitle: "Track all system activity for compliance and security",
@@ -3759,6 +3778,25 @@ export const ar: T = {
     confirmDelete: "هل أنت متأكد من حذف هذه الخدمة؟ لا يمكن التراجع عن هذا.",
     searchPlaceholder: "بحث في الخدمات…",
     filterBranch: "تصفية حسب الفرع",
+  },
+
+  attachments: {
+    title: "المرفقات",
+    upload: "رفع ملف",
+    uploading: "جارٍ الرفع…",
+    noFiles: "لا توجد مرفقات بعد",
+    noFilesDesc: "ارفع وثائق أو صور أو تقارير",
+    fileTooLarge: "الملف كبير جداً (الحد 20 ميغابايت)",
+    fileTypeNotAllowed: "نوع الملف غير مسموح",
+    uploadFailed: "فشل رفع الملف",
+    deleteConfirm: "حذف هذا المرفق؟ لا يمكن التراجع.",
+    deleteSuccess: "تم حذف المرفق",
+    dropHere: "اسحب الملفات هنا أو انقر للرفع",
+    pdfDoc: "PDF",
+    imageDoc: "صورة",
+    wordDoc: "Word",
+    excelDoc: "Excel",
+    otherDoc: "ملف",
   },
 
   audit: {

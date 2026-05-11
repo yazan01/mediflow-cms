@@ -8,6 +8,7 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { apiFetch } from "@/lib/hooks/useDataFetch";
+import { AttachmentPanel } from "@/components/ui/AttachmentPanel";
 
 interface LabResultInput {
   testName: string;
@@ -67,6 +68,7 @@ export default function LaboratoryPage() {
   const [resultsModal, setResultsModal] = useState<LabOrder | null>(null);
   const [resultRows, setResultRows] = useState<LabResultInput[]>([{ testName: "", value: "", unit: "", referenceRange: "", isAbnormal: false, isCritical: false }]);
   const [saving, setSaving] = useState(false);
+  const [attachmentOrderId, setAttachmentOrderId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -301,6 +303,14 @@ export default function LaboratoryPage() {
                               <span className="material-symbols-outlined text-[18px]">cancel</span>
                             </button>
                           )}
+                          <button
+                            aria-label={t.attachments.title}
+                            title={t.attachments.title}
+                            onClick={() => setAttachmentOrderId(order.id)}
+                            className="p-1.5 hover:bg-[var(--blue-bg)] rounded-lg text-[var(--txt2)] hover:text-[var(--blue)] transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -379,6 +389,21 @@ export default function LaboratoryPage() {
                 {saving ? t.common.saving : t.laboratory.saveResults}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment modal */}
+      {attachmentOrderId && (
+        <div role="dialog" aria-modal="true" aria-labelledby="lab-attach-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setAttachmentOrderId(null)}>
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 id="lab-attach-title" className="text-base font-bold text-white">{t.attachments.title}</h2>
+              <button onClick={() => setAttachmentOrderId(null)} aria-label={t.common.close} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-white">close</span>
+              </button>
+            </div>
+            <AttachmentPanel entityType="lab_order" entityId={attachmentOrderId} />
           </div>
         </div>
       )}

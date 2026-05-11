@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { formatDate, formatDateTime, getInitials, printDocument } from "@/lib/utils";
 import type { Patient, Consultation, LabOrder, Vitals, Prescription } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { AttachmentPanel } from "@/components/ui/AttachmentPanel";
 
 const BLOOD_LABELS: Record<string, string> = {
   A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−",
@@ -805,13 +806,7 @@ export default function EMRPage() {
 
       {/* ─── DOCUMENTS ─── */}
       {activeTab === "documents" && (
-        <div className="bg-white rounded-xl border border-[var(--border)] shadow-[0_2px_12px_rgba(0,0,0,0.04)] py-20 flex flex-col items-center gap-3">
-          <div className="w-16 h-16 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-[var(--txt2)] text-3xl">folder_open</span>
-          </div>
-          <p className="text-sm font-semibold text-[var(--txt1)]">{t.emr.noDocuments}</p>
-          <p className="text-xs text-[var(--txt2)]">{t.emr.uploadFromProfile}</p>
-        </div>
+        <AttachmentPanel entityType="emr" entityId={id} />
       )}
 
       {/* ─── LAB RESULTS MODAL ─── */}
