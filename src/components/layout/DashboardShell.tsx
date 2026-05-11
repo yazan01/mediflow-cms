@@ -128,7 +128,7 @@ export default function DashboardShell({ user, children }: Props) {
   }, [showTimeout]);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await apiFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     router.push("/login");
   }
 

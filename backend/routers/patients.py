@@ -200,6 +200,9 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db), _user=Dep
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create patient record")
 
+    log_audit(db, _user.id, "CREATE", "PATIENTS", patient.id, "Patient",
+              new_values={"mrn": patient.mrn, "firstName": body.firstName, "lastName": body.lastName,
+                          "phone": body.phone, "dateOfBirth": str(body.dateOfBirth) if body.dateOfBirth else None})
     return patient_to_dict(patient)
 
 
@@ -310,6 +313,7 @@ def update_patient(
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update patient record")
 
+    log_audit(db, _user.id, "UPDATE", "PATIENTS", patient_id, "Patient", new_values=updates)
     return patient_to_dict(patient)
 
 

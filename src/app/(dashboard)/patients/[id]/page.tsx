@@ -7,6 +7,8 @@ import { formatDate, formatDateTime, calculateAge, getInitials } from "@/lib/uti
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import EditLog from "@/components/layout/EditLog";
 import { AttachmentPanel } from "@/components/ui/AttachmentPanel";
+import { apiFetch, ApiError } from "@/lib/hooks/useDataFetch";
+import { ErrorBanner } from "@/components/ErrorBanner";
 
 const BLOOD_LABELS: Record<string, string> = { A_POS: "A+", A_NEG: "A−", B_POS: "B+", B_NEG: "B−", AB_POS: "AB+", AB_NEG: "AB−", O_POS: "O+", O_NEG: "O−" };
 const BLOOD_TYPES = ["A_POS","A_NEG","B_POS","B_NEG","AB_POS","AB_NEG","O_POS","O_NEG"];
@@ -21,13 +23,18 @@ export default function PatientDetailPage() {
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [editOpen, setEditOpen] = useState(false);
 
   function loadPatient() {
-    fetch(`/api/patients/${id}`)
-      .then((r) => r.ok ? r.json() : null)
+    setLoading(true);
+    setFetchError(null);
+    apiFetch<Patient>(`/api/patients/${id}`)
       .then(setPatient)
+      .catch((err: unknown) => {
+        setFetchError(err instanceof Error ? err : new Error(t.common.somethingWentWrong));
+      })
       .finally(() => setLoading(false));
   }
 
@@ -39,10 +46,16 @@ export default function PatientDetailPage() {
     </div>
   );
 
+  if (fetchError) return (
+    <div className="p-4">
+      <ErrorBanner error={fetchError} onRetry={loadPatient} />
+    </div>
+  );
+
   if (!patient) return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
       <span className="material-symbols-outlined text-[#c4c6cf] text-5xl">person_off</span>
-      <p className="text-sm font-semibold text-[#1a1c1e]">{t.patients.title}</p>
+      <p className="text-sm font-semibold text-[var(--txt1)]">{t.patients.title}</p>
       <button onClick={() => router.push("/patients")} className="text-sm text-[#1960a3] hover:underline">{t.common.back}</button>
     </div>
   );
@@ -52,10 +65,10 @@ export default function PatientDetailPage() {
   const fullName = `${firstName} ${lastName}`;
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: "overview",     label: "Overview",        icon: "person" },
-    { key: "appointments", label: t.nav.appointments, icon: "calendar_month" },
-    { key: "emr",          label: "EMR",             icon: "medical_information" },
-    { key: "billing",      label: t.nav.billing,     icon: "receipt_long" },
+    { key: "overview",     label: t.patients.overview,  icon: "person" },
+    { key: "appointments", label: t.nav.appointments,   icon: "calendar_month" },
+    { key: "emr",          label: t.nav.emr,            icon: "medical_information" },
+    { key: "billing",      label: t.nav.billing,        icon: "receipt_long" },
   ];
 
   const appointments = (patient.appointments as unknown[]) ?? [];
@@ -76,16 +89,16 @@ export default function PatientDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setEditOpen(true)}
-            className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors"
+            className="flex items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm font-semibold text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>
             {t.patients.editPatient}
           </button>
-          <Link href={`/appointments?patientId=${id}&action=book`} className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+          <Link href={`/appointments?patientId=${id}&action=book`} className="flex items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm font-semibold text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors">
             <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
             {t.patients.bookAppt}
           </Link>
-          <Link href={`/billing/new?patientId=${id}`} className="flex items-center gap-2 border border-[#c4c6cf] bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#f4f3f7] transition-colors">
+          <Link href={`/billing/new?patientId=${id}`} className="flex items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-4 py-2 rounded-lg text-sm font-semibold text-[var(--txt1)] hover:bg-[var(--surface2)] transition-colors">
             <span className="material-symbols-outlined text-[18px]">receipt_long</span>
             {t.billing.newInvoice}
           </Link>
@@ -97,22 +110,22 @@ export default function PatientDetailPage() {
       </div>
 
       {/* Patient card */}
-      <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-6">
         <div className="flex items-start gap-5">
           <div className="w-16 h-16 rounded-2xl bg-[#002045] flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xl font-bold">{getInitials(fullName)}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 flex-1">
             <Info label={t.patients.dateOfBirth} value={patient.dateOfBirth ? formatDate(patient.dateOfBirth as string) : "—"} />
-            <Info label="Age" value={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth as string)} ${t.common.yrs}` : "—"} />
-            <Info label={t.common.type} value={patient.gender as string ?? "—"} />
-            <Info label="Blood Type" value={patient.bloodType ? (BLOOD_LABELS[patient.bloodType as string] ?? patient.bloodType as string) : "—"} blood />
+            <Info label={t.patients.age} value={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth as string)} ${t.common.yrs}` : "—"} />
+            <Info label={t.patients.gender} value={patient.gender as string ?? "—"} />
+            <Info label={t.patients.bloodType} value={patient.bloodType ? (BLOOD_LABELS[patient.bloodType as string] ?? patient.bloodType as string) : "—"} blood />
             <Info label={t.patients.nationalId} value={(patient.nationalId as string) ?? "—"} />
             <Info label={t.common.phone} value={(patient.phone as string) ?? "—"} />
             <Info label={t.common.email} value={(patient.email as string) ?? "—"} />
-            <Info label="Insurance" value={(patient.insuranceProvider as string) ?? t.patients.noInsurance} />
-            <Info label="Allergies" value={(patient.allergies as string[])?.join(", ") || "None documented"} full />
-            <Info label="Chronic Conditions" value={(patient.chronicConditions as string[])?.join(", ") || "None documented"} full />
+            <Info label={t.patients.insurance} value={(patient.insuranceProvider as string) ?? t.patients.noInsurance} />
+            <Info label={t.patients.allergies} value={(patient.allergies as string[])?.join(", ") || t.patients.noneDocumented} full />
+            <Info label={t.patients.chronicConditions} value={(patient.chronicConditions as string[])?.join(", ") || t.patients.noneDocumented} full />
           </div>
         </div>
       </div>
@@ -146,26 +159,26 @@ export default function PatientDetailPage() {
         )}
 
         {activeTab === "appointments" && (
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
             {appointments.length === 0 ? (
-              <EmptyState icon="calendar_month" title="No appointments" subtitle="Appointments for this patient will appear here" />
+              <EmptyState icon="calendar_month" title={t.nav.appointments} subtitle={t.patients.noPatients} />
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr>{["Date & Time", "Doctor", "Type", "Status", "Reason"].map((h) => (
-                    <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{h}</th>
+                  <tr>{[t.appointments.dateTime, t.appointments.doctor, t.common.type, t.common.status, t.common.reason].map((h) => (
+                    <th key={h} className="text-start text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 bg-[var(--surface2)] border-b border-[var(--border)]">{h}</th>
                   ))}</tr>
                 </thead>
                 <tbody>
                   {(appointments as Record<string, unknown>[]).map((a) => (
-                    <tr key={a.id as string} onClick={() => router.push(`/appointments/${a.id as string}`)} className="hover:bg-[#f4f3f7] transition-colors cursor-pointer">
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-xs font-mono text-[#43474e]">{formatDateTime(a.scheduledAt as string)}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#1a1c1e]">{((a.doctor as Record<string, unknown>)?.user as Record<string, unknown>)?.name as string ?? "—"}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#43474e]">{a.type as string}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
+                    <tr key={a.id as string} onClick={() => router.push(`/appointments/${a.id as string}`)} className="hover:bg-[var(--surface2)] transition-colors cursor-pointer">
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-xs font-mono text-[var(--txt2)]">{formatDateTime(a.scheduledAt as string)}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-sm text-[var(--txt1)]">{((a.doctor as Record<string, unknown>)?.user as Record<string, unknown>)?.name as string ?? "—"}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-sm text-[var(--txt2)]">{a.type as string}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)]">
                         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#d3e4ff] text-[#00477f]">{a.status as string}</span>
                       </td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#74777f]">{(a.reason as string) ?? "—"}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-sm text-[var(--txt2)]">{(a.reason as string) ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -177,15 +190,15 @@ export default function PatientDetailPage() {
         {activeTab === "emr" && (
           <div className="space-y-4">
             {consultations.length === 0 ? (
-              <div className="bg-white rounded-xl border border-[#e3e2e6]">
-                <EmptyState icon="medical_information" title="No consultations yet" subtitle="EMR entries will appear here after the first consultation" />
+              <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+                <EmptyState icon="medical_information" title={t.emr.noConsultations} subtitle={t.emr.vitalsRecorded} />
               </div>
             ) : (
               (consultations as Record<string, unknown>[]).map((c) => (
-                <div key={c.id as string} className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-5">
+                <div key={c.id as string} className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold text-[#1a1c1e]">{formatDateTime(c.createdAt as string)}</p>
-                    <Link href={`/emr/${id}`} className="text-xs text-[#1960a3] hover:underline font-semibold">Full EMR</Link>
+                    <p className="text-sm font-semibold text-[var(--txt1)]">{formatDateTime(c.createdAt as string)}</p>
+                    <Link href={`/emr/${id}`} className="text-xs text-[#1960a3] hover:underline font-semibold">{t.patients.viewEmr}</Link>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {!!c.subjective && <Info label="Subjective" value={c.subjective as string} />}
@@ -198,14 +211,14 @@ export default function PatientDetailPage() {
         )}
 
         {activeTab === "billing" && (
-          <div className="bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
             {invoices.length === 0 ? (
               <div className="py-12 flex flex-col items-center gap-3">
-                <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#74777f] text-2xl">receipt_long</span>
+                <div className="w-14 h-14 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[var(--txt2)] text-2xl">receipt_long</span>
                 </div>
-                <p className="text-sm font-semibold text-[#1a1c1e]">No invoices</p>
-                <p className="text-xs text-[#74777f]">Billing records for this patient will appear here</p>
+                <p className="text-sm font-semibold text-[var(--txt1)]">{t.billing.title}</p>
+                <p className="text-xs text-[var(--txt2)]">{t.billing.noInvoices}</p>
                 <Link href={`/billing/new?patientId=${id}`} className="flex items-center gap-2 bg-[#002045] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity mt-1">
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   {t.billing.newInvoice}
@@ -215,23 +228,23 @@ export default function PatientDetailPage() {
               <table className="w-full">
                 <thead>
                   <tr>
-                    {["Invoice #", "Date", "Total", "Paid", "Balance", "Status", ""].map((h) => (
-                      <th key={h} className="text-start text-xs font-semibold text-[#43474e] uppercase tracking-wider px-5 py-3.5 bg-[#f4f3f7] border-b border-[#e3e2e6]">{h}</th>
+                    {[t.reports.invoiceNo, t.common.date, t.billing.total, t.billing.paid, t.billing.balance, t.common.status, ""].map((h) => (
+                      <th key={h} className="text-start text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider px-5 py-3.5 bg-[var(--surface2)] border-b border-[var(--border)]">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(invoices as Record<string, unknown>[]).map((inv) => (
-                    <tr key={inv.id as string} className="hover:bg-[#f4f3f7] transition-colors">
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-xs font-mono font-semibold text-[#43474e]">{inv.invoiceNo as string}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-xs text-[#74777f]">{formatDate(inv.createdAt as string)}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm font-semibold text-[#1a1c1e]">{Number(inv.totalAmount).toFixed(2)}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#0d9488]">{Number(inv.paidAmount).toFixed(2)}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6] text-sm text-[#ba1a1a]">{Number(inv.balance).toFixed(2)}</td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
+                    <tr key={inv.id as string} className="hover:bg-[var(--surface2)] transition-colors">
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-xs font-mono font-semibold text-[var(--txt2)]">{inv.invoiceNo as string}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-xs text-[var(--txt2)]">{formatDate(inv.createdAt as string)}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-sm font-semibold text-[var(--txt1)]">{Number(inv.totalAmount).toFixed(2)}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-sm text-[#0d9488]">{Number(inv.paidAmount).toFixed(2)}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)] text-sm text-[#ba1a1a]">{Number(inv.balance).toFixed(2)}</td>
+                      <td className="px-5 py-3.5 border-b border-[var(--border)]">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${inv.status === "PAID" ? "bg-[#ccfbf1] text-[#0d9488]" : inv.status === "OVERDUE" ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#fffbeb] text-[#d97706]"}`}>{inv.status as string}</span>
                       </td>
-                      <td className="px-5 py-3.5 border-b border-[#e3e2e6]">
+                      <td className="px-5 py-3.5 border-b border-[var(--border)]">
                         <button onClick={() => router.push(`/billing/${inv.id as string}`)} className="text-xs text-[#1960a3] font-semibold hover:underline">
                           {t.common.view}
                         </button>
@@ -315,14 +328,12 @@ function EditPatientModal({ patient, onClose, onSaved }: {
       };
       if (!body.dateOfBirth) delete body.dateOfBirth;
       if (!body.insuranceExpiry) delete body.insuranceExpiry;
-      const res = await fetch(`/api/patients/${patient.id}`, {
+      const updated = await apiFetch<Patient>(`/api/patients/${patient.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); setError(e.detail || t.common.error); return; }
-      onSaved(await res.json());
-    } catch { setError(t.common.error); }
+      onSaved(updated);
+    } catch (err) { setError(err instanceof ApiError ? err.message : t.common.error); }
     finally { setSaving(false); }
   }
 
@@ -335,17 +346,17 @@ function EditPatientModal({ patient, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-[var(--surface)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e3e2e6]">
-          <h2 className="text-lg font-bold text-[#1a1c1e]">{t.patients.editPatient}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-[#f4f3f7] rounded-lg transition-colors">
-            <span className="material-symbols-outlined text-[#74777f]">close</span>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+          <h2 className="text-lg font-bold text-[var(--txt1)]">{t.patients.editPatient}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+            <span className="material-symbols-outlined text-[var(--txt2)]">close</span>
           </button>
         </div>
 
         {/* Section tabs */}
-        <div className="flex gap-0 border-b border-[#e3e2e6] px-6 overflow-x-auto">
+        <div className="flex gap-0 border-b border-[var(--border)] px-6 overflow-x-auto">
           {SECTIONS.map(s => (
             <button key={s.key} onClick={() => setSection(s.key)}
               className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
@@ -384,24 +395,24 @@ function EditPatientModal({ patient, onClose, onSaved }: {
               <Field label={t.common.phone}><input className="input-field" value={form.phone} onChange={e => set("phone", e.target.value)} /></Field>
               <Field label={t.common.email}><input type="email" className="input-field" value={form.email} onChange={e => set("email", e.target.value)} /></Field>
               <Field label={t.common.address} full><input className="input-field" value={form.address} onChange={e => set("address", e.target.value)} /></Field>
-              <Field label="Emergency Contact"><input className="input-field" value={form.emergencyContactName} onChange={e => set("emergencyContactName", e.target.value)} /></Field>
-              <Field label="Emergency Phone"><input className="input-field" value={form.emergencyContactPhone} onChange={e => set("emergencyContactPhone", e.target.value)} /></Field>
+              <Field label={t.patients.emergencyContactName}><input className="input-field" value={form.emergencyContactName} onChange={e => set("emergencyContactName", e.target.value)} /></Field>
+              <Field label={t.patients.emergencyContactPhone}><input className="input-field" value={form.emergencyContactPhone} onChange={e => set("emergencyContactPhone", e.target.value)} /></Field>
             </div>
           )}
 
           {section === "medical" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Blood Type">
+              <Field label={t.patients.bloodTypeLabel}>
                 <select className="input-field" value={form.bloodType} onChange={e => set("bloodType", e.target.value)}>
                   <option value="">{t.common.none}</option>
                   {BLOOD_TYPES.map(b => <option key={b} value={b}>{BLOOD_LABELS[b]}</option>)}
                 </select>
               </Field>
-              <Field label="Allergies (comma separated)" full>
-                <input className="input-field" value={form.allergies} onChange={e => set("allergies", e.target.value)} placeholder="Penicillin, Aspirin" />
+              <Field label={t.patients.allergiesLabel} full>
+                <input className="input-field" value={form.allergies} onChange={e => set("allergies", e.target.value)} placeholder={t.patients.allergiesPlaceholder} />
               </Field>
-              <Field label="Chronic Conditions (comma separated)" full>
-                <input className="input-field" value={form.chronicConditions} onChange={e => set("chronicConditions", e.target.value)} placeholder="Diabetes, Hypertension" />
+              <Field label={t.patients.chronicLabel} full>
+                <input className="input-field" value={form.chronicConditions} onChange={e => set("chronicConditions", e.target.value)} placeholder={t.patients.chronicPlaceholder} />
               </Field>
               <Field label={t.common.notes} full>
                 <textarea className="input-field resize-none" rows={3} value={form.notes} onChange={e => set("notes", e.target.value)} />
@@ -411,16 +422,16 @@ function EditPatientModal({ patient, onClose, onSaved }: {
 
           {section === "insurance" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Insurance Provider" full><input className="input-field" value={form.insuranceProvider} onChange={e => set("insuranceProvider", e.target.value)} /></Field>
-              <Field label="Policy Number"><input className="input-field" value={form.insurancePolicyNo} onChange={e => set("insurancePolicyNo", e.target.value)} /></Field>
-              <Field label="Coverage Type"><input className="input-field" value={form.insuranceCoverageType} onChange={e => set("insuranceCoverageType", e.target.value)} /></Field>
-              <Field label="Expiry Date"><input type="date" className="input-field" value={form.insuranceExpiry} onChange={e => set("insuranceExpiry", e.target.value)} /></Field>
+              <Field label={t.patients.insuranceProvider} full><input className="input-field" value={form.insuranceProvider} onChange={e => set("insuranceProvider", e.target.value)} /></Field>
+              <Field label={t.patients.insurancePolicy}><input className="input-field" value={form.insurancePolicyNo} onChange={e => set("insurancePolicyNo", e.target.value)} /></Field>
+              <Field label={t.patients.insuranceCoverageType}><input className="input-field" value={form.insuranceCoverageType} onChange={e => set("insuranceCoverageType", e.target.value)} /></Field>
+              <Field label={t.patients.insuranceExpiryDate}><input type="date" className="input-field" value={form.insuranceExpiry} onChange={e => set("insuranceExpiry", e.target.value)} /></Field>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#e3e2e6]">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
           <button onClick={onClose} className="btn-secondary px-4 py-2 text-sm">{t.common.cancel}</button>
           <button onClick={save} disabled={saving} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
             {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : t.hr.saveChanges}
@@ -444,11 +455,11 @@ function Field({ label, children, full }: { label: string; children: React.React
 function Info({ label, value, full, blood }: { label: string; value: string; full?: boolean; blood?: boolean }) {
   return (
     <div className={full ? "col-span-2" : ""}>
-      <p className="text-xs font-semibold text-[#74777f] uppercase tracking-wider">{label}</p>
+      <p className="text-xs font-semibold text-[var(--txt2)] uppercase tracking-wider">{label}</p>
       {blood && value !== "—" ? (
         <span className="inline-block mt-0.5 text-sm font-bold px-2 py-0.5 rounded bg-[#ffdad6] text-[#ba1a1a]">{value}</span>
       ) : (
-        <p className="text-sm text-[#1a1c1e] mt-0.5">{value}</p>
+        <p className="text-sm text-[var(--txt1)] mt-0.5">{value}</p>
       )}
     </div>
   );
@@ -456,9 +467,9 @@ function Info({ label, value, full, blood }: { label: string; value: string; ful
 
 function StatCard({ icon, label, value, color, bg }: { icon: string; label: string; value: string; color: string; bg: string }) {
   return (
-    <div className="bg-white rounded-xl border border-[#e3e2e6] p-4 flex items-center gap-3 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+    <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 flex items-center gap-3 shadow-[var(--sh-sm)]">
       <div className={`p-2.5 ${bg} rounded-xl`}><span className={`material-symbols-outlined ${color} text-[22px]`}>{icon}</span></div>
-      <div><p className="text-xl font-bold text-[#1a1c1e]">{value}</p><p className="text-xs text-[#74777f]">{label}</p></div>
+      <div><p className="text-xl font-bold text-[var(--txt1)]">{value}</p><p className="text-xs text-[var(--txt2)]">{label}</p></div>
     </div>
   );
 }
@@ -466,11 +477,11 @@ function StatCard({ icon, label, value, color, bg }: { icon: string; label: stri
 function EmptyState({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
     <div className="py-16 flex flex-col items-center gap-3">
-      <div className="w-14 h-14 bg-[#f4f3f7] rounded-2xl flex items-center justify-center">
-        <span className="material-symbols-outlined text-[#74777f] text-2xl">{icon}</span>
+      <div className="w-14 h-14 bg-[var(--surface2)] rounded-2xl flex items-center justify-center">
+        <span className="material-symbols-outlined text-[var(--txt2)] text-2xl">{icon}</span>
       </div>
-      <p className="text-sm font-semibold text-[#1a1c1e]">{title}</p>
-      <p className="text-xs text-[#74777f]">{subtitle}</p>
+      <p className="text-sm font-semibold text-[var(--txt1)]">{title}</p>
+      <p className="text-xs text-[var(--txt2)]">{subtitle}</p>
     </div>
   );
 }

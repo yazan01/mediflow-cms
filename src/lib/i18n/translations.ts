@@ -249,6 +249,7 @@ const en = {
     allergiesFullPlaceholder: "Enter allergies separated by commas (e.g. Penicillin, Sulfa, Aspirin)",
     separateWithCommas: "Separate multiple values with commas",
     chronicFullPlaceholder: "e.g. Hypertension, Type 2 Diabetes, Asthma",
+    insuranceCoverageType: "Coverage Type",
     insuranceExpiryDate: "Coverage Expiry Date",
     insuranceSelfPay: "Insurance details can be updated later from the patient profile. Leave blank if the patient is self-paying.",
     registerBtn: "Register Patient",
@@ -258,6 +259,11 @@ const en = {
     addressPlaceholder: "Street, city, country",
     deactivateSuccess: "Patient deactivated successfully",
     activateSuccess: "Patient reactivated successfully",
+    overview: "Overview",
+    chronicConditions: "Chronic Conditions",
+    emergencyContactName: "Emergency Contact",
+    emergencyContactPhone: "Emergency Phone",
+    noneDocumented: "None documented",
   },
 
   appointments: {
@@ -2184,6 +2190,7 @@ export const ar: T = {
     allergiesFullPlaceholder: "أدخل الحساسية مفصولة بفاصلة (مثال: بنسيلين، سلفا، أسبرين)",
     separateWithCommas: "افصل بين القيم المتعددة بفاصلة",
     chronicFullPlaceholder: "مثال: ضغط الدم، السكري من النوع 2، الربو",
+    insuranceCoverageType: "نوع التغطية",
     insuranceExpiryDate: "تاريخ انتهاء التغطية",
     insuranceSelfPay: "يمكن تحديث بيانات التأمين لاحقاً من ملف المريض. اتركها فارغة إذا كان المريض يدفع بنفسه.",
     registerBtn: "تسجيل المريض",
@@ -2193,6 +2200,11 @@ export const ar: T = {
     addressPlaceholder: "الشارع، المدينة، الدولة",
     deactivateSuccess: "تم تعطيل المريض بنجاح",
     activateSuccess: "تم إعادة تفعيل المريض بنجاح",
+    overview: "نظرة عامة",
+    chronicConditions: "الأمراض المزمنة",
+    emergencyContactName: "جهة الاتصال الطارئة",
+    emergencyContactPhone: "هاتف الطوارئ",
+    noneDocumented: "لا يوجد توثيق",
   },
 
   appointments: {

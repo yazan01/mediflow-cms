@@ -231,13 +231,10 @@ export default function NewInvoicePage() {
     }
     svcDebounce.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/services?search=${encodeURIComponent(query)}&isActive=true`);
-        if (res.ok) {
-          const data: ServiceSuggestion[] = await res.json();
-          setSvcSuggestions((p) => ({ ...p, [itemId]: data.slice(0, 6) }));
-          setSvcOpen((p) => ({ ...p, [itemId]: data.length > 0 }));
-        }
-      } catch { /* silent */ }
+        const data = await apiFetch<ServiceSuggestion[]>(`/api/services?search=${encodeURIComponent(query)}&isActive=true`);
+        setSvcSuggestions((p) => ({ ...p, [itemId]: data.slice(0, 6) }));
+        setSvcOpen((p) => ({ ...p, [itemId]: data.length > 0 }));
+      } catch { /* silent — autocomplete failure should not block the form */ }
     }, 300);
   }
 

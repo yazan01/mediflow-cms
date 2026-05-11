@@ -259,6 +259,26 @@ def adjust_medication_stock(
     db.add(movement)
     med.stockQuantity = new_qty
     db.commit()
+
+    # Notify pharmacists/managers when stock drops to or below minStockLevel
+    if new_qty <= med.minStockLevel:
+        alert_roles = {"PHARMACIST", "SUPER_ADMIN", "CLINIC_MANAGER"}
+        users_to_notify = [
+            u for u in db.query(models.User).filter(models.User.isActive == True).all()
+            if any(r in alert_roles for r in (u.roles or []))
+        ]
+        for u in users_to_notify:
+            db.add(models.Notification(
+                id=generate_id(),
+                userId=u.id,
+                title="Low Stock Alert",
+                message=f"{med.genericName} stock is low: {new_qty} {med.unit} remaining (min: {med.minStockLevel}).",
+                type="WARNING",
+                link="/pharmacy",
+            ))
+        if users_to_notify:
+            db.commit()
+
     log_audit(db, current_user.id, "STOCK_ADJUST", "PHARMACY", med_id, "Medication",
               old_values={"stockQuantity": previous_qty},
               new_values={"stockQuantity": new_qty, "change": qty, "note": note})
