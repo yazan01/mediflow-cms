@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 
 interface Attachment {
   id: string;
@@ -51,6 +52,7 @@ export function AttachmentPanel({ entityType, entityId }: Props) {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [confirmDeleteAtt, setConfirmDeleteAtt] = useState<Attachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
@@ -97,14 +99,16 @@ export function AttachmentPanel({ entityType, entityId }: Props) {
     setTimeout(() => setToast(""), 3000);
   }
 
-  async function handleDelete(att: Attachment) {
-    if (!confirm(a.deleteConfirm)) return;
-    const csrf = getCsrfToken();
-    await fetch(`/api/attachments/${att.id}`, {
-      method: "DELETE",
-      headers: csrf ? { "X-CSRF-Token": csrf } : {},
-    });
-    setAttachments((prev) => prev.filter((x) => x.id !== att.id));
+  function handleDelete(att: Attachment) {
+    setConfirmDeleteAtt(att);
+  }
+
+  async function doDelete() {
+    if (!confirmDeleteAtt) return;
+    const id = confirmDeleteAtt.id;
+    setConfirmDeleteAtt(null);
+    await apiFetch(`/api/attachments/${id}`, { method: "DELETE" });
+    setAttachments((prev) => prev.filter((x) => x.id !== id));
     showToast(a.deleteSuccess);
   }
 
@@ -122,7 +126,7 @@ export function AttachmentPanel({ entityType, entityId }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
+    <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -150,6 +154,7 @@ export function AttachmentPanel({ entityType, entityId }: Props) {
           ref={fileInputRef}
           type="file"
           className="hidden"
+          aria-label={a.upload}
           accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.txt"
           onChange={onFileChange}
         />
@@ -244,6 +249,39 @@ export function AttachmentPanel({ entityType, entityId }: Props) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {confirmDeleteAtt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="att-del-title"
+          onKeyDown={(e) => e.key === "Escape" && setConfirmDeleteAtt(null)}
+        >
+          <div className="bg-[var(--surface)] rounded-2xl shadow-[var(--sh-xl)] w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[var(--err)] text-[28px]">delete</span>
+              <h2 id="att-del-title" className="text-base font-semibold text-[var(--txt1)]">{a.deleteConfirm}</h2>
+            </div>
+            <p className="text-sm text-[var(--txt2)] truncate">{confirmDeleteAtt.originalName}</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmDeleteAtt(null)}
+                className="btn-secondary"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                onClick={doDelete}
+                className="btn-danger"
+              >
+                {t.common.delete}
+              </button>
+            </div>
           </div>
         </div>
       )}

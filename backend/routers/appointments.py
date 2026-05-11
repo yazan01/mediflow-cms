@@ -219,6 +219,23 @@ def create_appointment(
 
     db.commit()
     db.refresh(appointment)
+
+    # Notify the assigned doctor about the new appointment
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == body.doctorId).first()
+    if doctor:
+        patient = db.query(models.Patient).filter(models.Patient.id == body.patientId).first()
+        patient_name = f"{patient.firstName} {patient.lastName}" if patient else "a patient"
+        scheduled_str = start.strftime("%d %b %Y %H:%M")
+        db.add(models.Notification(
+            id=generate_id(),
+            userId=doctor.userId,
+            title="New Appointment Scheduled",
+            message=f"{patient_name} — {scheduled_str}" + (" [URGENT]" if appointment.isUrgent else ""),
+            type="WARNING" if appointment.isUrgent else "INFO",
+            link=f"/appointments/{appointment.id}",
+        ))
+        db.commit()
+
     log_audit(db, current_user.id, "CREATE", "APPOINTMENTS", appointment.id, "Appointment",
               new_values={"patientId": body.patientId, "doctorId": body.doctorId,
                           "scheduledAt": str(start), "type": appointment.type, "isUrgent": appointment.isUrgent})

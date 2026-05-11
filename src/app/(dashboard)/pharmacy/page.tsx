@@ -6,6 +6,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Medication, StockStatus } from "@/types";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { apiFetch } from "@/lib/hooks/useDataFetch";
 import { ErrorBanner } from "@/components/ErrorBanner";
 
 type PharmacyStats = {
@@ -116,9 +117,8 @@ export default function PharmacyPage() {
     if (!adjustId || !adjustQty) return;
     setAdjusting(true);
     try {
-      await fetch(`/api/pharmacy/medications/${adjustId}/adjust`, {
+      await apiFetch(`/api/pharmacy/medications/${adjustId}/adjust`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantity: Number(adjustQty), note: adjustNote }),
       });
       setAdjustId(null);

@@ -263,6 +263,9 @@ export default function SettingsPage() {
   const [serviceError, setServiceError] = useState("");
   const [serviceStatus, setServiceStatus] = useState<"idle" | "saved" | "deleted">("idle");
 
+  // Generic confirm dialog
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
   // Nav accordion
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -460,12 +463,16 @@ export default function SettingsPage() {
     }
   }
 
-  async function deleteProvider(id: string, name: string) {
-    if (!confirm(s.confirmDeleteProvider)) return;
-    await apiFetch(`/api/insurance-providers/${id}`, { method: "DELETE" });
-    setInsuranceProviders((ps) => ps.filter((p) => p.id !== id));
-    setProviderStatus("deleted");
-    setTimeout(() => setProviderStatus("idle"), 3000);
+  function deleteProvider(id: string, _name: string) {
+    setConfirmDialog({
+      message: s.confirmDeleteProvider,
+      onConfirm: async () => {
+        await apiFetch(`/api/insurance-providers/${id}`, { method: "DELETE" });
+        setInsuranceProviders((ps) => ps.filter((p) => p.id !== id));
+        setProviderStatus("deleted");
+        setTimeout(() => setProviderStatus("idle"), 3000);
+      },
+    });
   }
 
   async function saveService() {
@@ -498,12 +505,16 @@ export default function SettingsPage() {
     }
   }
 
-  async function deleteService(svc: ServiceRow) {
-    if (!confirm(t.services.confirmDelete)) return;
-    await apiFetch(`/api/services/${svc.id}`, { method: "DELETE" });
-    setServicesList((prev) => prev.filter((s) => s.id !== svc.id));
-    setServiceStatus("deleted");
-    setTimeout(() => setServiceStatus("idle"), 3000);
+  function deleteService(svc: ServiceRow) {
+    setConfirmDialog({
+      message: t.services.confirmDelete,
+      onConfirm: async () => {
+        await apiFetch(`/api/services/${svc.id}`, { method: "DELETE" });
+        setServicesList((prev) => prev.filter((s) => s.id !== svc.id));
+        setServiceStatus("deleted");
+        setTimeout(() => setServiceStatus("idle"), 3000);
+      },
+    });
   }
 
   function loadRetentionStats() {
@@ -513,21 +524,22 @@ export default function SettingsPage() {
       .catch(() => {});
   }
 
-  async function handlePurge() {
-    if (!confirm(s.purgeConfirm)) return;
-    setPurging(true); setPurgedCount(null);
-    try {
-      const res = await fetch("/api/audit/archive", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ olderThanDays: retentionDays }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setPurgedCount(d.deleted);
-        loadRetentionStats();
-      }
-    } catch { /* silent */ }
-    finally { setPurging(false); }
+  function handlePurge() {
+    setConfirmDialog({
+      message: s.purgeConfirm,
+      onConfirm: async () => {
+        setPurging(true); setPurgedCount(null);
+        try {
+          const d = await apiFetch<{ deleted: number }>("/api/audit/archive", {
+            method: "POST",
+            body: JSON.stringify({ olderThanDays: retentionDays }),
+          });
+          setPurgedCount(d.deleted);
+          loadRetentionStats();
+        } catch { /* silent */ }
+        finally { setPurging(false); }
+      },
+    });
   }
 
   async function handleAiGenerate() {
@@ -2420,6 +2432,33 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Generic confirm dialog */}
+      {confirmDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-confirm-title"
+          onKeyDown={(e) => e.key === "Escape" && setConfirmDialog(null)}
+        >
+          <div className="bg-[var(--surface)] rounded-2xl shadow-[var(--sh-xl)] w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[var(--warn)] text-[28px]">warning</span>
+              <h2 id="settings-confirm-title" className="text-sm font-semibold text-[var(--txt1)]">{confirmDialog.message}</h2>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setConfirmDialog(null)} className="btn-secondary">{t.common.cancel}</button>
+              <button
+                onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                className="btn-danger"
+              >
+                {t.common.confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2428,7 +2467,7 @@ export default function SettingsPage() {
 
 function SettingsCard({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-6">
+    <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)] p-6">
       <div className="mb-5 pb-4 border-b border-[var(--border)]">
         <h2 className="text-base font-semibold text-[var(--txt1)]">{title}</h2>
         <p className="text-xs text-[var(--txt2)] mt-0.5">{desc}</p>

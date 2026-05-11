@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { InsuranceProviderSelect } from "@/components/ui/InsuranceProviderSelect";
+import { apiFetch, ApiError } from "@/lib/hooks/useDataFetch";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,10 +65,10 @@ function itemTotal(item: LineItem): number {
 // ── Shared input class ────────────────────────────────────────────────────────
 
 const INPUT =
-  "w-full bg-white border border-[#c4c6cf] rounded-lg px-3 py-2 text-sm text-[#1a1c1e] placeholder:text-[#74777f] focus:outline-none focus:ring-2 focus:ring-[#1960a3]/20 focus:border-[#1960a3] transition-all duration-150";
+  "w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--txt1)] placeholder:text-[var(--txt2)] focus:outline-none focus:ring-2 focus:ring-[var(--blue)]/20 focus:border-[var(--blue)] transition-all duration-150";
 
 const CARD =
-  "bg-white rounded-xl border border-[#e3e2e6] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
+  "bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--sh-sm)]";
 
 const LABEL =
   "block text-xs font-semibold text-[#43474e] uppercase tracking-wider mb-1.5";
@@ -341,21 +342,14 @@ export default function NewInvoicePage() {
         ...(asDraft && { status: "DRAFT" }),
       };
 
-      const res = await fetch("/api/billing", {
+      const data = await apiFetch<{ id: string }>("/api/billing", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.detail ?? data.error ?? b.createFailed);
-        return;
-      }
-
       router.push(`/billing/${data.id}`);
-    } catch {
-      setError(t.common.networkError);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t.common.networkError);
     } finally {
       setSaving(false);
       setSavingDraft(false);

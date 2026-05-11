@@ -140,7 +140,11 @@ def update_lab_order(
 ):
     order = (
         db.query(models.LabOrder)
-        .options(selectinload(models.LabOrder.results))
+        .options(
+            selectinload(models.LabOrder.results),
+            joinedload(models.LabOrder.patient),
+            joinedload(models.LabOrder.orderedByDoctor),
+        )
         .filter(models.LabOrder.id == order_id)
         .first()
     )
@@ -184,5 +188,22 @@ def update_lab_order(
 
     db.commit()
     db.refresh(order)
+
+    # Notify the ordering doctor when results are ready
+    if order.status == "RESULTS_READY" and order.orderedByDoctor:
+        patient_name = (
+            f"{order.patient.firstName} {order.patient.lastName}" if order.patient else "a patient"
+        )
+        tests_summary = ", ".join((order.tests or [])[:3])
+        db.add(models.Notification(
+            id=generate_id(),
+            userId=order.orderedByDoctor.userId,
+            title="Lab Results Ready",
+            message=f"Results for {patient_name} ({tests_summary}) are now available.",
+            type="INFO",
+            link="/laboratory",
+        ))
+        db.commit()
+
     log_audit(db, current_user.id, "UPDATE", "LABORATORY", entity_id=order_id, entity_type="LabOrder")
     return order_to_dict(order)
