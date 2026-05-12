@@ -291,6 +291,67 @@ def get_invoice_by_appointment(
     return invoice_to_dict(inv)
 
 
+@router.get("/insurance-ar")
+def get_insurance_ar(db: Session = Depends(get_db), _user=Depends(require_roles(*BILLING_ROLES))):
+    """Per-insurance-company receivables summary: what each insurer owes the clinic."""
+    from collections import defaultdict
+
+    invoices = (
+        db.query(models.Invoice)
+        .options(joinedload(models.Invoice.payments))
+        .filter(models.Invoice.insuranceClaim == True)  # noqa: E712
+        .all()
+    )
+
+    buckets: dict = defaultdict(lambda: {
+        "invoiceCount": 0,
+        "totalBilled": 0.0,
+        "insuranceShare": 0.0,
+        "patientShare": 0.0,
+        "insuranceCollected": 0.0,
+    })
+
+    for inv in invoices:
+        name = inv.insuranceProvider or "Unknown"
+        d = buckets[name]
+        total = float(inv.totalAmount)
+        copay = float(inv.insuranceCopayPercent or 0)
+        ins_share = round(total * (1 - copay / 100), 2)
+        pat_share = round(total * copay / 100, 2)
+        ins_collected = sum(
+            float(p.amount) for p in (inv.payments or []) if (p.method or "").upper() == "INSURANCE"
+        )
+        d["invoiceCount"] += 1
+        d["totalBilled"] += total
+        d["insuranceShare"] += ins_share
+        d["patientShare"] += pat_share
+        d["insuranceCollected"] += ins_collected
+
+    providers = []
+    for name, d in buckets.items():
+        outstanding = round(d["insuranceShare"] - d["insuranceCollected"], 2)
+        providers.append({
+            "providerName": name,
+            "invoiceCount": d["invoiceCount"],
+            "totalBilled": round(d["totalBilled"], 2),
+            "insuranceShare": round(d["insuranceShare"], 2),
+            "patientShare": round(d["patientShare"], 2),
+            "insuranceCollected": round(d["insuranceCollected"], 2),
+            "outstanding": outstanding,
+        })
+
+    providers.sort(key=lambda x: x["outstanding"], reverse=True)
+
+    return {
+        "providers": providers,
+        "totals": {
+            "insuranceShare": round(sum(p["insuranceShare"] for p in providers), 2),
+            "insuranceCollected": round(sum(p["insuranceCollected"] for p in providers), 2),
+            "outstanding": round(sum(p["outstanding"] for p in providers), 2),
+        },
+    }
+
+
 @router.get("/{invoice_id}")
 def get_invoice(invoice_id: str, db: Session = Depends(get_db), _user=Depends(require_roles(*BILLING_ROLES))):
     inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
