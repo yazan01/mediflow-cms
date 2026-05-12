@@ -614,6 +614,7 @@ html.dark {
   }
   .input-group .input-icon-start { @apply start-3; }
   .input-group .input-icon-end   { @apply end-3; }
+  .input-group button.input-icon-end { @apply pointer-events-auto cursor-pointer; }
   .input-group .input-field      { @apply ps-9; }
   .input-group .input-field.has-end-icon { @apply pe-9; }
 
