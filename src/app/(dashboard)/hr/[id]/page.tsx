@@ -85,9 +85,8 @@ export default function EmployeeProfilePage() {
     setContractSaving(true);
     setContractError("");
     try {
-      const res = await fetch(`/api/hr/employees/${id}/contracts`, {
+      await apiFetch(`/api/hr/employees/${id}/contracts`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contractType: contractForm.contractType,
           startDate: contractForm.startDate,
@@ -95,17 +94,12 @@ export default function EmployeeProfilePage() {
           notes: contractForm.notes || undefined,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setContractError(err.detail || t.hr.contractFailed);
-        return;
-      }
       setContractModal(false);
       setContractForm({ contractType: "PERMANENT", startDate: "", endDate: "", notes: "" });
       const cr = await fetch(`/api/hr/employees/${id}/contracts`);
       if (cr.ok) setContracts(await cr.json());
-    } catch {
-      setContractError(t.hr.contractFailed);
+    } catch (err) {
+      setContractError(err instanceof Error ? err.message : t.hr.contractFailed);
     } finally {
       setContractSaving(false);
     }
@@ -116,9 +110,8 @@ export default function EmployeeProfilePage() {
     if (!reviewForm.period) { setReviewError(t.common.required); return; }
     setReviewSaving(true); setReviewError("");
     try {
-      const res = await fetch("/api/hr/performance-reviews", {
+      await apiFetch("/api/hr/performance-reviews", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: id,
           period: reviewForm.period,
@@ -128,12 +121,11 @@ export default function EmployeeProfilePage() {
           comments: reviewForm.comments || undefined,
         }),
       });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); setReviewError(err.detail || t.hr.reviewFailed); return; }
       setReviewModal(false);
       setReviewForm({ period: "", rating: "3", strengths: "", improvements: "", comments: "" });
       const rr = await fetch(`/api/hr/performance-reviews?employeeId=${id}`);
       if (rr.ok) setReviews(await rr.json());
-    } catch { setReviewError(t.hr.reviewFailed); } finally { setReviewSaving(false); }
+    } catch (err) { setReviewError(err instanceof Error ? err.message : t.hr.reviewFailed); } finally { setReviewSaving(false); }
   }
 
   async function handleAddDoc(e: React.FormEvent) {
@@ -141,9 +133,8 @@ export default function EmployeeProfilePage() {
     if (!docForm.name) { setDocError(t.common.required); return; }
     setDocSaving(true); setDocError("");
     try {
-      const res = await fetch(`/api/hr/employees/${id}/documents`, {
+      await apiFetch(`/api/hr/employees/${id}/documents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: docForm.name,
           docType: docForm.docType,
@@ -151,12 +142,11 @@ export default function EmployeeProfilePage() {
           expiryDate: docForm.expiryDate || undefined,
         }),
       });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); setDocError(err.detail || t.hr.docFailed); return; }
       setDocModal(false);
       setDocForm({ name: "", docType: "NATIONAL_ID", notes: "", expiryDate: "" });
       const dr = await fetch(`/api/hr/employees/${id}/documents`);
       if (dr.ok) setDocs(await dr.json());
-    } catch { setDocError(t.hr.docFailed); } finally { setDocSaving(false); }
+    } catch (err) { setDocError(err instanceof Error ? err.message : t.hr.docFailed); } finally { setDocSaving(false); }
   }
 
   async function handleDeleteDoc(docId: string) {
@@ -178,9 +168,8 @@ export default function EmployeeProfilePage() {
     setCreateUserSaving(true);
     setCreateUserError("");
     try {
-      const res = await fetch("/api/users", {
+      const data = await apiFetch<{ id: string }>("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: createUserForm.name,
           email: createUserForm.email,
@@ -188,28 +177,16 @@ export default function EmployeeProfilePage() {
           roles: createUserForm.roles,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setCreateUserError(data.detail ?? data.error ?? "Failed to create user");
-        return;
-      }
       // Link the new user to this employee
-      const linkRes = await fetch(`/api/hr/employees/${id}`, {
+      const updated = await apiFetch(`/api/hr/employees/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: data.id }),
       });
-      if (!linkRes.ok) {
-        const err = await linkRes.json().catch(() => ({}));
-        setCreateUserError(err.detail ?? "User created but failed to link employee");
-        return;
-      }
-      const updated = await linkRes.json();
-      setEmp(updated);
+      setEmp(updated as Employee);
       setCreateUserModal(false);
       setCreateUserForm({ name: "", email: "", password: "", roles: [] });
-    } catch {
-      setCreateUserError("An unexpected error occurred");
+    } catch (err) {
+      setCreateUserError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setCreateUserSaving(false);
     }
@@ -980,9 +957,8 @@ function EditEmployeeModal({ emp, departments, branches, onClose, onSaved }: {
     if (form.userRoles.length === 0) { setError(t.hr.rolesNote); return; }
     setSaving(true); setError("");
     try {
-      const res = await fetch(`/api/hr/employees/${emp.id}`, {
+      const updated = await apiFetch(`/api/hr/employees/${emp.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userName: form.userName,
           userPhone: form.userPhone || undefined,
@@ -1000,9 +976,8 @@ function EditEmployeeModal({ emp, departments, branches, onClose, onSaved }: {
           sickLeaveBalance: Number(form.sickLeaveBalance) || 14,
         }),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); setError(e.detail || t.common.error); return; }
-      onSaved(await res.json());
-    } catch { setError(t.common.error); }
+      onSaved(updated as Employee);
+    } catch (err) { setError(err instanceof Error ? err.message : t.common.error); }
     finally { setSaving(false); }
   }
 
