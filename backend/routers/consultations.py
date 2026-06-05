@@ -85,6 +85,7 @@ class ConsultationUpdate(BaseModel):
     pmh: Optional[str] = None
     examination: Optional[str] = None
     followUpDate: Optional[str] = None
+    isLocked: Optional[bool] = None
     vitals: Optional[VitalsIn] = None
     diagnoses: Optional[List[DiagnosisIn]] = None
     prescriptions: Optional[List[PrescriptionIn]] = None
@@ -353,7 +354,7 @@ def update_consultation(
         raise HTTPException(status_code=409, detail="Consultation is locked and cannot be edited")
 
     scalar_fields = ["chiefComplaint", "subjective", "objective", "assessment", "plan",
-                     "hpi", "pmh", "examination", "followUpDate"]
+                     "hpi", "pmh", "examination", "followUpDate", "isLocked"]
     update_data = body.model_dump(exclude_none=True)
 
     for field in scalar_fields:
@@ -361,6 +362,8 @@ def update_consultation(
             val = update_data[field]
             if field == "followUpDate" and val:
                 val = datetime.fromisoformat(val)
+            if field == "isLocked" and val and not c.isLocked:
+                c.lockedAt = datetime.now()
             setattr(c, field, val)
 
     if "vitals" in update_data and body.vitals:
@@ -423,7 +426,7 @@ def update_consultation(
     from auth import log_audit
     log_audit(db, _user.id, "UPDATE", "Consultation", c.id, {})
 
-    return {"id": c.id, "isLocked": c.isLocked, "updatedAt": c.updatedAt.isoformat() if c.updatedAt else None}
+    return _consultation_detail(c)
 
 
 @router.post("/{consultation_id}/lock")

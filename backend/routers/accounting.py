@@ -216,10 +216,10 @@ def get_overview(db: Session = Depends(get_db), _user=Depends(require_roles(*ACC
     ).scalar() or 0
 
     total_expenses = db.query(func.sum(models.Expense.amount)).filter(
-        models.Expense.status == "APPROVED"
+        models.Expense.status.in_(["APPROVED", "PENDING"])
     ).scalar() or 0
     monthly_expenses = db.query(func.sum(models.Expense.amount)).filter(
-        models.Expense.status == "APPROVED",
+        models.Expense.status.in_(["APPROVED", "PENDING"]),
         models.Expense.date >= month_start,
     ).scalar() or 0
 

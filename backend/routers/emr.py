@@ -175,6 +175,10 @@ def get_emr(patient_id: str, db: Session = Depends(get_db), _user=Depends(requir
 
     return {
         "patient": patient_data,
+        "id": patient_data["id"],
+        "firstName": patient_data["firstName"],
+        "lastName": patient_data["lastName"],
+        "mrn": patient_data["mrn"],
         "consultations": consultations_data,
         "vitals": vitals_list,
         "labOrders": lab_data,

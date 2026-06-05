@@ -250,10 +250,10 @@ def create_invoice(body: InvoiceCreate, db: Session = Depends(get_db), current_u
         paidAmount=0,
         balance=total,
         status="PENDING",
-        insuranceClaim=body.insuranceClaim or False,
+        insuranceClaim=bool(body.insuranceClaim or body.insuranceProvider or body.insuranceCopayPercent is not None),
         insuranceProvider=sanitize_string(body.insuranceProvider),
         insurancePolicyNo=sanitize_string(body.insurancePolicyNo),
-        insuranceCopayPercent=body.insuranceCopayPercent if body.insuranceClaim else None,
+        insuranceCopayPercent=body.insuranceCopayPercent,
         notes=sanitize_string(body.notes),
     )
     db.add(invoice)
